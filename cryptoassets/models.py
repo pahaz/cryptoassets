@@ -34,8 +34,16 @@ def _now():
     return datetime.datetime.utcnow()
 
 
-class NotEnoughBalance(Exception):
-    """ Allow the balance to go to negative when sending. """
+class NotEnoughAccountBalance(Exception):
+    """ The user tried to send too much from a specific account. """
+
+
+class NotEnoughWalletBalance(Exception):
+    """ The user tried to send too much from a specific account.
+
+    This should be only raised through coin backend API reply
+    and we never check this internally.
+    """
 
 
 class TableName:
@@ -55,7 +63,7 @@ class CoinBackend:
         return backendregistry.get(self.coin)
 
 
-class GenericAccount(TableName, Base):
+class GenericAccount(TableName, Base, CoinBackend):
     __abstract__ = True
     id = Column(Integer, primary_key=True)
     name = Column(String(255))
@@ -74,13 +82,20 @@ class GenericAccount(TableName, Base):
     def wallet(cls):
         return Column(Integer, ForeignKey('{}_wallet.id'.format(cls.coin)))
 
+    def lock(self):
+        """ Get a lock context manager to protect operations targeting this account.
+
+        This lock must be acquired for all operations touching the balance.
+        """
+        return self.backend.get_lock("{}_account_lock_{}".format(self.coin, self.id))
+
 
 class GenericAddress(TableName, Base):
     __abstract__ = True
     id = Column(Integer, primary_key=True)
-    address = Column(String(128))
-    label = Column(String(255))
-    balance = Column(Integer, default=0)
+    address = Column(String(128), nullable=False, unique=True)
+    label = Column(String(255), unique=True)
+    balance = Column(Integer, default=0, nullable=False)
     created_at = Column(Date, default=_now)
     archived_at = Column(Date, onupdate=_now)
 
@@ -99,6 +114,9 @@ class GenericTransaction(TableName, Base):
     __abstract__ = True
     id = Column(Integer, primary_key=True)
     created_at = Column(Date, default=_now)
+    amount = Column(Integer())
+    status = Column('status', Enum('pending', 'unconfirmed', 'broadcasted', 'invalid', 'internal'))
+    txid = Column(String(255), nullable=True)
 
     @declared_attr
     def __tablename__(cls):
@@ -110,7 +128,7 @@ class GenericTransaction(TableName, Base):
 
     @declared_attr
     def wallet(cls):
-        return Column(Integer, ForeignKey('{}_wallet.id'.format(cls.coin)))
+        return Column(Integer, ForeignKey('{}_wallet.id'.format(cls.coin)), nullable=False)
 
     @declared_attr
     def sending_account(cls):
@@ -119,9 +137,6 @@ class GenericTransaction(TableName, Base):
     @declared_attr
     def receiving_account(cls):
         return Column(Integer, ForeignKey('{}_account.id'.format(cls.coin)))
-
-    amount = Column(Integer())
-    status = Column('status', Enum('created', 'incoming', 'broadcasted', 'invalid', 'internal'))
 
 
 class GenericConfirmationTransaction(GenericTransaction):
@@ -143,15 +158,15 @@ class GenericWallet(TableName, Base, CoinBackend):
     def __tablename__(cls):
         return "{}_wallet".format(cls.coin)
 
-    @abstractmethod
-    def _create_address(self):
-        """ Allocates a new address for this wallet. """
-        raise NotImplementedError()
+    def __init__(self):
+        self.balance = 0
 
-    @abstractmethod
-    def _create_account(self):
-        """ Allocates a new address for this wallet. """
-        raise NotImplementedError()
+    def lock(self):
+        """ Get a lock context manager to protect operations targeting this account.
+
+        This lock must be acquired for all operations touching the balance.
+        """
+        return self.backend.get_lock("{}_wallet_lock_{}".format(self.coin, self.id))
 
     def create_account(self, name):
         """
@@ -161,7 +176,7 @@ class GenericWallet(TableName, Base, CoinBackend):
 
         assert session
 
-        account = self._create_account()
+        account = self.Account()
         account.name = name
         account.wallet = self.id
         session.add(account)
@@ -179,7 +194,7 @@ class GenericWallet(TableName, Base, CoinBackend):
 
         _address = self.backend.create_address(label=label)
 
-        address = self._create_address()
+        address = self.Address()
         address.address = _address
         address.account = account.id
         address.label = label
@@ -193,17 +208,30 @@ class GenericWallet(TableName, Base, CoinBackend):
         :param account: The account owner from whose balance we
         """
 
-    def import_address(self, account, label, address):
+    def add_address(self, account, label, address):
         """ Adds an external address under this wallet, under this account. """
         session = Session.object_session(self)
-        _address = self.backend.create_address(label=label)
-        address = self._create_address()
-        address.address = _address
-        address.account = account.id
-        address.label = label
-        address.refresh_balance()
-        session.add(address)
-        return address
+        address_obj = self.Address()
+        address_obj.address = address
+        address_obj.account = account.id
+        address_obj.label = label
+        session.add(address_obj)
+        return address_obj
+
+    def refresh_account_balance(self, account):
+        """ Refresh the balance for one account. """
+        session = Session.object_session(self)
+
+        assert account.wallet == self.id
+
+        with account.lock():
+            addresses = session.query(self.Address).filter(self.Address.account == account.id).values("address")
+            total_balance = 0
+            for address, balance in self.backend.get_balances(item.address for item in addresses):
+                total_balance += balance
+                session.query(self.Address).filter(self.Address.address == address).update({"balance": balance})
+
+            account.balance = total_balance
 
     def send_internal(self, from_account, to_account, amount, label, allow_negative_balance=False):
         """
@@ -212,43 +240,76 @@ class GenericWallet(TableName, Base, CoinBackend):
 
         assert from_account.wallet == self.id
         assert to_account.wallet == self.id
+        # Cannot do internal transactions within the account
+        assert from_account.id
+        assert to_account.id
+        assert from_account.id != to_account.id, "Trying to do internal transfer on account id {}".format(from_account.id)
         assert session
 
-        if not allow_negative_balance:
-            if from_account.balance < amount:
-                raise NotEnoughBalance()
+        with from_account.lock(), to_account.lock():
 
-        transaction = self._create_transaction()
-        transaction.sending_account = from_account
-        transaction.receiving_account = to_account
-        transaction.amount = amount
-        session.add(transaction)
+            if not allow_negative_balance:
+                if from_account.balance < amount:
+                    raise NotEnoughAccountBalance()
 
-        from_account.balance -= amount
-        to_account.balance += amount
+            transaction = self.Transaction()
+            transaction.sending_account = from_account.id
+            transaction.receiving_account = to_account.id
+            transaction.amount = amount
+            transaction.wallet = self.id
+            session.add(transaction)
+
+            from_account.balance -= amount
+            to_account.balance += amount
+
+    def send_external(self, from_account, to_address, amount, label):
+        """ Create a new external transaction and put it to the transaction queue.
+
+        The transaction is not send until `broadcast()` is called
+        for this wallet.
+
+        :return: Transaction object
+        """
+        session = Session.object_session(self)
+
+        assert session
+        assert from_account.wallet == self.id
+
+        # TODO: Currently we don't allow
+        # negative withdrawals on external sends
+
+        if from_account.balance < amount:
+            raise NotEnoughAccountBalance()
+
+        with from_account.lock(), self.lock():
+
+            transaction = self.Transaction()
+            transaction.sending_account = from_account.id
+            transaction.amount = amount
+            transaction.status = "pending"
+            transaction.wallet = self.id
+
+            session.add(transaction)
+
+            from_account.balance -= amount
+            self.balance -= amount
+
+    def broadcast(self):
+        """ Broadcast all pending external send transactions. """
+        txs = session.query(self.Transaction).filter(self.Transaction.status == "pending")
+        print(txs)
+
+    def refresh_total_balance(self):
+        """ Make the balance to match with the actual backend.
+
+        This is only useful for send_external() balance checks.
+        Actual address balances will be out of sync after calling this
+        (if the balance is incorrect).
+        """
+        self.balance = self.backend.get_balance()
 
     def receive(self, receiver, amount):
         """
         :return: (account, total balance) tuple
         """
         pass
-
-    def get_account_balance(self, account):
-        """
-        :return: True atomic balance of this wallet
-        """
-
-    def get_total_balance(self):
-        """
-        :return: Balance of all accounts in this wallet
-        """
-
-    def get_all_transactions(self):
-        """
-        :return: List of all transactions
-        """
-
-    def get_transactions(self, account):
-        """
-        :return: List of transactions
-        """
