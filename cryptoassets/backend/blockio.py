@@ -73,10 +73,11 @@ class BlockIo:
         """ Create a named lock to protect the operation. """
         return self.lock_factory(name)
 
-    def send(self, receiving_address, amount):
+    def send(self, recipients):
         """
+        :param recipients: Dict of (address, satoshi amount)
         """
-        result = self.block_io.withdraw(amounts=_convert_to_decimal(amount), to_addresses=receiving_address)
+        pass
 
     def receive(self, receiver, amount):
         """

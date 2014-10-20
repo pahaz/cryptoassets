@@ -22,6 +22,9 @@ class CoinTestCase:
         self.Account = None
         self.setup_coin()
 
+        # How many satoshis we use in send_external()
+        self.external_send_amount = 100
+
     def setup_coin(self):
         raise NotImplementedError()
 
@@ -75,6 +78,12 @@ class CoinTestCase:
             self.assertEqual(receiving_account.balance, 100)
             self.assertEqual(sending_account.balance, 0)
 
+            # We should have created one transaction
+            self.assertEqual(DBSession.query(self.Transaction.id).count(), 1)
+            tx = DBSession.query(self.Transaction).first()
+            self.assertEqual(tx.sending_account, sending_account.id)
+            self.assertEqual(tx.receiving_account, receiving_account.id)
+
     def test_send_internal_low_balance(self):
         """ Does internal transaction where balance requirement is not met. """
 
@@ -124,6 +133,7 @@ class CoinTestCase:
             wallet.refresh_account_balance(account)
 
             # Assume we have at least 5 TESTNET bitcoins there
+            self.assertIsNot(account.balance, 0, "Account balance was zero after refresh_account_balance()")
             self.assertGreater(account.balance, 5)
 
     def test_send_external(self):
@@ -135,12 +145,31 @@ class CoinTestCase:
             account = wallet.create_account("Test account")
 
             # Sync wallet with the external balance
+            self.setup_test_fund_address(wallet, account)
             wallet.refresh_account_balance(account)
 
             receiving_address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
 
             # Send Bitcoins through BlockChain
-            # wallet.send_external(account, receiving_address.address, 2100, "Test send {}".format(time.time()))
+            wallet.send_external(account, receiving_address.address, self.external_send_amount, "Test send {}".format(time.time()))
 
+            # We should have created one transaction
+            # which is not broadcasted yet
+            self.assertEqual(DBSession.query(self.Transaction.id).count(), 1)
+            tx = DBSession.query(self.Transaction).first()
+            self.assertEqual(tx.sending_account, account.id)
+            self.assertEqual(tx.receiving_account, None)
+            self.assertEqual(tx.state, "pending")
+            self.assertEqual(tx.txid, None)
 
+            wallet.broadcast()
+            self.assertEqual(tx.state, "broadcasted")
+            self.assertIsNotNone(tx.txid)
 
+    def test_broadcast_no_transactions(self):
+        """ Broadcast must not fail even we don't have any transactions. """
+
+        with transaction.manager:
+            wallet = self.Wallet()
+            DBSession.add(wallet)
+            wallet.broadcast()

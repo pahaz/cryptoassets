@@ -47,6 +47,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         v2 = _convert_to_decimal(v)
         self.assertEqual(float(v2), 1.0)
 
+
 class BlockIoDogeTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_test_fund_address(self, wallet, account):

@@ -1,5 +1,5 @@
-from abc import abstractmethod
 import datetime
+from collections import Counter
 
 from sqlalchemy import (
     Column,
@@ -114,8 +114,9 @@ class GenericTransaction(TableName, Base):
     __abstract__ = True
     id = Column(Integer, primary_key=True)
     created_at = Column(Date, default=_now)
+    broadcasted_at = Column(Date, nullable=True, default=None)
     amount = Column(Integer())
-    status = Column('status', Enum('pending', 'unconfirmed', 'broadcasted', 'invalid', 'internal'))
+    state = Column(Enum('pending', 'unconfirmed', 'broadcasted', 'invalid', 'internal'))
     txid = Column(String(255), nullable=True)
 
     @declared_attr
@@ -153,6 +154,12 @@ class GenericWallet(TableName, Base, CoinBackend):
     created_at = Column(Date, default=_now)
     updated_at = Column(Date, onupdate=_now)
     balance = Column(Integer())
+
+    # Subclass must set these
+    # class references to corresponding models
+    Address = None
+    Transaction = None
+    Account = None
 
     @declared_attr
     def __tablename__(cls):
@@ -226,8 +233,12 @@ class GenericWallet(TableName, Base, CoinBackend):
 
         with account.lock():
             addresses = session.query(self.Address).filter(self.Address.account == account.id).values("address")
+
             total_balance = 0
-            for address, balance in self.backend.get_balances(item.address for item in addresses):
+
+            # The backend might do exists checks using in operator
+            # to this, we cannot pass generator, thus list()
+            for address, balance in self.backend.get_balances(list(item.address for item in addresses)):
                 total_balance += balance
                 session.query(self.Address).filter(self.Address.address == address).update({"balance": balance})
 
@@ -286,18 +297,37 @@ class GenericWallet(TableName, Base, CoinBackend):
             transaction = self.Transaction()
             transaction.sending_account = from_account.id
             transaction.amount = amount
-            transaction.status = "pending"
+            transaction.state = "pending"
             transaction.wallet = self.id
-
+            transaction.address = to_address
             session.add(transaction)
 
             from_account.balance -= amount
             self.balance -= amount
 
     def broadcast(self):
-        """ Broadcast all pending external send transactions. """
-        txs = session.query(self.Transaction).filter(self.Transaction.status == "pending")
-        print(txs)
+        """ Broadcast all pending external send transactions.
+
+        This is desgined to be run from a background task,
+        as this might be blocking operation or the backend connection might be down.
+        """
+
+        session = Session.object_session(self)
+
+        # Get all outgoing pending transactions
+        txs = session.query(self.Transaction).filter(self.Transaction.state == "pending", self.Transaction.receiving_account == None)  # noqa
+
+        broadcast_lock = self.backend.get_lock("{}_broadcast_lock".format(self.coin, self.id))
+        with broadcast_lock:
+            outgoing = Counter()
+            for tx in txs:
+                assert tx.address
+                assert tx.amount > 0
+                outgoing[tx.address] += tx.amount
+
+            if outgoing:
+                txid = self.backend.send(outgoing)
+                txs.update(dict(state="broadcasted", broadcasted_at=_now(), txid=txid))
 
     def refresh_total_balance(self):
         """ Make the balance to match with the actual backend.
