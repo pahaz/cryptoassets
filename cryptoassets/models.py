@@ -1,5 +1,15 @@
+"""
+
+    TODO:
+
+    - Define SQLAlchemy relationships properly - http://docs.sqlalchemy.org/en/rel_0_9/orm/tutorial.html#building-a-relationship
+      Some challenges with all those declared_attrs() flying around.
+
+"""
+
 import datetime
 from collections import Counter
+
 
 from sqlalchemy import (
     Column,
@@ -64,9 +74,14 @@ class CoinBackend:
 
 
 class GenericAccount(TableName, Base, CoinBackend):
+
+    #: Special label for an account where wallet
+    #: will put all network fees charged by the backend
+    NETWORK_FEE_ACCOUNT = "Network fees"
+
     __abstract__ = True
     id = Column(Integer, primary_key=True)
-    name = Column(String(255))
+    name = Column(String(255), )
     created_at = Column(Date, default=_now)
     updated_at = Column(Date, onupdate=_now)
     balance = Column(Integer, default=0)
@@ -105,7 +120,7 @@ class GenericAddress(TableName, Base):
 
     @declared_attr
     def account(cls):
-        return Column(Integer, ForeignKey('{}_account.id'.format(cls.coin)))
+        return Column(Integer, ForeignKey('{}_account.id'.format(cls.coin)), nullable=False)
 
 
 class GenericTransaction(TableName, Base):
@@ -114,9 +129,11 @@ class GenericTransaction(TableName, Base):
     __abstract__ = True
     id = Column(Integer, primary_key=True)
     created_at = Column(Date, default=_now)
-    broadcasted_at = Column(Date, nullable=True, default=None)
+    credited_at = Column(Date, nullable=True, default=None)
+    processed_at = Column(Date, nullable=True, default=None)
     amount = Column(Integer())
-    state = Column(Enum('pending', 'unconfirmed', 'broadcasted', 'invalid', 'internal'))
+    state = Column(Enum('pending', 'broadcasted', 'incoming', 'processed', 'internal', 'network_fee'))
+    label = Column(String(255), nullable=True)
     txid = Column(String(255), nullable=True)
 
     @declared_attr
@@ -139,10 +156,20 @@ class GenericTransaction(TableName, Base):
     def receiving_account(cls):
         return Column(Integer, ForeignKey('{}_account.id'.format(cls.coin)))
 
+    def is_confirmed(self):
+        return True
+
 
 class GenericConfirmationTransaction(GenericTransaction):
     __abstract__ = True
     confirmations = Column(Integer)
+
+    #: Confirmations needed to credit this transaction
+    #: on the receiving account
+    confirmation_count = 3
+
+    def is_confirmed(self):
+        return self.confirmations > self.confirmation_count
 
 
 class GenericWallet(TableName, Base, CoinBackend):
@@ -189,6 +216,20 @@ class GenericWallet(TableName, Base, CoinBackend):
         session.add(account)
         return account
 
+    def get_or_create_network_fee_account(self):
+        """ Create a special account where we account all network fees.
+
+        This is for internal bookkeeping only. These fees MAY be
+        charged from the users doing the actual transaction, but it
+        must be solved on the application level.
+        """
+        session = Session.object_session(self)
+        instance = session.query(self.Account).filter_by(name=self.Account.NETWORK_FEE_ACCOUNT).first()
+        if not instance:
+            instance = self.create_account(self.Account.NETWORK_FEE_ACCOUNT)
+
+        return instance
+
     def create_receiving_address(self, account, label):
         """ Creates private/public key pair for receiving.
         """
@@ -198,6 +239,7 @@ class GenericWallet(TableName, Base, CoinBackend):
         assert session
         assert account
         assert label
+        assert account.id
 
         _address = self.backend.create_address(label=label)
 
@@ -205,6 +247,7 @@ class GenericWallet(TableName, Base, CoinBackend):
         address.address = _address
         address.account = account.id
         address.label = label
+        address.wallet = self.id
 
         session.add(address)
 
@@ -268,6 +311,7 @@ class GenericWallet(TableName, Base, CoinBackend):
             transaction.receiving_account = to_account.id
             transaction.amount = amount
             transaction.wallet = self.id
+            transaction.credited_at = _now()
             session.add(transaction)
 
             from_account.balance -= amount
@@ -305,6 +349,8 @@ class GenericWallet(TableName, Base, CoinBackend):
             from_account.balance -= amount
             self.balance -= amount
 
+        return transaction
+
     def broadcast(self):
         """ Broadcast all pending external send transactions.
 
@@ -326,8 +372,47 @@ class GenericWallet(TableName, Base, CoinBackend):
                 outgoing[tx.address] += tx.amount
 
             if outgoing:
-                txid = self.backend.send(outgoing)
-                txs.update(dict(state="broadcasted", broadcasted_at=_now(), txid=txid))
+                txid, fee = self.backend.send(outgoing)
+                assert txid
+                txs.update(dict(state="broadcasted", processed_at=_now(), txid=txid))
+
+                if fee:
+                    self.charge_network_fees(txs, txid, fee)
+
+    def charge_network_fees(self, txs, txid, fee):
+        """ Divide the network fees for all transaction participants.
+
+        By default this just creates a new accounting entry on a special account
+        where network fees is put.
+
+        :param txs: Internal transactions participating in send
+
+        :param txid: External transaction id
+
+        :param fee: Fee as the integer
+        """
+
+        session = Session.object_session(self)
+
+        fee_account = self.get_or_create_network_fee_account()
+
+        transaction = self.Transaction()
+        transaction.sending_account = fee_account.id
+        transaction.receiving_account = None
+        transaction.amount = fee
+        transaction.state = "network_fee"
+        transaction.wallet = self.id
+        transaction.label = "Network fees for {}".format(txid)
+        transaction.txid = txid
+
+        with fee_account.lock():
+            fee_account.balance -= fee
+
+        with self.lock():
+            self.balance -= fee
+
+        session.add(fee_account)
+        session.add(transaction)
 
     def refresh_total_balance(self):
         """ Make the balance to match with the actual backend.
@@ -338,8 +423,85 @@ class GenericWallet(TableName, Base, CoinBackend):
         """
         self.balance = self.backend.get_balance()
 
-    def receive(self, receiver, amount):
+    def receive(self, txid, address, amount, extra=None):
+        """ The backend informs us a new transaction has arrived.
+
+        Write the transaction to the database.
+        Notify the application of the new transaction status.
+        Wait for the application to mark the transaction as processed.
+
+        Note that we may receive the transaction many times with different confirmation counts.
+
+        :param txid: External transaction id
+
+        :param address: Address as a string
+
+        :param amount: Int, as the basic currency unit
+
+        :param extra: Extra variables to set on the transaction, like confirmation count.
+
+        :return: new Transaction object
         """
-        :return: (account, total balance) tuple
+
+        session = Session.object_session(self)
+
+        # Only non-archived addresses can receive transactions
+        _address = session.query(self.Address).filter(self.Address.address == address, self.Address.archived_at == None).first()  # noqa
+
+        assert _address
+        assert _address.id
+        assert amount > 0
+        assert txid
+
+        # TODO: Have something smarter here after we use relationships
+        account = session.query(self.Account).filter(self.Account.id == _address.account).first()  # noqa
+        assert account.wallet == self.id
+
+        # Check if we already have this transaction
+        transaction = session.query(self.Transaction).filter(self.Transaction.txid == txid, self.Transaction.address == _address.id).first()
+        if not transaction:
+            # We have not seen this transaction before in the database
+            transaction = self.Transaction()
+            transaction.txid = txid
+            transaction.address = _address.id
+            transaction.state = "incoming"
+            transaction.wallet = self.id
+            transaction.amount = amount
+            session.add(transaction)
+
+        transaction.sending_account = None
+        transaction.receiving_account = account.id
+
+        # Copy extra transaction payload
+        if extra:
+            for key, value in extra.items():
+                setattr(transaction, key, value)
+
+        if transaction.is_confirmed() and not transaction.credited_at:
+
+            # Consider this transaction to be confirmed and update the receiving account
+            transaction.credited_at = _now()
+
+            with account.lock():
+                account.balance += transaction.amount
+
+            with self.lock():
+                self.balance += transaction.amount
+
+    def mark_transaction_processed(self, transaction_id):
+        """ Mark that the transaction was processed by the client application.
+
+        This will stop retrying to post the transaction to the application.
         """
-        pass
+
+        session = Session.object_session(self)
+
+        assert type(transaction_id) == int
+
+        # Only non-archived addresses can receive transactions
+        transactions = session.query(self.Transaction.id, self.Transaction.state).filter(self.Transaction.id == transaction_id, self.Transaction.state == "incoming")  # noqa
+
+        # We should mark one and only one transaction processed
+        assert transactions.count() == 1
+
+        transactions.update(dict(state="processed", processed_at=_now()))

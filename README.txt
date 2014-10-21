@@ -21,6 +21,8 @@ Example::
     export BLOCK_IO_API_KEY_DOGE="0266-c2b6-c2c8-ee07"
     export BLOCK_IO_PIN="foobar123"
     export BLOCK_IO_TESTNET_TEST_FUND_ADDRESS="2MsgW3kCrRFtJuo9JNjkorWXaZSvLk4EWRr"
+    export BLOCK_IO_DOGE_TESTNET_TEST_FUND_ADDRESS="2MxkkbbAwjT7pXme5766d6LUmKyZYEpDTMi"
+
 
     # A real wallet, not testnet!
     export BLOCKCHAIN_IDENTIFIER="x"

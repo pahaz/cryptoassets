@@ -20,10 +20,12 @@ class CoinTestCase:
         self.Transaction = None
         self.Wallet = None
         self.Account = None
-        self.setup_coin()
 
         # How many satoshis we use in send_external()
         self.external_send_amount = 100
+        self.network_fee = 1000
+
+        self.setup_coin()
 
     def setup_coin(self):
         raise NotImplementedError()
@@ -41,8 +43,9 @@ class CoinTestCase:
         with transaction.manager:
             wallet = self.Wallet()
             DBSession.add(wallet)
-
+            DBSession.flush()
             account = wallet.create_account("Test account")
+            DBSession.flush()
             address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
 
             # TODO: Check for valid bitcoin addresss
@@ -112,6 +115,7 @@ class CoinTestCase:
                 DBSession.add(wallet)
 
                 account = wallet.create_account("Test account")
+                DBSession.flush()
                 address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
                 self.assertEqual(DBSession.query(self.Address.id).count(), 1)
 
@@ -129,6 +133,7 @@ class CoinTestCase:
             DBSession.add(wallet)
             DBSession.flush()
             account = wallet.create_account("Test account")
+            DBSession.flush()
             self.setup_test_fund_address(wallet, account)
             wallet.refresh_account_balance(account)
 
@@ -137,13 +142,13 @@ class CoinTestCase:
             self.assertGreater(account.balance, 5)
 
     def test_send_external(self):
-        """ Receives Bitcoins from external address """
+        """ Send Bitcoins from external address """
         with transaction.manager:
             wallet = self.Wallet()
             DBSession.add(wallet)
             DBSession.flush()
             account = wallet.create_account("Test account")
-
+            DBSession.flush()
             # Sync wallet with the external balance
             self.setup_test_fund_address(wallet, account)
             wallet.refresh_account_balance(account)
@@ -161,10 +166,41 @@ class CoinTestCase:
             self.assertEqual(tx.receiving_account, None)
             self.assertEqual(tx.state, "pending")
             self.assertEqual(tx.txid, None)
-
+            self.assertIsNone(tx.processed_at)
             wallet.broadcast()
+
             self.assertEqual(tx.state, "broadcasted")
             self.assertIsNotNone(tx.txid)
+            self.assertIsNotNone(tx.processed_at)
+
+    def test_charge_network_fee(self):
+        """ Do an external transaction and see we account network fees correctly. """
+
+        with transaction.manager:
+            wallet = self.Wallet()
+            DBSession.add(wallet)
+            DBSession.flush()
+            account = wallet.create_account("Test account")
+            DBSession.flush()
+
+            # Sync wallet with the external balance
+            self.setup_test_fund_address(wallet, account)
+            wallet.refresh_account_balance(account)
+
+            receiving_address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
+
+            # Send Bitcoins through BlockChain
+            wallet.send_external(account, receiving_address.address, self.external_send_amount, "Test send {}".format(time.time()))
+            wallet.broadcast()
+
+            # Our fee account goes below zero, because network fees
+            # are subtracted from there
+            fee_account = wallet.get_or_create_network_fee_account()
+            self.assertLess(fee_account.balance, 0)
+
+            fee_txs = DBSession.query(self.Transaction).filter(self.Transaction.state == "network_fee")
+            self.assertEqual(fee_txs.count(), 1)
+            self.assertEqual(fee_txs.first().amount, self.network_fee)
 
     def test_broadcast_no_transactions(self):
         """ Broadcast must not fail even we don't have any transactions. """
@@ -173,3 +209,43 @@ class CoinTestCase:
             wallet = self.Wallet()
             DBSession.add(wallet)
             wallet.broadcast()
+
+    def test_receive_external_spoofed(self):
+        """ Test receiving external transaction.
+
+        Don't actually receive anything, spoof the incoming transaction.
+        """
+
+        with transaction.manager:
+            wallet = self.Wallet()
+            DBSession.add(wallet)
+            DBSession.flush()
+
+            account = wallet.create_account("Test account")
+            DBSession.flush()
+            receiving_address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
+            txid = "fakefakefakefake"
+            wallet.receive(txid, receiving_address.address, 1000, dict(confirmations=0))
+
+            # First we should just register the transaction
+            txs = DBSession.query(self.Transaction).filter(self.Transaction.state == "incoming")
+            self.assertEqual(txs.count(), 1)
+            self.assertEqual(txs.first().amount, 1000)
+            self.assertFalse(txs.first().is_confirmed())
+            self.assertEqual(account.balance, 0)
+            self.assertEqual(wallet.balance, 0)
+            self.assertIsNone(txs.first().processed_at)
+
+            # Exceed the confirmation threshold
+            wallet.receive(txid, receiving_address.address, 1000, dict(confirmations=6))
+            self.assertTrue(txs.first().is_confirmed())
+            self.assertEqual(account.balance, 1000)
+            self.assertEqual(wallet.balance, 1000)
+            self.assertIsNone(txs.first().processed_at)
+
+            # Mark the transaction as processed the transaction
+            wallet.mark_transaction_processed(txs.first().id)
+
+            txs = DBSession.query(self.Transaction).filter(self.Transaction.state == "processed")
+            self.assertEqual(txs.count(), 1)
+            self.assertIsNotNone(txs.first().processed_at)

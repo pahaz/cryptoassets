@@ -19,6 +19,10 @@ URL = "https://blockchain.info/"
 logger = logging.getLogger(__name__)
 
 
+#: What blockchain.info charges us for outgoing transactions
+BLOCKCHAIN_NETWORK_FEE = 1000
+
+
 class BlockChainAPIError(Exception):
     pass
 
@@ -105,7 +109,7 @@ class BlockChain:
         if "error" in data:
             raise BlockChainAPIError("Could not send the transaction: {}".format(data["error"]))
 
-        return data["tx_hash"]
+        return data["tx_hash"], BLOCKCHAIN_NETWORK_FEE
 
     def receive(self, receiver, amount):
         """

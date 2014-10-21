@@ -36,11 +36,24 @@ def _convert_to_decimal(satoshis):
 class BlockIo:
     """ Synchronous block.io API. """
 
-    def __init__(self, api_key, pin, lock_factory):
+    def __init__(self, coin, api_key, pin, lock_factory):
         """
         """
+        self.coin = coin
         self.block_io = _BlockIo(api_key, pin, 2)
         self.lock_factory = lock_factory
+
+    def to_internal_amount(self, amount):
+        if self.coin == "btc":
+            return _convert_to_satoshi(amount)
+        else:
+            return int(Decimal(amount))
+
+    def to_external_amount(self, amount):
+        if self.coin == "btc":
+            return _convert_to_decimal(amount)
+        else:
+            return int(amount)
 
     def create_address(self, label):
         """
@@ -67,7 +80,7 @@ class BlockIo:
             raise StopIteration
 
         for balance in result["data"]["balances"]:
-            yield balance["address"], _convert_to_satoshi(balance["available_balance"])
+            yield balance["address"], self.to_internal_amount(balance["available_balance"])
 
     def get_lock(self, name):
         """ Create a named lock to protect the operation. """
@@ -77,9 +90,19 @@ class BlockIo:
         """
         :param recipients: Dict of (address, satoshi amount)
         """
-        pass
+
+        assert recipients
+
+        amounts = []
+        addresses = []
+        for address, satoshis in recipients.items():
+            amounts.append(str(self.to_external_amount(satoshis)))
+            addresses.append(address)
+
+        resp = self.block_io.withdraw(amounts=",".join(amounts), to_addresses=",".join(addresses))
+
+        return resp["data"]["txid"], self.to_internal_amount(resp["data"]["network_fee"])
 
     def receive(self, receiver, amount):
         """
         """
-
