@@ -198,7 +198,8 @@ class GenericWallet(TableName, Base, CoinBackend):
     def lock(self):
         """ Get a lock context manager to protect operations targeting this account.
 
-        This lock must be acquired for all operations touching the balance.
+        This lock must be acquired for all operations touching the wallet balance,
+        or adding a new address.
         """
         return self.backend.get_lock("{}_wallet_lock_{}".format(self.coin, self.id))
 
@@ -241,17 +242,19 @@ class GenericWallet(TableName, Base, CoinBackend):
         assert label
         assert account.id
 
-        _address = self.backend.create_address(label=label)
+        with self.lock():
 
-        address = self.Address()
-        address.address = _address
-        address.account = account.id
-        address.label = label
-        address.wallet = self.id
+            _address = self.backend.create_address(label=label)
 
-        session.add(address)
+            address = self.Address()
+            address.address = _address
+            address.account = account.id
+            address.label = label
+            address.wallet = self.id
 
-        return address
+            session.add(address)
+
+            return address
 
     def send(self, account, receiving_address, amount):
         """
@@ -330,13 +333,13 @@ class GenericWallet(TableName, Base, CoinBackend):
         assert session
         assert from_account.wallet == self.id
 
-        # TODO: Currently we don't allow
-        # negative withdrawals on external sends
-
-        if from_account.balance < amount:
-            raise NotEnoughAccountBalance()
-
         with from_account.lock(), self.lock():
+
+            # TODO: Currently we don't allow
+            # negative withdrawals on external sends
+            #
+            if from_account.balance < amount:
+                raise NotEnoughAccountBalance()
 
             transaction = self.Transaction()
             transaction.sending_account = from_account.id

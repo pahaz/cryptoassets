@@ -10,6 +10,7 @@ from ..models import Base
 from ..backend import registry as backendregistry
 
 from ..backend.blockio import BlockIo
+from ..backend.blockio import SochainMonitor
 from ..backend.blockio import _convert_to_satoshi
 from ..backend.blockio import _convert_to_decimal
 from ..backend import registry as backendregistry
@@ -19,11 +20,28 @@ from ..lock.simple import create_thread_lock
 from .base import CoinTestCase
 
 
+class BlockIoReceivingTestCase:
+    """ Tests for receiving payments via block.io.
+
+    We need to use backend specific monitoring set up.
+    """
+
+
+
 class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
+
+    def setup_receiving(self, wallet):
+        self.monitor = SochainMonitor(wallet, os.environ["PUSHER_API_KEY"])
+
+    def teardown_receiving(self):
+        if self.monitor:
+            self.monitor.close()
 
     def setup_coin(self):
 
-        backendregistry.register("btc", BlockIo("btc", os.environ["BLOCK_IO_API_KEY"], os.environ["BLOCK_IO_PIN"], create_thread_lock))
+        self.backend = BlockIo("btc", os.environ["BLOCK_IO_API_KEY"], os.environ["BLOCK_IO_PIN"], create_thread_lock)
+        backendregistry.register("btc", self.backend)
+        self.monitor = None
 
         engine = create_engine('sqlite://')
         from ..coin.bitcoin.models import BitcoinWallet

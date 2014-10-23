@@ -249,3 +249,51 @@ class CoinTestCase:
             txs = DBSession.query(self.Transaction).filter(self.Transaction.state == "processed")
             self.assertEqual(txs.count(), 1)
             self.assertIsNotNone(txs.first().processed_at)
+
+    def test_send_receive_external(self):
+        """ Test sending and receiving external transaction within the backend wallet.
+
+        """
+
+        self.receiving_timeout = 30
+
+        try:
+
+            with transaction.manager:
+                wallet = self.Wallet()
+                DBSession.add(wallet)
+                DBSession.flush()
+
+                self.setup_receiving(wallet)
+
+                account = wallet.create_account("Test account")
+                DBSession.flush()
+                receiving_address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
+
+                # Sync wallet with the external balance
+                self.setup_test_fund_address(wallet, account)
+                wallet.refresh_account_balance(account)
+
+                tx = wallet.send(account, receiving_address.address, self.external_send_amount)
+                self.assertEqual(tx.state, "pending")
+
+                wallet.broadcast()
+                self.assertEqual(tx.state, "broadcasted")
+
+                # Wait until backend notifies us the transaction has been received
+                deadline = time.time() + self.receiving_timeout
+                while time.time() < deadline:
+                    account = DBSession.query(wallet.Address).filter(self.Address.id == receiving_address.id)
+                    if account.balance > 0:
+                        break
+
+                    time.sleep(0.5)
+
+                self.assertGreater(account.balance, 0)
+
+                # Now we should see two transactions for the wallet
+                # One we used to do external send
+                # One we used to do external receive
+
+        finally:
+            self.teardown_receiving()

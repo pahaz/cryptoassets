@@ -116,12 +116,6 @@ class BlockChain:
         """
 
 
-class Listener:
-    """ Listen for incoming transactions using SoChain API. """
-
-    def listen(self, wallet):
-        """ """
-
 
 
 
