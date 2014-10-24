@@ -31,8 +31,13 @@ Example::
     export BLOCKCHAIN_IDENTIFIER="x"
     export BLOCKCHAIN_PASSWORD="y"
 
+Running all tests::
 
     python setup.py test
+
+Running a single test::
+
+    python -m unittest cryptoassets.tests.test_block_io.BlockIoBTCTestCase.test_send_receive_external
 
 
 

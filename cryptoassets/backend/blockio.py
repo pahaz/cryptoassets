@@ -96,6 +96,14 @@ class BlockIo:
         if self.monitor:
             self.monitor.subscribe_to_address(address.address)
 
+    def monitor_transaction(self, transaction):
+        """ Add a transaction id on the receiving transaction monitoring list.
+        """
+        assert transaction.id
+        assert transaction.txid
+        if self.monitor:
+            self.monitor.subscribe_to_transaction(transaction.txid)
+
     def get_balances(self, addresses):
         """ Get balances on multiple addresses.
 
@@ -133,8 +141,16 @@ class BlockIo:
 
         return resp["data"]["txid"], self.to_internal_amount(resp["data"]["network_fee"])
 
-    def scan_addresses(self, wallet, addresses):
+    def scan_addresses(self, monitor, wallet, addresses):
         """ Update the internal address status to match ones in the blockchain.
+
+        Call this within a db transaction block.
+
+        :param monitor: SochainMonitor instance
+
+        :param wallet: Wallet instance
+
+        :param addresses: List of address strings
         """
 
         # List type
@@ -157,6 +173,10 @@ class BlockIo:
                 tx = wallet.receive(tx["txid"], address, amount, extra=dict(confirmations=tx["confirmations"]))
                 logger.info("Updated incoming balance on {} to {}, tx confirmation status {}".format(address, amount, tx.is_confirmed()))
 
+                # The transaction has become confirmed, no need to receive updates on it anymore
+                if tx.is_confirmed():
+                    monitor.finish_transaction(tx.txid)
+
 
 class SochainPusher(pusherclient.Pusher):
     host = "slanger1.chain.so"
@@ -172,6 +192,37 @@ class SochainPusher(pusherclient.Pusher):
         self.socket_id = parsed['socket_id']
 
         self.state = "connected"
+
+
+class SochainTransctionThread(threading.Thread):
+    """ A background thread getting updates on hot transactions. """
+
+    def __init__(self, block_io, monitor):
+        self.alive = True
+        self.block_io = block_io
+        self.monitor = monitor
+
+    def run(self):
+
+        from cryptoassets.models import DBSession
+        session = DBSession
+
+        while self.alive:
+            for wallet_id, data in self.monitor.wallet_data:
+
+                with transaction.manager:
+
+                    Wallet = self.wallets[wallet_id]["klass"]
+                    wallet = session.query(Wallet).filter_by(id=wallet_id).first()
+                    assert wallet is not None, "Could not load a specific wallet {}".format(wallet_id)
+
+                    addresses = [address for txid, address in self.monitor.wallet_data["wallet_id"]["transactions"]]
+                    self.block_io.scan_addresses(self.monitor, wallet, addresses)
+
+            time.sleep(5)
+
+    def stop(self):
+        self.alive = False
 
 
 class SochainMonitor:
@@ -207,6 +258,8 @@ class SochainMonitor:
         self.block_io = block_io
         self.init_pusher(pusher_app_key, wallets)
 
+        self.transaction_thread = SochainTransctionThread(block_io, self)
+
     def init_pusher(self, pusher_app_key, wallets):
         """
         """
@@ -214,11 +267,20 @@ class SochainMonitor:
 
         def connected(data):
             self.connected = True
+            self.transaction_thread.start()
             for wallet in wallets:
                 self.include_wallet(wallet)
 
         self.pusher.connection.bind('pusher:connection_established', connected)
         self.pusher.connect()
+
+    def close(self):
+        """
+        """
+        if self.connected:
+            self.pusher.disconnect()
+            self.transaction_thread.stop()
+            self.connected = False
 
     def include_wallet(self, wallet):
         """ Add a wallet on the monitoring list.
@@ -230,12 +292,13 @@ class SochainMonitor:
         # Assume we are in Pusher client thread,
         # we need to create a new database session and
         # we cannot recycle any objects
-        self.wallets[wallet.id] = dict(last_id=-1, addresses=[], klass=wallet.__class__)
+        self.wallets[wallet.id] = dict(last_id=-1, addresses=set(), transactions={}, klass=wallet.__class__)
         self.include_addresses(wallet.id)
 
     def include_addresses(self, wallet_id):
         """ Include all the wallets receiving addresses on the monitored list.
 
+        XXX: Transaction scoping
         """
 
         from cryptoassets.models import DBSession
@@ -260,12 +323,25 @@ class SochainMonitor:
             self.wallets[wallet.id]["last_id"] = address.id
             self.subscribe_to_address(address.address)
 
-    def close(self):
-        """
-        """
-        if self.connected:
-            self.pusher.disconnect()
-            self.connected = False
+    def include_transactions(self, wallet_id):
+        """ Include all the wallet unconfirmed transactions on the monitored list. """
+        from cryptoassets.models import DBSession
+        session = DBSession
+
+        assert wallet_id
+        assert type(wallet_id) == int
+        Wallet = self.wallets[wallet_id]["klass"]
+
+        wallet = session.query(Wallet).filter_by(id=wallet_id).first()
+        assert wallet is not None, "Could not load a specific wallet {}".format(wallet_id)
+
+        # Start subscribing to transactions still unfinished
+        unconfirmed_txs = wallet.get_active_external_received_transcations()
+        for tx in unconfirmed_txs:
+            self.subscribe_to_transaction(tx.address, tx.txid)
+
+    def finish_transaction(self, wallet_id, txid):
+        del self.wallet_data[wallet_id]["transactions"][txid]
 
     def subscribe_to_address(self, address):
         """ Make a Pusher subscription for incoming transactions
@@ -282,6 +358,16 @@ class SochainMonitor:
         pusher_channel = "address_{}_{}".format(self.network, address)
         channel = self.pusher.subscribe(pusher_channel)
         channel.bind('balance_update', self.on_balance_updated)
+
+    def subscribe_to_transaction(self, wallet_id, address, txid):
+        """ Subscribe to get updates of a transaction.
+        """
+        # logger.info("Subscribed to new transaction {}".format(txid))
+        # pusher_channel = "confirm_tx_{}_{}".format(self.network, txid)
+        # channel = self.pusher.subscribe(pusher_channel)
+        # channel.bind('balance_update', self.on_confirm_transaction)
+        wallet_data = self.wallets[wallet_id]
+        wallet_data["transaction"][txid].append(txid)
 
     def on_balance_updated(self, data):
         """ chain.so tells us there should be a new transaction.
@@ -312,6 +398,9 @@ class SochainMonitor:
             logger.error("Received on_balance_update() on unknown wallet, address {}".format(address))
             return
 
+        # We want notifications when the confirmation state changes
+        self.subscribe_to_transaction(data["value"]["tx"]["txid"])
+
         with transaction.manager:
 
             # Load related wallet
@@ -320,7 +409,12 @@ class SochainMonitor:
 
             self.block_io.scan_addresses(wallet, [address])
 
+    def on_confirm_transaction(self, data):
+        print(data)
+
     def refresh_addresses(self):
         """
         """
         self.include_addresses(self.last_id)
+
+

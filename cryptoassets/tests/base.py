@@ -6,6 +6,7 @@ import sys
 from rainbow_logging_handler import RainbowLoggingHandler
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import create_engine
 from pyramid import testing
 
 from ..models import DBSession
@@ -36,6 +37,16 @@ logger = logging.getLogger(__name__)
 
 class CoinTestCase:
     """ Base class for different tests. """
+
+    def create_engine(self):
+
+        # Nuke previous test run
+        if os.path.exists("unittest.sqlite"):
+            os.remove("unittest.sqlite")
+
+        engine = create_engine('sqlite:///unittest.sqlite', echo=False)
+
+        return engine
 
     def setUp(self):
 
@@ -156,8 +167,8 @@ class CoinTestCase:
             # We should have created one transaction
             self.assertEqual(DBSession.query(self.Transaction.id).count(), 1)
             tx = DBSession.query(self.Transaction).first()
-            self.assertEqual(tx.sending_account, sending_account.id)
-            self.assertEqual(tx.receiving_account, receiving_account.id)
+            self.assertEqual(tx.sending_account, sending_account)
+            self.assertEqual(tx.receiving_account, receiving_account)
 
     def test_send_internal_low_balance(self):
         """ Does internal transaction where balance requirement is not met. """
@@ -277,10 +288,14 @@ class CoinTestCase:
             wallet.refresh_account_balance(account)
 
             receiving_address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
+            DBSession.flush()
 
             # Send Bitcoins through BlockChain
             wallet.send_external(account, receiving_address.address, self.external_send_amount, "Test send {}".format(time.time()))
+            DBSession.flush()
+
             wallet.broadcast()
+            DBSession.flush()
 
             # Our fee account goes below zero, because network fees
             # are subtracted from there
@@ -320,14 +335,14 @@ class CoinTestCase:
             txs = DBSession.query(self.Transaction).filter(self.Transaction.state == "incoming")
             self.assertEqual(txs.count(), 1)
             self.assertEqual(txs.first().amount, 1000)
-            self.assertFalse(txs.first().is_confirmed())
+            self.assertFalse(txs.first().can_be_confirmed())
             self.assertEqual(account.balance, 0)
             self.assertEqual(wallet.balance, 0)
             self.assertIsNone(txs.first().processed_at)
 
             # Exceed the confirmation threshold
             wallet.receive(txid, receiving_address.address, 1000, dict(confirmations=6))
-            self.assertTrue(txs.first().is_confirmed())
+            self.assertTrue(txs.first().can_be_confirmed())
             self.assertEqual(account.balance, 1000)
             self.assertEqual(wallet.balance, 1000)
             self.assertIsNone(txs.first().processed_at)
@@ -356,7 +371,7 @@ class CoinTestCase:
                 account = wallet.create_account("Test sending account")
                 DBSession.flush()
 
-                account = DBSession.query(self.Account).filter(self.Account.wallet == wallet.id).first()
+                account = DBSession.query(self.Account).filter(self.Account.wallet_id == wallet.id).first()
                 assert account
 
                 receiving_address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
@@ -369,7 +384,7 @@ class CoinTestCase:
 
                 # Reload objects from db for this transaction
                 wallet = DBSession.query(self.Wallet).get(wallet_id)
-                account = DBSession.query(self.Account).filter(self.Account.wallet == wallet_id).first()
+                account = DBSession.query(self.Account).filter(self.Account.wallet_id == wallet_id).first()
                 self.assertEqual(wallet.get_receiving_addresses().count(), 1)
                 receiving_address = wallet.get_receiving_addresses().first()
 

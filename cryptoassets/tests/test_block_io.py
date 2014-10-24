@@ -3,10 +3,10 @@ import unittest
 import time
 
 import transaction
-from sqlalchemy import create_engine
 
 from ..models import DBSession
 from ..models import Base
+from ..models import _now
 from ..backend import registry as backendregistry
 
 from ..backend.blockio import BlockIo
@@ -18,6 +18,7 @@ from ..lock.simple import create_thread_lock
 
 
 from .base import CoinTestCase
+
 
 
 class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
@@ -44,7 +45,8 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         # SQLite does not support multithread access for it
         # http://stackoverflow.com/a/15681692/315168
 
-        engine = create_engine('sqlite:///unittest.sqlite', echo=False)
+        engine = self.create_engine()
+
         from ..coin.bitcoin.models import BitcoinWallet
         from ..coin.bitcoin.models import BitcoinAddress
         from ..coin.bitcoin.models import BitcoinTransaction
@@ -90,6 +92,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         with transaction.manager:
             wallet = self.Wallet()
             DBSession.add(wallet)
+            DBSession.flush()
 
             account = wallet.create_account("Test account")
             account.balance = v
@@ -97,6 +100,72 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         with transaction.manager:
             account = DBSession.query(self.Account).first()
             self.assertEqual(account.balance, v)
+
+    def test_get_active_transactions(self):
+        """ Query for the list of unconfirmed transactions.
+        """
+
+        # Spoof three transactions
+        # - one internal
+        # - one external, confirmed
+        # - one external, unconfirmed
+
+        with transaction.manager:
+            wallet = self.Wallet()
+            DBSession.add(wallet)
+            DBSession.flush()
+
+            account = wallet.create_account("Test account")
+            DBSession.flush()
+
+            address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
+            DBSession.flush()
+
+            # internal
+            t = wallet.Transaction()
+            t.sending_account = account
+            t.receiving_account = account
+            t.amount = 1000
+            t.wallet = wallet
+            t.credited_at = _now()
+            t.label = "tx1"
+            DBSession.add(t)
+
+            # external, confirmed
+            t = wallet.Transaction()
+            t.sending_account = None
+            t.receiving_account = account
+            t.amount = 1000
+            t.wallet = wallet
+            t.credited_at = _now()
+            t.label = "tx2"
+            t.txid = "txid2"
+            t.confirmations = 6
+            t.address = address
+            DBSession.add(t)
+
+            # external, unconfirmed
+            t = wallet.Transaction()
+            t.sending_account = None
+            t.receiving_account = account
+            t.amount = 1000
+            t.wallet = wallet
+            t.credited_at = None
+            t.label = "tx3"
+            t.txid = "txid3"
+            t.confirmations = 1
+            t.address = address
+            DBSession.add(t)
+
+            DBSession.flush()
+
+            external_txs = wallet.get_external_received_transactions()
+            self.assertEqual(external_txs.count(), 2)
+
+            active_txs = wallet.get_active_external_received_transcations()
+            self.assertEqual(active_txs.count(), 1)
+            self.assertEqual(active_txs.first().txid, "txid3")
+            self.assertEqual(active_txs.first().address.id, address.id)
 
 
 class BlockIoDogeTestCase(CoinTestCase, unittest.TestCase):
