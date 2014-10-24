@@ -19,6 +19,7 @@ from sqlalchemy import (
     String,
     Numeric,
     Date,
+    DateTime,
     ForeignKey,
     Enum,
     )
@@ -26,6 +27,7 @@ from sqlalchemy import (
 from sqlalchemy.orm.session import Session
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm.exc import NoResultFound
 
 from sqlalchemy.orm import (
     scoped_session,
@@ -56,6 +58,13 @@ class NotEnoughWalletBalance(Exception):
     """
 
 
+class SameAccount(Exception):
+    """ Cannot do internal transaction within the same account.
+
+    """
+
+
+
 class TableName:
 
     @declared_attr
@@ -82,8 +91,8 @@ class GenericAccount(TableName, Base, CoinBackend):
     __abstract__ = True
     id = Column(Integer, primary_key=True)
     name = Column(String(255), )
-    created_at = Column(Date, default=_now)
-    updated_at = Column(Date, onupdate=_now)
+    created_at = Column(DateTime, default=_now)
+    updated_at = Column(DateTime, onupdate=_now)
     balance = Column(Integer, default=0)
 
     def __init__(self):
@@ -105,14 +114,28 @@ class GenericAccount(TableName, Base, CoinBackend):
         return self.backend.get_lock("{}_account_lock_{}".format(self.coin, self.id))
 
 
+class GenericConfirmationAccount(GenericAccount):
+    """ Account subtype which has a confirmation level for incoming transactions. """
+    __abstract__ = True
+    confirmations_required_on_receive = Column(Integer)
+
+    #: Confirmations needed to credit this transaction
+    #: on the receiving account
+    confirmation_count = 3
+
+    def is_confirmed(self):
+        return self.confirmations > self.confirmation_count
+
+
 class GenericAddress(TableName, Base):
     __abstract__ = True
     id = Column(Integer, primary_key=True)
     address = Column(String(128), nullable=False, unique=True)
     label = Column(String(255), unique=True)
     balance = Column(Integer, default=0, nullable=False)
-    created_at = Column(Date, default=_now)
-    archived_at = Column(Date, onupdate=_now)
+    created_at = Column(DateTime, default=_now)
+    updated_at = Column(DateTime, onupdate=_now)
+    archived_at = Column(DateTime, default=None, nullable=True)
 
     @declared_attr
     def __tablename__(cls):
@@ -128,9 +151,9 @@ class GenericTransaction(TableName, Base):
     """
     __abstract__ = True
     id = Column(Integer, primary_key=True)
-    created_at = Column(Date, default=_now)
-    credited_at = Column(Date, nullable=True, default=None)
-    processed_at = Column(Date, nullable=True, default=None)
+    created_at = Column(DateTime, default=_now)
+    credited_at = Column(DateTime, nullable=True, default=None)
+    processed_at = Column(DateTime, nullable=True, default=None)
     amount = Column(Integer())
     state = Column(Enum('pending', 'broadcasted', 'incoming', 'processed', 'internal', 'network_fee'))
     label = Column(String(255), nullable=True)
@@ -166,7 +189,7 @@ class GenericConfirmationTransaction(GenericTransaction):
 
     #: Confirmations needed to credit this transaction
     #: on the receiving account
-    confirmation_count = 3
+    confirmation_count = 0
 
     def is_confirmed(self):
         return self.confirmations > self.confirmation_count
@@ -210,6 +233,7 @@ class GenericWallet(TableName, Base, CoinBackend):
         session = Session.object_session(self)
 
         assert session
+        assert self.id, "Flush DB transaction for wallet before trying to add accounts to it"
 
         account = self.Account()
         account.name = name
@@ -254,22 +278,74 @@ class GenericWallet(TableName, Base, CoinBackend):
 
             session.add(address)
 
-            return address
+            # Make sure the address is written to db
+            # before we can make any entires of received
+            # transaction on it in monitoring
+            session.flush()
 
-    def send(self, account, receiving_address, amount):
-        """
+        self.backend.monitor_address(address)
+
+        return address
+
+    def send(self, from_account, receiving_address, amount, label, force_external=False):
+        """ Send the amount of cryptocurrency to the target address.
+
+        If the address is hosted in the same wallet do the internal accounting,
+        otherwise go through the publib blockchain.
+
         :param account: The account owner from whose balance we
+
+        :return: Transaction object
         """
+        session = Session.object_session(self)
+
+        internal_receiving_address = session.query(self.Address).filter(self.Address.address == receiving_address).first()
+        if internal_receiving_address and not force_external:
+            to_account = session.query(self.Account).get(internal_receiving_address.account)
+            return self.send_internal(from_account, to_account, amount, label)
+        else:
+            return self.send_external(from_account, receiving_address, amount, label)
 
     def add_address(self, account, label, address):
-        """ Adds an external address under this wallet, under this account. """
+        """ Adds an external address under this wallet, under this account.
+
+        This is for the cases where the address already exists in the existing backend wallet,
+        but our database does not know about its existince.
+
+        """
         session = Session.object_session(self)
         address_obj = self.Address()
         address_obj.address = address
         address_obj.account = account.id
         address_obj.label = label
         session.add(address_obj)
+        # Make sure the address is written to db
+        # before we can make any entires of received
+        # transaction on it in monitoring
+        session.flush()
+        self.backend.monitor_address(address_obj)
         return address_obj
+
+    def get_accounts(self):
+        session = Session.object_session(self)
+        # Go through all accounts and all their addresses
+
+        return session.query(self.Account).filter(self.Account.wallet == self.id)  # noqa
+
+    def get_receiving_addresses(self, expired=False):
+        """ Get all receiving addresses for this wallet.
+
+        This is mostly used by the backend to get the list
+        of receiving addresses to monitor for incoming transactions
+        on the startup.
+
+        :param expired: Include expired addresses
+        """
+
+        session = Session.object_session(self)
+
+        # Go through all accounts and all their addresses
+        return session.query(self.Address).filter(self.Address.archived_at is not None).join(self.Account).filter(self.Account.wallet == self.id)
 
     def refresh_account_balance(self, account):
         """ Refresh the balance for one account. """
@@ -300,8 +376,10 @@ class GenericWallet(TableName, Base, CoinBackend):
         # Cannot do internal transactions within the account
         assert from_account.id
         assert to_account.id
-        assert from_account.id != to_account.id, "Trying to do internal transfer on account id {}".format(from_account.id)
         assert session
+
+        if from_account.id == to_account.id:
+            raise SameAccount("Trying to do internal transfer on account id {}".format(from_account.id))
 
         with from_account.lock(), to_account.lock():
 
@@ -315,10 +393,13 @@ class GenericWallet(TableName, Base, CoinBackend):
             transaction.amount = amount
             transaction.wallet = self.id
             transaction.credited_at = _now()
+            transaction.label = label
             session.add(transaction)
 
             from_account.balance -= amount
             to_account.balance += amount
+
+        return transaction
 
     def send_external(self, from_account, to_address, amount, label):
         """ Create a new external transaction and put it to the transaction queue.
@@ -347,6 +428,7 @@ class GenericWallet(TableName, Base, CoinBackend):
             transaction.state = "pending"
             transaction.wallet = self.id
             transaction.address = to_address
+            transaction.label = label
             session.add(transaction)
 
             from_account.balance -= amount
@@ -359,6 +441,8 @@ class GenericWallet(TableName, Base, CoinBackend):
 
         This is desgined to be run from a background task,
         as this might be blocking operation or the backend connection might be down.
+
+        :return: The number of succesfully broadcasted transactions
         """
 
         session = Session.object_session(self)
@@ -381,6 +465,8 @@ class GenericWallet(TableName, Base, CoinBackend):
 
                 if fee:
                     self.charge_network_fees(txs, txid, fee)
+
+        return len(outgoing)
 
     def charge_network_fees(self, txs, txid, fee):
         """ Divide the network fees for all transaction participants.
@@ -448,13 +534,14 @@ class GenericWallet(TableName, Base, CoinBackend):
 
         session = Session.object_session(self)
 
-        # Only non-archived addresses can receive transactions
-        _address = session.query(self.Address).filter(self.Address.address == address, self.Address.archived_at == None).first()  # noqa
-
-        assert _address
-        assert _address.id
+        assert self.id
         assert amount > 0
         assert txid
+
+        _address = session.query(self.Address).filter(self.Address.address == address).first()  # noqa
+
+        assert _address, "Wallet {} does not have address {}".format(self.id, address)
+        assert _address.id
 
         # TODO: Have something smarter here after we use relationships
         account = session.query(self.Account).filter(self.Account.id == _address.account).first()  # noqa
@@ -490,6 +577,8 @@ class GenericWallet(TableName, Base, CoinBackend):
 
             with self.lock():
                 self.balance += transaction.amount
+
+        return transaction
 
     def mark_transaction_processed(self, transaction_id):
         """ Mark that the transaction was processed by the client application.

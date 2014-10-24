@@ -23,4 +23,5 @@ lib/*
 *.sublime-workspace
 *.sublime-project
 *.rdb
+*.sqlite
 cryptoassets/lib

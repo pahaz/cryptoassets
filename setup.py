@@ -18,7 +18,8 @@ requires = [
     'zope.sqlalchemy',
     'waitress',
     'python-slugify',
-    'block-io'
+    'block-io',
+    'rainbow_logging_handler'
     ]
 
 setup(name='cryptoassets',

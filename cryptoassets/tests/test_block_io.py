@@ -20,22 +20,19 @@ from ..lock.simple import create_thread_lock
 from .base import CoinTestCase
 
 
-class BlockIoReceivingTestCase:
-    """ Tests for receiving payments via block.io.
-
-    We need to use backend specific monitoring set up.
-    """
-
-
-
 class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_receiving(self, wallet):
-        self.monitor = SochainMonitor(wallet, os.environ["PUSHER_API_KEY"])
+
+        # Print out exceptions in Pusher messaging
+        from websocket._core import enableTrace
+        enableTrace(True)
+
+        self.backend.monitor = SochainMonitor(self.backend, [wallet], os.environ["PUSHER_API_KEY"], "btctest")
 
     def teardown_receiving(self):
-        if self.monitor:
-            self.monitor.close()
+        if self.backend.monitor:
+            self.backend.monitor.close()
 
     def setup_coin(self):
 
@@ -43,7 +40,11 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         backendregistry.register("btc", self.backend)
         self.monitor = None
 
-        engine = create_engine('sqlite://')
+        # We cannot use :memory db as,
+        # SQLite does not support multithread access for it
+        # http://stackoverflow.com/a/15681692/315168
+
+        engine = create_engine('sqlite:///unittest.sqlite', echo=False)
         from ..coin.bitcoin.models import BitcoinWallet
         from ..coin.bitcoin.models import BitcoinAddress
         from ..coin.bitcoin.models import BitcoinTransaction
@@ -63,6 +64,18 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
     def setup_test_fund_address(self, wallet, account):
         # Import some TESTNET coins
         wallet.add_address(account, "Test import {}".format(time.time()), os.environ["BLOCK_IO_TESTNET_TEST_FUND_ADDRESS"])
+
+    def is_address_monitored(self, wallet, address):
+        """ Check if we can get notifications from an incoming transactions for a certain address.
+
+        :param wallet: Wallet object
+
+        :param address: Address object
+        """
+        if len(wallet.backend.monitor.wallets) == 0:
+            return False
+
+        return address.address in wallet.backend.monitor.wallets[wallet.id]["addresses"]
 
     def test_convert(self):
         """ Test amount conversions. """
