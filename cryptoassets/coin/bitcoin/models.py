@@ -1,3 +1,10 @@
+"""Bitcoin database implementation.
+
+All amounts are stored in satoshis in integer fields.
+
+Modify ``BitcoinTransaction.confirmation_count`` global
+to set the threshold when transcations are considered confirmed.
+"""
 from cryptoassets import models
 
 

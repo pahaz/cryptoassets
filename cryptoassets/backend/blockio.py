@@ -19,7 +19,6 @@ import pusherclient
 from slugify import slugify
 
 from block_io import BlockIo as _BlockIo
-from .base import Monitor
 
 
 logger = logging.getLogger(__name__)
@@ -68,10 +67,6 @@ class BlockIo:
             return _convert_to_decimal(amount)
         else:
             return int(amount)
-
-    def get_receiver(self):
-        """ Return the backend receiving transactions monitor. """
-        return Monitor()
 
     def create_address(self, label):
         """
@@ -158,24 +153,24 @@ class BlockIo:
 
         resp = self.block_io.get_transactions(type="received", addresses=",".join(addresses))
 
-        for tx in resp["data"]["txs"]:
+        for txdata in resp["data"]["txs"]:
 
             # Each transaction can have the same input/output several times
             # sum them up
             received = Counter()
-            for entry in tx["amounts_received"]:
+            for entry in txdata["amounts_received"]:
                 address = entry["recipient"]
                 amount = self.to_internal_amount(entry["amount"])
                 received[address] += amount
 
             for address, amount in received.items():
                 # wallet.receive() will get wallet and account lock for us
-                tx = wallet.receive(tx["txid"], address, amount, extra=dict(confirmations=tx["confirmations"]))
-                logger.info("Updated incoming balance on {} to {}, tx confirmation status {}".format(address, amount, tx.is_confirmed()))
+                tx = wallet.receive(txdata["txid"], address, amount, extra=dict(confirmations=txdata["confirmations"]))
+                logger.debug("Updated incoming balance on tx {}, txid {}, address {}, to {}, tx confirmations {}".format(tx.id, tx.txid, address, amount, txdata["confirmations"]))
 
                 # The transaction has become confirmed, no need to receive updates on it anymore
-                if tx.is_confirmed():
-                    monitor.finish_transaction(tx.txid)
+                if tx.credited_at:
+                    monitor.finish_transaction(wallet.id, tx.txid)
 
 
 class SochainPusher(pusherclient.Pusher):
@@ -201,6 +196,8 @@ class SochainTransctionThread(threading.Thread):
         self.alive = True
         self.block_io = block_io
         self.monitor = monitor
+        threading.Thread.__init__(self)
+        self.daemon = True
 
     def run(self):
 
@@ -208,15 +205,15 @@ class SochainTransctionThread(threading.Thread):
         session = DBSession
 
         while self.alive:
-            for wallet_id, data in self.monitor.wallet_data:
+            for wallet_id, data in self.monitor.wallets.items():
 
                 with transaction.manager:
 
-                    Wallet = self.wallets[wallet_id]["klass"]
+                    Wallet = self.monitor.wallets[wallet_id]["klass"]
                     wallet = session.query(Wallet).filter_by(id=wallet_id).first()
                     assert wallet is not None, "Could not load a specific wallet {}".format(wallet_id)
 
-                    addresses = [address for txid, address in self.monitor.wallet_data["wallet_id"]["transactions"]]
+                    addresses = [address for txid, address in self.monitor.wallets[wallet_id]["transactions"].items()]
                     self.block_io.scan_addresses(self.monitor, wallet, addresses)
 
             time.sleep(5)
@@ -263,7 +260,7 @@ class SochainMonitor:
     def init_pusher(self, pusher_app_key, wallets):
         """
         """
-        self.pusher = SochainPusher(pusher_app_key, log_level=logging.INFO)
+        self.pusher = SochainPusher(pusher_app_key, log_level=logging.WARN)
 
         def connected(data):
             self.connected = True
@@ -319,7 +316,7 @@ class SochainMonitor:
 
         for address in addresses.filter(wallet.Address.id > last_id, wallet.Address.archived_at is not None):  # noqa
             assert address.address not in self.wallets[wallet.id]["addresses"], "Tried to double monitor address {}".format(address.address)
-            self.wallets[wallet.id]["addresses"].append(address.address)
+            self.wallets[wallet.id]["addresses"].add(address.address)
             self.wallets[wallet.id]["last_id"] = address.id
             self.subscribe_to_address(address.address)
 
@@ -341,7 +338,8 @@ class SochainMonitor:
             self.subscribe_to_transaction(tx.address, tx.txid)
 
     def finish_transaction(self, wallet_id, txid):
-        del self.wallet_data[wallet_id]["transactions"][txid]
+        if txid in self.wallets[wallet_id]["transactions"]:
+            del self.wallets[wallet_id]["transactions"][txid]
 
     def subscribe_to_address(self, address):
         """ Make a Pusher subscription for incoming transactions
@@ -354,7 +352,7 @@ class SochainMonitor:
 
         :param address: Address as a string
         """
-        logger.info("Subscribed to new address {}".format(address))
+        logger.debug("Subscribed to new address {}".format(address))
         pusher_channel = "address_{}_{}".format(self.network, address)
         channel = self.pusher.subscribe(pusher_channel)
         channel.bind('balance_update', self.on_balance_updated)
@@ -367,7 +365,7 @@ class SochainMonitor:
         # channel = self.pusher.subscribe(pusher_channel)
         # channel.bind('balance_update', self.on_confirm_transaction)
         wallet_data = self.wallets[wallet_id]
-        wallet_data["transaction"][txid].append(txid)
+        wallet_data["transactions"][txid] = address
 
     def on_balance_updated(self, data):
         """ chain.so tells us there should be a new transaction.
@@ -399,7 +397,7 @@ class SochainMonitor:
             return
 
         # We want notifications when the confirmation state changes
-        self.subscribe_to_transaction(data["value"]["tx"]["txid"])
+        self.subscribe_to_transaction(wallet_id, address, data["value"]["tx"]["txid"])
 
         with transaction.manager:
 
@@ -407,10 +405,7 @@ class SochainMonitor:
             wallet = session.query(Wallet).filter_by(id=wallet_id).first()
             assert wallet
 
-            self.block_io.scan_addresses(wallet, [address])
-
-    def on_confirm_transaction(self, data):
-        print(data)
+            self.block_io.scan_addresses(self, wallet, [address])
 
     def refresh_addresses(self):
         """

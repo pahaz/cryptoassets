@@ -1,16 +1,74 @@
-cryptoassets README
-==================
+cryptoassets
+=============
+
+.. contents:: :local:
+
+A Python library for building Bitcoin and cryptocurrency service.
+
+Features
+-----------------
+
+* Choose your favotire cryptocurrencies from the vast list or easily include your own coin
+
+* Accounting: Make professional cryptocurrency services where pro forma statement can be generated
+
+* Off-chain and internal transactions for building ecommerce, recurring payment and escrow sites
+
+* Fault tolerant architecture, ACID transactions
+
+* Vendor independent - allows you to use API services or run raw cryptocurrency protocol daemon
+
+Requirements
+---------------
+
+* Python 3
+
+Depending on the cryptocurrency backend you wish to use you may need to install additional Python libraries.
+
+Supported cryptocurrencies
+----------------------------------
+
+* Bitcoin
+
+* Dogecoin
+
+* Litecoin
+
+Supported databases
+----------------------------------
+
+* PostgreSQL
+
+* SQLite
+
+* MySQL
+
+* Oracle
+
+Supported backends
+---------------------
+
+* `block.io <https://block.io>`_
+
+* `blockchain.info <http://blockchain.info>`_
+
+* *bitcoind* and its derivates
+
+Supported Python frameworks
+----------------------------
+
+* Pyramid
+
+* Django
+
+* Flask
+
+... and all others Python application swhere `SQL Alchemy can be run <http://www.sqlalchemy.org/>`_
 
 Getting Started
 ---------------
 
-- cd <directory containing this file>
-
-- $VENV/bin/python setup.py develop
-
-- $VENV/bin/initialize_cryptoassets_db development.ini
-
-- $VENV/bin/pserve development.ini
+TODO
 
 Running tests
 --------------

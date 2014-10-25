@@ -1,9 +1,10 @@
-"""
+"""Base classes for SQL Alchemy models.
 
-    TODO:
+A set of abstract base classes which each cryptocurrency can inherit from.
+Some special dependencies and hints need to be given for SQL Alchemy in order for it
+to be able to generate tables correctly.
 
-    - Define SQLAlchemy relationships properly - http://docs.sqlalchemy.org/en/rel_0_9/orm/tutorial.html#building-a-relationship
-      Some challenges with all those declared_attrs() flying around.
+
 
 """
 
@@ -39,11 +40,11 @@ def _now():
 
 
 class NotEnoughAccountBalance(Exception):
-    """ The user tried to send too much from a specific account. """
+    """The user tried to send too much from a specific account. """
 
 
 class NotEnoughWalletBalance(Exception):
-    """ The user tried to send too much from a specific account.
+    """The user tried to send too much from a specific account.
 
     This should be only raised through coin backend API reply
     and we never check this internally.
@@ -51,13 +52,13 @@ class NotEnoughWalletBalance(Exception):
 
 
 class SameAccount(Exception):
-    """ Cannot do internal transaction within the same account.
+    """Cannot do internal transaction within the same account.
 
     """
 
 
 class TableName:
-    """ Mix-in to create database tables based on the coin configuration instead of Python class. """
+    """Mix-in class to create database tables based on the coin name. """
     @declared_attr
     def __tablename__(cls):
         if not hasattr(cls, "coin"):
@@ -67,9 +68,15 @@ class TableName:
 
 
 class CoinBackend:
+    """Mix-in class to allow coin backend property on models."""
 
     @property
     def backend(self):
+        """Return the configured coin backend for this model.
+
+        Pulls the associated backend instance (block.io, blockchain.info, etc)
+        for the registry.
+        """
         return backendregistry.get(self.coin)
 
 
@@ -109,20 +116,11 @@ class GenericAccount(TableName, Base, CoinBackend):
         return self.backend.get_lock("{}_account_lock_{}".format(self.coin, self.id))
 
 
-class GenericConfirmationAccount(GenericAccount):
-    """ Account subtype which has a confirmation level for incoming transactions. """
-    __abstract__ = True
-    confirmations_required_on_receive = Column(Integer)
-
-    #: Confirmations needed to credit this transaction
-    #: on the receiving account
-    confirmation_count = 3
-
-    def is_confirmed(self):
-        return self.confirmations > self.confirmation_count
-
-
 class GenericAddress(TableName, Base):
+    """Baseclass for cryptocurrency addresses.
+
+
+    """
     __abstract__ = True
     id = Column(Integer, primary_key=True)
     address = Column(String(127), nullable=False)
@@ -130,6 +128,9 @@ class GenericAddress(TableName, Base):
     balance = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=_now)
     updated_at = Column(DateTime, onupdate=_now)
+
+    #: Archived addresses are no longer in active incoming transaction polling
+    #: and may not appear in the user wallet list
     archived_at = Column(DateTime, default=None, nullable=True)
 
     @declared_attr
@@ -197,27 +198,43 @@ class GenericTransaction(TableName, Base):
 
     @declared_attr
     def address(cls):
+        """ External cryptocurrency network address associated with the transaction.
+
+        For outgoing transactions this is the walletless Address object holding only
+        the address string.
+
+        For incoming transactions this is the Address object with the reference
+        to the Account object who we credited for this transfer.
+        """
         return relationship(cls._address_cls_name,  # noqa
             primaryjoin="{}.address_id == {}.id".format(cls.__name__, cls._address_cls_name),
             backref="addresses")
 
     @declared_attr
     def sending_account(cls):
+        """ The account where the payment was made from.
+        """
         return relationship(cls._account_cls_name,  # noqa
             primaryjoin="{}.sending_account_id == {}.id".format(cls.__name__, cls._account_cls_name),
             backref="sent_transactions")
 
     @declared_attr
     def receiving_account(cls):
+        """ The account which received the payment.
+        """
         return relationship(cls._account_cls_name,  # noqa
             primaryjoin="{}.receiving_account_id == {}.id".format(cls.__name__, cls._account_cls_name),
             backref="received_transactions")
 
     @declared_attr
     def wallet(cls):
+        """ Which Wallet object contains this transaction.
+        """
         return relationship(cls._wallet_cls_name, backref="transactions")
 
     def can_be_confirmed(self):
+        """ Return if the transaction can be considered as final.
+        """
         return True
 
 
@@ -229,9 +246,11 @@ class GenericConfirmationTransaction(GenericTransaction):
     #: How many miner confirmations this tx has received
     confirmations = Column(Integer)
 
+    confirmation_count = 3
+
     def can_be_confirmed(self):
         """ Does this transaction have enough confirmations it could be confirmed by our standards. """
-        return self.confirmations > 3
+        return self.confirmations >= self.confirmation_count
 
 
 class GenericWallet(TableName, Base, CoinBackend):
@@ -266,7 +285,9 @@ class GenericWallet(TableName, Base, CoinBackend):
         return self.backend.get_lock("{}_wallet_lock_{}".format(self.coin, self.id))
 
     def create_account(self, name):
-        """ Create a new account inside this wallet.
+        """Create a new account inside this wallet.
+
+        :return: GenericAccout object
         """
 
         session = Session.object_session(self)
@@ -280,7 +301,7 @@ class GenericWallet(TableName, Base, CoinBackend):
         return account
 
     def get_or_create_network_fee_account(self):
-        """ Create a special account where we account all network fees.
+        """Lazily create the special account where we account all network fees.
 
         This is for internal bookkeeping only. These fees MAY be
         charged from the users doing the actual transaction, but it
@@ -294,7 +315,16 @@ class GenericWallet(TableName, Base, CoinBackend):
         return instance
 
     def create_receiving_address(self, account, label):
-        """ Creates private/public key pair for receiving.
+        """ Creates a new receiving address.
+
+        All incoming transactions on this address
+        are put on the given account.
+
+        :param account: GenericAccount object
+
+        :param label: Label for this address - must be human-readable, generated and unique. E.g. "Joe's wallet #2"
+
+        :return: GenericAddress object
         """
 
         session = Session.object_session(self)
@@ -415,9 +445,11 @@ class GenericWallet(TableName, Base, CoinBackend):
         return session.query(self.Address).filter(self.Address.archived_at == None).join(self.Account).filter(self.Account.wallet_id == self.id)  # noqa
 
     def get_external_received_transactions(self):
-        """ Get all external transactions arriving to this wallet.
+        """Get all external transactions to this wallet.
 
         Returns both unconfirmed and confirmed transactions.
+
+        :return: SQLAlchemy query
         """
 
         session = Session.object_session(self)
@@ -426,7 +458,10 @@ class GenericWallet(TableName, Base, CoinBackend):
         return session.query(self.Transaction).filter(self.Transaction.sending_account == None, self.Transaction.txid != None)  # noqa
 
     def get_active_external_received_transcations(self):
-        """ Return all inco,ing transactions which are still pending. """
+        """Return all incoming transactions which are still pending.
+
+        :return: SQLAlchemy query
+        """
         return self.get_external_received_transactions().filter(self.Transaction.credited_at == None).join(self.Address)  # noqa
 
     def refresh_account_balance(self, account):
@@ -457,7 +492,13 @@ class GenericWallet(TableName, Base, CoinBackend):
             account.balance = total_balance
 
     def send_internal(self, from_account, to_account, amount, label, allow_negative_balance=False):
-        """ Tranfer currency internally within this wallet from an account to another.
+        """ Tranfer currency internally between the accounts of this wallet.
+
+        :param from_account: GenericAccount
+
+        :param to_account: GenericAccount
+
+        :param amount: The amount to transfer in wallet book keeping unit
         """
         session = Session.object_session(self)
 
@@ -564,10 +605,10 @@ class GenericWallet(TableName, Base, CoinBackend):
         return len(outgoing)
 
     def charge_network_fees(self, txs, txid, fee):
-        """ Divide the network fees for all transaction participants.
+        """ Account network fees due to transaction broadcast.
 
-        By default this just creates a new accounting entry on a special account
-        where network fees is put.
+        By default this creates a new accounting entry on a special account
+        (`GenericAccount.NETWORK_FEE_ACCOUNT`) where the network fees are put.
 
         :param txs: Internal transactions participating in send
 
@@ -612,7 +653,9 @@ class GenericWallet(TableName, Base, CoinBackend):
         self.balance = self.backend.get_balance()
 
     def receive(self, txid, address, amount, extra=None):
-        """ The backend informs us a new transaction has arrived.
+        """Informs the wallet updates regarding external incoming transction.
+
+        This method should be called by the coin backend only.
 
         Write the transaction to the database.
         Notify the application of the new transaction status.
@@ -626,9 +669,9 @@ class GenericWallet(TableName, Base, CoinBackend):
 
         :param amount: Int, as the basic currency unit
 
-        :param extra: Extra variables to set on the transaction, like confirmation count.
+        :param extra: Extra variables to set on the transaction object as a dictionary. E.g. `dict(confirmations=5)`.
 
-        :return: new Transaction object
+        :return: new or existing Transaction object
         """
 
         session = Session.object_session(self)
@@ -636,6 +679,7 @@ class GenericWallet(TableName, Base, CoinBackend):
         assert self.id
         assert amount > 0
         assert txid
+        assert type(address) == str
 
         _address = session.query(self.Address).filter(self.Address.address == address).first()  # noqa
 
@@ -679,6 +723,8 @@ class GenericWallet(TableName, Base, CoinBackend):
 
                 with self.lock():
                     self.balance += transaction.amount
+
+                session.add(account)
 
         return transaction
 

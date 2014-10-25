@@ -3,6 +3,7 @@ import transaction
 import time
 import logging
 import sys
+import warnings
 from rainbow_logging_handler import RainbowLoggingHandler
 
 from sqlalchemy.exc import IntegrityError
@@ -28,11 +29,19 @@ logger.debug("debug msg")
 logger = logging.getLogger("requests.packages.urllib3.connectionpool")
 logger.setLevel(logging.ERROR)
 
+
+logger = logging.getLogger("cryptoassets.backend.blockio")
+logger.setLevel(logging.DEBUG)
+
 # SQL Alchemy transactions
 logger = logging.getLogger("txn")
 logger.setLevel(logging.ERROR)
 
 logger = logging.getLogger(__name__)
+
+
+# ResourceWarning: unclosed <ssl.SSLSocket fd=9, family=AddressFamily.AF_INET, type=SocketType.SOCK_STREAM, proto=6, laddr=('192.168.1.4', 56386), raddr=('50.116.26.213', 443)>
+warnings.filterwarnings("ignore", category=ResourceWarning)
 
 
 class CoinTestCase:
@@ -262,7 +271,7 @@ class CoinTestCase:
             # which is not broadcasted yet
             self.assertEqual(DBSession.query(self.Transaction.id).count(), 1)
             tx = DBSession.query(self.Transaction).first()
-            self.assertEqual(tx.sending_account, account.id)
+            self.assertEqual(tx.sending_account, account)
             self.assertEqual(tx.receiving_account, None)
             self.assertEqual(tx.state, "pending")
             self.assertEqual(tx.txid, None)
@@ -357,11 +366,16 @@ class CoinTestCase:
     def test_send_receive_external(self):
         """ Test sending and receiving external transaction within the backend wallet.
 
+        This is especially tricket test case, as we are reusing some of the old
+        test addresses for the sending the transaction and they may have
+        extra outgoing and incoming transactions ready to hit from the previous tests.
         """
 
-        self.receiving_timeout = 600
+        self.receiving_timeout = 10*60
 
         try:
+
+            self.Transaction.confirmation_count = 0
 
             with transaction.manager:
                 wallet = self.Wallet()
@@ -419,22 +433,50 @@ class CoinTestCase:
                 logger.info("Monitoring address {} on wallet {}".format(receiving_address.address, wallet.id))
 
             deadline = time.time() + self.receiving_timeout
+            succeeded = False
+
             while time.time() < deadline:
                 time.sleep(0.5)
-                continue
 
                 # Don't hold db locked for an extended perior
                 with transaction.manager:
                     wallet = DBSession.query(self.Wallet).get(wallet_id)
-                    account = DBSession.query(wallet.Address).filter(self.Address.id == receiving_address_id).first()
-                    if account.balance > 0:
+                    address = DBSession.query(wallet.Address).filter(self.Address.id == receiving_address_id)
+                    self.assertEqual(address.count(), 1)
+                    account = address.first().account
+                    txs = wallet.get_external_received_transactions()
+
+                    print(account.balance, len(wallet.transactions), wallet.get_active_external_received_transcations().count())
+
+                    # The transaction is confirmed and the account is credited
+                    # and we have no longer pending incoming transaction
+                    if account.balance > 0 and wallet.get_active_external_received_transcations().count() == 0 and len(wallet.transactions) >= 3:
+                        succeeded = True
                         break
+
+            self.assertTrue(succeeded, "Never got the external transaction status through database")
+
+        finally:
+            self.Transaction.confirmation_count = 3
+            self.teardown_receiving()
+
+        # Final checks
+        with transaction.manager:
+            account = DBSession.query(self.Account).filter(self.Account.wallet_id == wallet_id).first()
+            wallet = DBSession.query(self.Wallet).get(wallet_id)
+            self.assertGreater(account.balance, 0, "Timeouted receiving external transaction")
+
+            # 1 broadcasted, 1 network fee, 1 external
+            self.assertGreaterEqual(len(wallet.transactions), 3)
+
+            # The transaction should be external
+            txs = wallet.get_external_received_transactions()
+            self.assertEqual(txs.count(), 1)
+
+            # The transaction should no longer be active
+            txs = wallet.get_active_external_received_transcations()
+            self.assertEqual(txs.count(), 0)
 
             self.assertGreater(account.balance, 0, "Timeouted receiving external transaction")
 
-            # Now we should see two transactions for the wallet
-            # One we used to do external send
-            # One we used to do external receive
 
-        finally:
-            self.teardown_receiving()

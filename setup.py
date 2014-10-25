@@ -19,7 +19,8 @@ requires = [
     'waitress',
     'python-slugify',
     'block-io',
-    'rainbow_logging_handler'
+    'rainbow_logging_handler',
+    'mock'
     ]
 
 setup(name='cryptoassets',
