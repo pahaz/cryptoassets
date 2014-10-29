@@ -1,5 +1,5 @@
-cryptoassets
-=============
+cryptoassets.core
+==================
 
 .. contents:: :local:
 
@@ -84,32 +84,45 @@ TODO
 Getting Started
 ---------------
 
-As the maturity of this project is very alpha, there aren't yet specific starting instructions.
-You need to understand SQLAlchemy basics before you can start working on it.
-However, as the project matures more comprehensive tutorials will follow.
+An offchain transaction example::
 
-For the examples, see ``test_block_io.py`` which stresses out Bitcoin and Dogecoin
-using *block.io* backend.
+    wallet = self.Wallet()
+    DBSession.add(wallet)
+    # DBSession.flush() creates primary keys, so that
+    # accounts can refer to this wallet object.
+    DBSession.flush()
 
-**Walkthrough**
+    sending_account = wallet.create_account("Test account")
+    receiving_account = wallet.create_account("Test account 2")
+    DBSession.flush()
 
-* Create an SQLAlchemy models in your database by importing your
-  supported currencies from cryptoassets.core.coin and running `
-  ``Base.metadata.create_all()``.
+    sending_account.balance = 100
+    tx = wallet.send_internal(sending_account, receiving_account, 100, "Test transaction")
 
-* Create a backend object and register it
+    print("Created internal transaction {}".format(tx))
 
-* Get or create a default ``Wallet`` instance for your application
+A full transaction example::
 
-* Use ``Wallet`` to create account, then create address inside it
+    # Construct a block.io API
+    self.backend = BlockIo("btc", "My block.io API key", "My Block.io pin")
+    backendregistry.register("btc", self.backend)
 
-* Send in a transaction to this address
+    DBSession.add(wallet)
+    DBSession.flush()
 
-* You need to have external receiver process communicating with the network
-  and then writing the transaction when it arrives (see ``test_send_receive_external``
-  and ``setup_receiving``)
+    # Create an account which cointains some balance for outgoing send
+    from_account = wallet.create_account("Test sending account")
+    DBSession.flush()
 
-* Check that the address balance, account balance and wallet balances are updated
+    # We have previously send some BTC TESNET sample coins to the block.io
+    # wallet for the testing purposes
+    wallet.add_address(account, "Sample imported address", \
+        "2MsgW3kCrRFtJuo9JNjkorWXaZSvLk4EWRx")
+
+    # Send Bitcoins through blockchain, amount as satoshis
+    wallet.send_external(from_account, "2MsgW3kCrRFtJuo9JNjkorWXaZSvLk4EWRx", 2200, \
+        "Test send"))
+
 
 
 

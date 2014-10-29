@@ -13,9 +13,11 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   gettingstarted
    models
    backends
    coins
+   develop
 
 
 Indices and tables

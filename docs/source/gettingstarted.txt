@@ -1,0 +1,40 @@
+================================
+Getting started
+================================
+
+.. contents:: :local:
+
+Introductoin
+----------------------------------------
+
+.. warning ::
+
+    Advanced SQLAlchemy experience required.
+
+As the maturity of this project is very alpha, there aren't yet specific starting instructions.
+You need to understand SQLAlchemy basics before you can start working on it.
+However, as the project matures more comprehensive tutorials will follow.
+
+For the examples, see ``test_block_io.py`` which stresses out Bitcoin and Dogecoin
+using *block.io* backend.
+
+**Walkthrough**
+
+* Create an SQLAlchemy models in your database by importing your
+  supported currencies from cryptoassets.core.coin and running `
+  ``Base.metadata.create_all()``.
+
+* Create a backend object and register it
+
+* Get or create a default ``Wallet`` instance for your application
+
+* Use ``Wallet`` to create account, then create address inside it
+
+* Send in a transaction to this address
+
+* You need to have external receiver process communicating with the network
+  and then writing the transaction when it arrives (see ``test_send_receive_external``
+  and ``setup_receiving``)
+
+* Check that the address balance, account balance and wallet balances are updated
+
