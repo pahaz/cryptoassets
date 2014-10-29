@@ -38,3 +38,7 @@ class BlockChainBTCTestCase(CoinTestCase, unittest.TestCase):
     def setup_test_fund_address(self, wallet, account):
         # Import some TESTNET coins
         wallet.add_address(account, "Test import {}".format(time.time()), os.environ["BLOCKCHAIN_TESTNET_TEST_FUND_ADDRESS"])
+
+    def test_send_receive_external(self):
+        # Not implemented
+        pass
