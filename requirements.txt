@@ -8,7 +8,7 @@ SQLAlchemy==0.9.7
 Sphinx==1.2.3
 Unidecode==0.04.16
 WebOb==1.4
--e git+git@github.com:miohtama/block_io-python.git@66a94f7095ff9305bcdb4fd7e4fdb8f07ef11096#egg=block_io-blockio/1.1.0-dev
+-e git+git@github.com:miohtama/block_io-python.git@66a94f7095ff9305bcdb4fd7e4fdb8f07ef11096#egg=block-io
 blockchain==1.0.1
 colorama==0.3.2
 -e git+https://miohtama@bitbucket.org/miohtama/cryptoassets.git@de221854e593131b590d72b16aa6c050687ea9cc#egg=cryptoassets-master
