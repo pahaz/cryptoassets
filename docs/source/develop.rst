@@ -30,5 +30,5 @@ Running all tests::
 
 Running a single test::
 
-    python -m unittest cryptoassets.tests.test_block_io.BlockIoBTCTestCase.test_send_receive_external
+    python -m unittest cryptoassets.core.tests.test_block_io.BlockIoBTCTestCase.test_send_receive_external
 

@@ -6,6 +6,8 @@ cryptoassets.core
 A Python library for building Bitcoin and cryptocurrency service.
 Provides Bitcoin, cryptocurrency and cryptoassets APIs, database models and accounting.
 
+.. img:: https://drone.io/bitbucket.org/miohtama/cryptoassets/status.png
+
 Features
 -----------------
 

@@ -175,8 +175,7 @@ class BlockIo:
                     monitor.finish_transaction(wallet.id, tx.txid)
 
 
-class SochainPusher(pusherclient.Pusher):
-    host = "slanger1.chain.so"
+class SochainConnection(pusherclient.Connection):
 
     def _connect_handler(self, data):
         # Some bug workdaround, tries to decode
@@ -189,6 +188,19 @@ class SochainPusher(pusherclient.Pusher):
         self.socket_id = parsed['socket_id']
 
         self.state = "connected"
+
+
+class SochainPusher(pusherclient.Pusher):
+    host = "slanger1.chain.so"
+
+    def __init__(self, key, secure=True, secret=None, user_data=None, log_level=logging.INFO, daemon=True):
+        self.key = key
+        self.secret = secret
+        self.user_data = user_data or {}
+
+        self.channels = {}
+
+        self.connection = SochainConnection(self._connection_handler, self._build_url(key, secure), log_level=log_level, daemon=daemon)
 
 
 class SochainTransctionThread(threading.Thread):
