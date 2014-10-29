@@ -8,7 +8,7 @@ SQLAlchemy==0.9.7
 Sphinx==1.2.3
 Unidecode==0.04.16
 WebOb==1.4
--e git+git@github.com:BlockIo/block_io-python.git@1.1.0-dev#egg=block-io
+-e git+https://github.com/BlockIo/block_io-python.git@1.1.0-dev#egg=block-io
 blockchain==1.0.1
 colorama==0.3.2
 -e git+https://miohtama@bitbucket.org/miohtama/cryptoassets.git@de221854e593131b590d72b16aa6c050687ea9cc#egg=cryptoassets-master
@@ -19,7 +19,7 @@ gnureadline==6.3.3
 logutils==0.3.3
 mock==1.0.1
 #pusherclient==0.2.0
--e git+git@github.com:ekulyk/PythonPusherClient.git@master#egg=pusherclient
+-e git+https://github.com/ekulyk/PythonPusherClient.git@master#egg=pusherclient
 pycrypto==2.6.1
 pyramid==1.5.1
 pyramid-chameleon==0.3
