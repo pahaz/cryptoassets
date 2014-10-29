@@ -4,8 +4,6 @@ Getting started
 
 .. contents:: :local:
 
-Introductoin
-----------------------------------------
 
 .. warning ::
 
