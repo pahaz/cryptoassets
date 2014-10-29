@@ -30,8 +30,11 @@ Requirements
 
 Depending on the cryptocurrency backend you wish to use you may need to install additional Python libraries.
 
-Supported cryptocurrencies
-----------------------------------
+Supported environments
+------------------------
+
+Cryptocurrencies
+++++++++++++++++++++
 
 * Bitcoin
 
@@ -40,7 +43,7 @@ Supported cryptocurrencies
 * Litecoin
 
 Supported databases
-----------------------------------
+++++++++++++++++++++
 
 * PostgreSQL
 
@@ -52,8 +55,8 @@ Supported databases
 
 `For the full list see SQLAlchemy dialects documentation <http://docs.sqlalchemy.org/en/rel_0_9/dialects/index.html>`_.
 
-Supported backends
----------------------
+Protocols, daemons and API services
+++++++++++++++++++++++++++++++++++++++
 
 ``cryptocurrencies.core`` can operate on raw cryptocurrency server
 daemon. Alternative you can choose one of the API services in the
@@ -65,8 +68,8 @@ case you do not have the server budget to run the full cryptocurrency node.
 
 * *bitcoind* and its derivates
 
-Supported Python frameworks
-----------------------------
+Python frameworks
+++++++++++++++++++++
 
 * Pyramid
 

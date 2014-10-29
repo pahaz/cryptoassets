@@ -1,0 +1,41 @@
+Chameleon==2.16
+Jinja2==2.7.3
+Mako==1.0.0
+MarkupSafe==0.23
+PasteDeploy==1.5.2
+Pygments==1.6
+SQLAlchemy==0.9.7
+Sphinx==1.2.3
+Unidecode==0.04.16
+WebOb==1.4
+-e git+git@github.com:miohtama/block_io-python.git@66a94f7095ff9305bcdb4fd7e4fdb8f07ef11096#egg=block_io-blockio/1.1.0-dev
+blockchain==1.0.1
+colorama==0.3.2
+-e git+https://miohtama@bitbucket.org/miohtama/cryptoassets.git@de221854e593131b590d72b16aa6c050687ea9cc#egg=cryptoassets-master
+-e git+https://miohtama@bitbucket.org/miohtama/cryptoassets.git@de221854e593131b590d72b16aa6c050687ea9cc#egg=cryptoassets.core-master
+docutils==0.12
+ecdsa==0.11
+gnureadline==6.3.3
+logutils==0.3.3
+mock==1.0.1
+pusherclient==0.2.0
+pycrypto==2.6.1
+pyramid==1.5.1
+pyramid-chameleon==0.3
+pyramid-debugtoolbar==2.2
+pyramid-mako==1.0.2
+pyramid-tm==0.7
+python-slugify==0.0.7
+rainbow-logging-handler==2.2.2
+repoze.lru==0.6
+requests==2.4.3
+six==1.8.0
+slugify==0.0.1
+transaction==1.4.3
+translationstring==1.1
+venusian==1.0
+waitress==0.8.9
+websocket-client==0.21.0
+zope.deprecation==4.1.1
+zope.interface==4.1.1
+zope.sqlalchemy==0.7.5
