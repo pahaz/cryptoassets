@@ -4,6 +4,7 @@ cryptoassets
 .. contents:: :local:
 
 A Python library for building Bitcoin and cryptocurrency service.
+Provides Bitcoin, cryptocurrency and cryptoassets APIs, database models and accounting.
 
 Features
 -----------------
@@ -73,7 +74,12 @@ Supported Python frameworks
 
 * Flask
 
-... and all others Python application swhere `SQL Alchemy can be run <http://www.sqlalchemy.org/>`_
+... and all others Python application swhere `SQLAlchemy can be run <http://www.sqlalchemy.org/>`_
+
+Documentation
+---------------
+
+TODO
 
 Getting Started
 ---------------
@@ -104,33 +110,6 @@ using *block.io* backend.
   and ``setup_receiving``)
 
 * Check that the address balance, account balance and wallet balances are updated
-
-Running tests
---------------
-
-Example::
-
-    # Testnet API keys
-    export BLOCK_IO_API_KEY="923f-e3e9-a580-dfb2"
-    export BLOCK_IO_API_KEY_DOGE="0266-c2b6-c2c8-ee07"
-    export BLOCK_IO_PIN="foobar123"
-    export BLOCK_IO_TESTNET_TEST_FUND_ADDRESS="2MsgW3kCrRFtJuo9JNjkorWXaZSvLk4EWRr"
-    export BLOCK_IO_DOGE_TESTNET_TEST_FUND_ADDRESS="2MxkkbbAwjT7pXme5766d6LUmKyZYEpDTMi"
-
-    # block.io receiving transaction testing
-    export PUSHER_API_KEY="e9f5cc20074501ca7395"
-
-    # A real wallet, not testnet!
-    export BLOCKCHAIN_IDENTIFIER="x"
-    export BLOCKCHAIN_PASSWORD="y"
-
-Running all tests::
-
-    python setup.py test
-
-Running a single test::
-
-    python -m unittest cryptoassets.tests.test_block_io.BlockIoBTCTestCase.test_send_receive_external
 
 
 
