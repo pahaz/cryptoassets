@@ -23,9 +23,9 @@ requires = [
     'mock'
     ]
 
-setup(name='cryptoassets',
+setup(name='cryptoassets.core',
       version='0.0',
-      description='cryptoassets',
+      description='Bitcoin, cryptocurrency and cryptoassets API, database models and accounting library',
       long_description=README + '\n\n' + CHANGES,
       classifiers=[
         "Programming Language :: Python",
@@ -33,19 +33,19 @@ setup(name='cryptoassets',
         "Topic :: Internet :: WWW/HTTP",
         "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
         ],
-      author='',
-      author_email='',
+      author='Cryptoassets library authors',
+      author_email='mikko@opensourcehacker.com',
       url='',
       keywords='web wsgi bfg pylons pyramid',
       packages=find_packages(),
       include_package_data=True,
       zip_safe=False,
-      test_suite='cryptoassets',
+      test_suite='cryptoassets.core',
       install_requires=requires,
       entry_points="""\
       [paste.app_factory]
       main = cryptoassets:main
       [console_scripts]
-      initialize_cryptoassets_db = cryptoassets.scripts.initializedb:main
+      initialize_cryptoassets_db = cryptoassets.core.scripts.initializedb:main
       """,
       )

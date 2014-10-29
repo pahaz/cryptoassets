@@ -1,6 +1,7 @@
 import os
 import unittest
 import time
+import logging
 
 from mock import patch
 import transaction
@@ -15,7 +16,6 @@ from ..backend.blockio import _BlockIo
 from ..backend.blockio import SochainMonitor
 from ..backend.blockio import _convert_to_satoshi
 from ..backend.blockio import _convert_to_decimal
-from ..backend import registry as backendregistry
 from ..lock.simple import create_thread_lock
 
 
@@ -24,12 +24,15 @@ from .base import logger
 
 
 class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
+    """ Test that our BTC accounting works on top of block.io API. """
 
     def setup_receiving(self, wallet):
 
         # Print out exceptions in Pusher messaging
+        from ..backend.blockio import logger
         from websocket._core import enableTrace
-        enableTrace(True)
+        if logger.level < logging.WARN:
+            enableTrace(True)
 
         self.backend.monitor = SochainMonitor(self.backend, [wallet], os.environ["PUSHER_API_KEY"], "btctest")
 
@@ -61,13 +64,13 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         self.Transaction = BitcoinTransaction
         self.Account = BitcoinAccount
 
-        # for test_send_receive_external() drop the confirmation
-        # wait count to 1
-        self.Transaction.confirmation_count = 1
+        self.external_transaction_confirmation_count = 0
 
         # Withdrawal amounts must be at least 0.00002000 BTCTEST, and at most 50.00000000 BTCTEST.
         self.external_send_amount = 2100
         self.network_fee = 1000
+        # Wait 10 minutes for 1 confimation from the BTC TESTNET
+        self.external_receiving_timeout = 60 * 10
 
     def setup_test_fund_address(self, wallet, account):
         # Import some TESTNET coins
@@ -174,11 +177,10 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
             self.assertEqual(active_txs.first().address.id, address.id)
 
     def test_send_receive_external_fast(self):
-        """The same as test_send_receive_external(), but doesn't wait the actual external transaction to confirm and spoofs it.
+        """The same as test_send_receive_external(), but spoofs the external incoming transaction.
 
+        With this test, we can test ``Wallet.receive()`` much faster.
         """
-
-        self.receiving_timeout = 20
 
         try:
 
@@ -246,7 +248,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
                             "amounts_received": [
                                 {
                                     "recipient": receiving_address_address,
-                                    "amount": "0.0002100"
+                                    "amount": self.backend.to_external_amount(self.external_send_amount)
                                 }
                             ],
                             "confirmations": 6
@@ -259,7 +261,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
 
             with patch.object(_BlockIo, 'api_call', return_value=spoofed_get_transactions):
 
-                deadline = time.time() + self.receiving_timeout
+                deadline = time.time() + self.external_receiving_timeout
                 while time.time() < deadline:
                     time.sleep(0.5)
 
@@ -303,17 +305,29 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
             self.assertGreater(account.balance, 0, "Timeouted receiving external transaction")
 
 
-class BlockIoDogeTestCase(CoinTestCase, unittest.TestCase):
+class BlockIoDogeTestCase(BlockIoBTCTestCase):
 
     def setup_test_fund_address(self, wallet, account):
         # Import some TESTNET coins
         wallet.add_address(account, "Test import {}".format(time.time()), os.environ["BLOCK_IO_DOGE_TESTNET_TEST_FUND_ADDRESS"])
 
+    def setup_receiving(self, wallet):
+
+        # Print out exceptions in Pusher messaging
+        from ..backend.blockio import logger
+        from websocket._core import enableTrace
+        if logger.level < logging.WARN:
+            enableTrace(True)
+
+        self.backend.monitor = SochainMonitor(self.backend, [wallet], os.environ["PUSHER_API_KEY"], "dogetest")
+
     def setup_coin(self):
 
-        backendregistry.register("doge", BlockIo("doge", os.environ["BLOCK_IO_API_KEY_DOGE"], os.environ["BLOCK_IO_PIN"], create_thread_lock))
+        self.backend = BlockIo("doge", os.environ["BLOCK_IO_API_KEY_DOGE"], os.environ["BLOCK_IO_PIN"], create_thread_lock)
+        backendregistry.register("doge", self.backend)
+        self.monitor = None
 
-        engine = create_engine('sqlite://')
+        engine = self.create_engine()
         from ..coin.dogecoin.models import DogeWallet
         from ..coin.dogecoin.models import DogeAddress
         from ..coin.dogecoin.models import DogeTransaction
@@ -330,4 +344,9 @@ class BlockIoDogeTestCase(CoinTestCase, unittest.TestCase):
         self.external_send_amount = 100
         self.network_fee = 1
 
+        # for test_send_receive_external() the confirmation
+        # count before we let the test pass
+        self.external_transaction_confirmation_count = 2
 
+        # Wait 3 minutes for 1 confimation from the BTC TESTNET
+        self.external_receiving_timeout = 60 * 3

@@ -8,6 +8,7 @@ from rainbow_logging_handler import RainbowLoggingHandler
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
+from sqlalchemy import pool
 from pyramid import testing
 
 from ..models import DBSession
@@ -30,7 +31,7 @@ logger = logging.getLogger("requests.packages.urllib3.connectionpool")
 logger.setLevel(logging.ERROR)
 
 
-logger = logging.getLogger("cryptoassets.backend.blockio")
+logger = logging.getLogger("cryptoassets.core.backend.blockio")
 logger.setLevel(logging.DEBUG)
 
 # SQL Alchemy transactions
@@ -38,10 +39,6 @@ logger = logging.getLogger("txn")
 logger.setLevel(logging.ERROR)
 
 logger = logging.getLogger(__name__)
-
-
-# ResourceWarning: unclosed <ssl.SSLSocket fd=9, family=AddressFamily.AF_INET, type=SocketType.SOCK_STREAM, proto=6, laddr=('192.168.1.4', 56386), raddr=('50.116.26.213', 443)>
-warnings.filterwarnings("ignore", category=ResourceWarning)
 
 
 class CoinTestCase:
@@ -53,11 +50,23 @@ class CoinTestCase:
         if os.path.exists("unittest.sqlite"):
             os.remove("unittest.sqlite")
 
-        engine = create_engine('sqlite:///unittest.sqlite', echo=False)
+        # XXX: Not sure what would be the correct way to run tests,
+        # so that we respect transaction consistency in external received transactions
+        # which are usually done in external thread or process
+        # pool = pool.SingletonThreadPool()
+        # engine = create_engine('sqlite:///unittest.sqlite', echo=False, poolclass=pool.SingletonThreadPool)
+
+        engine = create_engine('sqlite://',
+                            connect_args={'check_same_thread':False},
+                            poolclass=pool.StaticPool)
 
         return engine
 
     def setUp(self):
+
+        # ResourceWarning: unclosed <ssl.SSLSocket fd=9, family=AddressFamily.AF_INET, type=SocketType.SOCK_STREAM, proto=6, laddr=('192.168.1.4', 56386), raddr=('50.116.26.213', 443)>
+        # http://stackoverflow.com/a/26620811/315168
+        warnings.filterwarnings("ignore", category=ResourceWarning)  # noqa
 
         self.config = testing.setUp()
 
@@ -366,16 +375,14 @@ class CoinTestCase:
     def test_send_receive_external(self):
         """ Test sending and receiving external transaction within the backend wallet.
 
-        This is especially tricket test case, as we are reusing some of the old
+        This is especially tricky test case, as we are reusing some of the old
         test addresses for the sending the transaction and they may have
         extra outgoing and incoming transactions ready to hit from the previous tests.
         """
 
-        self.receiving_timeout = 10*60
-
         try:
 
-            self.Transaction.confirmation_count = 0
+            self.Transaction.confirmation_count = self.external_transaction_confirmation_count
 
             with transaction.manager:
                 wallet = self.Wallet()
@@ -432,7 +439,7 @@ class CoinTestCase:
                 # Wait until backend notifies us the transaction has been received
                 logger.info("Monitoring address {} on wallet {}".format(receiving_address.address, wallet.id))
 
-            deadline = time.time() + self.receiving_timeout
+            deadline = time.time() + self.external_receiving_timeout
             succeeded = False
 
             while time.time() < deadline:
@@ -446,7 +453,7 @@ class CoinTestCase:
                     account = address.first().account
                     txs = wallet.get_external_received_transactions()
 
-                    print(account.balance, len(wallet.transactions), wallet.get_active_external_received_transcations().count())
+                    # print(account.balance, len(wallet.transactions), wallet.get_active_external_received_transcations().count())
 
                     # The transaction is confirmed and the account is credited
                     # and we have no longer pending incoming transaction

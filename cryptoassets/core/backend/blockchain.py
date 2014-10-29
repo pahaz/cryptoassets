@@ -1,11 +1,11 @@
-"""
+""" blockchain.info backend.
 
-    blockchain.info backend
+Currently does not support incoming transactions.
 
-    https://github.com/blockchain/api-v1-client-python
+You need to create a wallet on `blockhain.info <https://blockhain.info>`_.
+Wallet unique id and your password are used to create API connection.
 
-    https://github.com/blockchain/api-v1-client-python/blob/master/docs/wallet.md
-
+For usage instructions see :py:mod:`cryptoassets.core.tests.test_blockchain`.
 """
 
 import json

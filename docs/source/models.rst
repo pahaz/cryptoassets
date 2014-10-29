@@ -1,13 +1,17 @@
 ===================
-Models
+Base models
 ===================
 
-Models describe the database tables in Python.
+.. contents:: :local:
+
+Base models describe how ``cryptoassets.core`` handles any cryptocurrency on the database level.
+`SQLAlchemy library <http://www.sqlalchemy.org/>`_ is used for modeling.
 
 Models are abstract and when you instiate a new cryptocurrency,
 you inherit from the base classes and set the cryptocurrency specific properties.
+For details, see :doc:`coin documentation <./coins>`.
 
-Example from `cryptoassets.coin.bitcoin::
+Example from `cryptoassets.core.coin.bitcoin``::
 
 
     class BitcoinAccount(models.GenericAccount):
@@ -34,8 +38,8 @@ Example from `cryptoassets.coin.bitcoin::
         Account = BitcoinAccount
         Transaction = BitcoinTransaction
 
-Using wallet
----------------
+Example model usage
+-----------------------
 
 The normal usage pattern is following:
 
@@ -53,3 +57,34 @@ Because the cryptocurrency is credited on the account, we can do instant interna
 
 The user is free to withdraw the cryptocurrency away.
 
+Model classes
+---------------
+
+Below are the base classes for models.
+
+Account
+++++++++++++
+
+.. autoclass:: cryptoassets.core.models.GenericAccount
+ :members:
+
+Address
+++++++++++++
+
+.. autoclass:: cryptoassets.core.models.GenericAddress
+ :members:
+
+Transactions
+++++++++++++++
+
+.. autoclass:: cryptoassets.core.models.GenericTransaction
+ :members:
+
+.. autoclass:: cryptoassets.core.models.GenericConfirmationTransaction
+ :members:
+
+Wallet
+++++++++++++
+
+.. autoclass:: cryptoassets.core.models.GenericWallet
+ :members:

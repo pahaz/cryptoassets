@@ -1,10 +1,10 @@
-"""
-    Block.Io wallet implementation.
+""" Block.Io API backend.
 
-    - All transactions are asynchronouos
+Supports Bitcoin, Dogecoin and Litecoin on `block.io <https://block.io>`_ API.
 
-    - Local cached data is kept on the server-side
+For incoming transactions it uses `SoChain <https://chain.so>`_ service.
 
+For the usage instructions see :py:mod:`cryptoassets.tests.test_block_io`.
 """
 
 import json
@@ -163,6 +163,8 @@ class BlockIo:
                 amount = self.to_internal_amount(entry["amount"])
                 received[address] += amount
 
+            assert amount > 0, "Could not parse amount from {}".format(txdata)
+
             for address, amount in received.items():
                 # wallet.receive() will get wallet and account lock for us
                 tx = wallet.receive(txdata["txid"], address, amount, extra=dict(confirmations=txdata["confirmations"]))
@@ -201,7 +203,7 @@ class SochainTransctionThread(threading.Thread):
 
     def run(self):
 
-        from cryptoassets.models import DBSession
+        from cryptoassets.core.models import DBSession
         session = DBSession
 
         while self.alive:
@@ -260,7 +262,9 @@ class SochainMonitor:
     def init_pusher(self, pusher_app_key, wallets):
         """
         """
-        self.pusher = SochainPusher(pusher_app_key, log_level=logging.WARN)
+
+        # Inherit logging level from this module
+        self.pusher = SochainPusher(pusher_app_key, log_level=logger.level)
 
         def connected(data):
             self.connected = True
@@ -298,7 +302,7 @@ class SochainMonitor:
         XXX: Transaction scoping
         """
 
-        from cryptoassets.models import DBSession
+        from cryptoassets.core.models import DBSession
         session = DBSession
 
         assert wallet_id
@@ -322,7 +326,7 @@ class SochainMonitor:
 
     def include_transactions(self, wallet_id):
         """ Include all the wallet unconfirmed transactions on the monitored list. """
-        from cryptoassets.models import DBSession
+        from cryptoassets.core.models import DBSession
         session = DBSession
 
         assert wallet_id
@@ -383,7 +387,7 @@ class SochainMonitor:
 
         # We are in the monitor thread,
         # create new DB session
-        from cryptoassets.models import DBSession
+        from cryptoassets.core.models import DBSession
         session = DBSession
 
         # Find the wallet we received a notification about

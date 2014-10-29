@@ -1,11 +1,10 @@
 """Base classes for SQL Alchemy models.
 
 A set of abstract base classes which each cryptocurrency can inherit from.
-Some special dependencies and hints need to be given for SQL Alchemy in order for it
-to be able to generate tables correctly.
+Some special dependencies and hints need to be given for subclasses in order for
+SQLAlchemy to be able to generate tables correctly.
 
-
-
+See cryptoassets.coin modules for examples.
 """
 
 import datetime
@@ -81,16 +80,36 @@ class CoinBackend:
 
 
 class GenericAccount(TableName, Base, CoinBackend):
+    """ An account within the wallet.
 
+    We associate addresses and transactions to one account.
+
+    The accountn can be owned by some user (user's wallet), or it can be escrow account or some other form of automatic transaction account.
+
+    The transaction between the accounts of the same wallet are internal
+    and happen off-blockhain.
+
+    A special account is reserved for network fees caused by outgoing transactions.
+    """
     #: Special label for an account where wallet
     #: will put all network fees charged by the backend
     NETWORK_FEE_ACCOUNT = "Network fees"
 
     __abstract__ = True
+
+    #: Running counter used in foreign key references
     id = Column(Integer, primary_key=True)
+
+    #: Human-readable name for this account
     name = Column(String(255), )
+
+    #: When this account was created
     created_at = Column(DateTime, default=_now)
+
+    #: Then the balance was updated, or new address generated
     updated_at = Column(DateTime, onupdate=_now)
+
+    #: Available internal balance on this account
     balance = Column(Integer, default=0)
 
     def __init__(self):
@@ -117,14 +136,23 @@ class GenericAccount(TableName, Base, CoinBackend):
 
 
 class GenericAddress(TableName, Base):
-    """Baseclass for cryptocurrency addresses.
+    """ The base class for cryptocurrency addresses.
 
+    We can know about receiving addresses which are addresses without our system where somebody can deposit cryptocurrency. We also know about outgoing addresses where somebody has sent cryptocurrency from our system. For outgoing addresses ``wallet`` reference is null.
 
     """
     __abstract__ = True
+
+    #: Running counter used in foreign key references
     id = Column(Integer, primary_key=True)
+
+    #: The string presenting the address label in the network
     address = Column(String(127), nullable=False)
+
+    #: Human-readable label for this address. User for the transaction history listing of the user. Must be unique across the whole system.
     label = Column(String(255), unique=True)
+
+    #: How much we know this address has balance. Concerns only
     balance = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=_now)
     updated_at = Column(DateTime, onupdate=_now)
@@ -159,11 +187,41 @@ class GenericTransaction(TableName, Base):
     """ A transaction between accounts, incoming transaction or outgoing transaction.
     """
     __abstract__ = True
+
+    #: Running counter used in foreign key references
     id = Column(Integer, primary_key=True)
+
+    #: When this transaction become visible in our database
     created_at = Column(DateTime, default=_now)
+
+    #: When the incoming transaction was credited on the account.
+    #: For internal transactions it is instantly.
+    #: For external transactions this is when the confirmation threshold is exceeded.
     credited_at = Column(DateTime, nullable=True, default=None)
+
+    #: When this transaction was processed by the application.
+    #: For outgoing transactions this is the broadcasting time.
+    #: For incoming transactions, your application may call
+    #: ``mark_as_processed`` to mark it has handled the transaction.
     processed_at = Column(DateTime, nullable=True, default=None)
+
+    #: Amount in the cryptocurrency minimum unit
     amount = Column(Integer())
+
+    #: Different states this transaction can be
+    #:
+    #: **pending**: outgoing transaction waiting for the broadcast
+    #:
+    #: **broadcasted**: outgoing transaction has been sent to the network
+    #:
+    #: **incoming**: we see the transaction incoming to our system, but the confirmation threshold is not exceeded yet
+    #
+    #: **processed**: the application marked this transaction as handled and cryptoassets.core stops trying to notify your application about the transaction
+    #:
+    #: **internal**: This transaction was between the accounts within one of our wallets
+    #:
+    #: **network_fee**: When the transaction has been broadcasted, we create an internal transaction to account the occured network fees
+    #:
     state = Column(Enum('pending', 'broadcasted', 'incoming', 'processed', 'internal', 'network_fee'))
 
     #: Human readable label what this transaction is all about.
@@ -254,19 +312,39 @@ class GenericConfirmationTransaction(GenericTransaction):
 
 
 class GenericWallet(TableName, Base, CoinBackend):
-    """ A wallet implementation supporting shared / internal transactions. """
+    """ A generic wallet implemetation.
+
+    Inside the wallet there is a number of accounts.
+
+    We support internal transaction between the accounts of the same wallet as off-chain transactions. If you call ``send()``for the address which is managed by the same wallet, an internal transaction is created by ``send_internal()``.
+
+    When you send cryptocurrency out from the wallet, the transaction is put to the outgoing queue. Only after you call ``wallet.broadcast()`` the transaction is send out. This is to guarantee the system responsiveness and fault-tolerance, so that outgoing transactions can be created even if we have lost the connection with the cryptocurrency network. Calling ``broadcast()`` should the responsiblity of an external cron-job like process.
+    """
 
     __abstract__ = True
+
+    #: Running counter used in foreign key references
     id = Column(Integer, primary_key=True)
+
+    #: The human-readable name for this wallet. Only used for debugging purposes.
     name = Column(String(255))
+
+    #: When this wallet was created
     created_at = Column(Date, default=_now)
+
+    #: Last time when the balance was updated or new receiving address created.
     updated_at = Column(Date, onupdate=_now)
+
+    #: The total balance of this wallet in the minimum unit of cryptocurrency
     balance = Column(Integer())
 
-    # Subclass must set these
-    # class references to corresponding models
+    #: Reference to the Address class used by this wallet
     Address = None
+
+    #: Reference to the Transaction class used by this wallet
     Transaction = None
+
+    #: Reference to the Account class used by this wallet
     Account = None
 
     @declared_attr
