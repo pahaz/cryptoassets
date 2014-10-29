@@ -8,6 +8,8 @@ cryptoassets.core
 
 ``cryptoassets.core`` is Bitcoin, cryptocurrency and cryptoassets API, database models and accounting library.
 
+`Project homepage <https://bitbucket.org/miohtama/cryptoassets>`_.
+
 Contents:
 
 .. toctree::

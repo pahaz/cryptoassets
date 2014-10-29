@@ -42,7 +42,7 @@ Cryptocurrencies
 
 * Litecoin
 
-Supported databases
+Databases
 ++++++++++++++++++++
 
 * PostgreSQL
@@ -82,14 +82,16 @@ Python frameworks
 Documentation
 ---------------
 
-TODO
+`The documentation is on readthedocs.org <http://cryptoassetscore.readthedocs.org/en/latest/>`_.
 
-Getting Started
----------------
+Quick code samples
+-------------------
 
 An offchain transaction example::
 
-    wallet = self.Wallet()
+    from cryptoassets.core.coin.bitcoin.models import BitcoinWallet
+
+    wallet = BitcoinWallet()
     DBSession.add(wallet)
     # DBSession.flush() creates primary keys, so that
     # accounts can refer to this wallet object.
@@ -106,10 +108,14 @@ An offchain transaction example::
 
 A full transaction example::
 
+    from cryptoassets.core.coin.bitcoin.models import BitcoinWallet
+    from cryptoassets.backend.blockio import BlockIo
+
     # Construct a block.io API
     self.backend = BlockIo("btc", "My block.io API key", "My Block.io pin")
     backendregistry.register("btc", self.backend)
 
+    wallet = BitcoinWallet()
     DBSession.add(wallet)
     DBSession.flush()
 
@@ -121,6 +127,9 @@ A full transaction example::
     # wallet for the testing purposes
     wallet.add_address(account, "Sample imported address", \
         "2MsgW3kCrRFtJuo9JNjkorWXaZSvLk4EWRx")
+
+    # Syncs the account balance with the network
+    wallet.refresh_account_balance(from_account)
 
     # Send Bitcoins through blockchain, amount as satoshis
     wallet.send_external(from_account, "2MsgW3kCrRFtJuo9JNjkorWXaZSvLk4EWRx", 2200, \
