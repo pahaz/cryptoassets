@@ -349,4 +349,4 @@ class BlockIoDogeTestCase(BlockIoBTCTestCase):
         self.external_transaction_confirmation_count = 2
 
         # Wait 3 minutes for 1 confimation from the BTC TESTNET
-        self.external_receiving_timeout = 60 * 3
+        self.external_receiving_timeout = 60 * 5

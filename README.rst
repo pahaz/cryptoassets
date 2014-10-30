@@ -79,13 +79,15 @@ case you do not have the server budget to run the full cryptocurrency node.
 Python frameworks
 ++++++++++++++++++++
 
+You can run ``cryptoassets.core`` on
+
 * Pyramid
 
 * Django
 
 * Flask
 
-... and all others Python application swhere `SQLAlchemy can be run <http://www.sqlalchemy.org/>`_
+... and all others Python applications where `SQLAlchemy can be run <http://www.sqlalchemy.org/>`_.
 
 Documentation
 ---------------
