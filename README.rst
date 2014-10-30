@@ -4,7 +4,7 @@ cryptoassets.core
 .. image:: https://drone.io/bitbucket.org/miohtama/cryptoassets/status.png
     :target: https://drone.io/bitbucket.org/miohtama/cryptoassets/latest
 
-.. image:: https://readthedocs.org/projects/cryptoassetscore/?badge=latest
+.. image:: https://readthedocs.org/projects/cryptoassetscore/badge/?version=latest
     :target: http://cryptoassetscore.readthedocs.org/en/latest/
 
 .. contents:: :local:
