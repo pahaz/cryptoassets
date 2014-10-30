@@ -1,12 +1,18 @@
 cryptoassets.core
 ==================
 
+.. image:: https://drone.io/bitbucket.org/miohtama/cryptoassets/status.png
+    :target: https://drone.io/bitbucket.org/miohtama/cryptoassets/latest
+
+.. image:: https://readthedocs.org/projects/cryptoassetscore/?badge=latest
+    :target: http://cryptoassetscore.readthedocs.org/en/latest/
+
 .. contents:: :local:
 
 A Python library for building Bitcoin and cryptocurrency service.
 Provides Bitcoin, cryptocurrency and cryptoassets APIs, database models and accounting.
 
-.. image:: https://drone.io/bitbucket.org/miohtama/cryptoassets/status.png
+
 
 Features
 -----------------
