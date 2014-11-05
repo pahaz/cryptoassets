@@ -75,4 +75,11 @@ Example using public address ``mk2o9anFwtHFGFKeD89Qxh5YBhNMQk7NrS``::
     curl --user foo:bar --data-binary '{"id":"t0", "method": "dumpprivkey", "params": ["mk2o9anFwtHFGFKeD89Qxh5YBhNMQk7NrS"] }' http://127.0.0.1:8332/
 
 
+Continuous integration
+-----------------------
+
+Continuous integration is running on drone.io <https://drone.io/bitbucket.org/miohtama/cryptoassets/>`_.
+
+The recipe to run the tests on Python 3.4::
+
 

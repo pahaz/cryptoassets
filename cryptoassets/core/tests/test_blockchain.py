@@ -10,7 +10,6 @@ from ..backend import registry as backendregistry
 
 from ..backend.blockchain import BlockChain
 from ..backend import registry as backendregistry
-from ..lock.simple import create_thread_lock
 
 
 from .base import CoinTestCase
@@ -20,7 +19,7 @@ class BlockChainBTCTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_coin(self):
 
-        backendregistry.register("btc", BlockChain(os.environ["BLOCKCHAIN_IDENTIFIER"], os.environ["BLOCKCHAIN_PASSWORD"], create_thread_lock))
+        backendregistry.register("btc", BlockChain(os.environ["BLOCKCHAIN_IDENTIFIER"], os.environ["BLOCKCHAIN_PASSWORD"]))
 
         engine = create_engine('sqlite://')
         from ..coin.bitcoin.models import BitcoinWallet

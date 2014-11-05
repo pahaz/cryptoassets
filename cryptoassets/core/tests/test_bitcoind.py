@@ -34,7 +34,6 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         label = "Test import {}".format(time.time())
         key = os.environ["BITCOIND_TESTNET_FUND_ADDRESS"]
         result = self.backend.import_private_key(label, key)
-        print(result)
         import ipdb; ipdb.set_trace()
         # public_address
         wallet.add_address(account, public_address)

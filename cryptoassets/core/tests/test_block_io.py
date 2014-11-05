@@ -16,7 +16,6 @@ from ..backend.blockio import _BlockIo
 from ..backend.blockio import SochainMonitor
 from ..backend.blockio import _convert_to_satoshi
 from ..backend.blockio import _convert_to_decimal
-from ..lock.simple import create_thread_lock
 
 
 from .base import CoinTestCase
@@ -42,7 +41,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_coin(self):
 
-        self.backend = BlockIo("btc", os.environ["BLOCK_IO_API_KEY"], os.environ["BLOCK_IO_PIN"], create_thread_lock)
+        self.backend = BlockIo("btc", os.environ["BLOCK_IO_API_KEY"], os.environ["BLOCK_IO_PIN"])
         backendregistry.register("btc", self.backend)
         self.monitor = None
 
@@ -323,7 +322,7 @@ class BlockIoDogeTestCase(BlockIoBTCTestCase):
 
     def setup_coin(self):
 
-        self.backend = BlockIo("doge", os.environ["BLOCK_IO_API_KEY_DOGE"], os.environ["BLOCK_IO_PIN"], create_thread_lock)
+        self.backend = BlockIo("doge", os.environ["BLOCK_IO_API_KEY_DOGE"], os.environ["BLOCK_IO_PIN"])
         backendregistry.register("doge", self.backend)
         self.monitor = None
 

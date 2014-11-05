@@ -29,17 +29,19 @@ class Bitcoind(BitcoindDerivate):
         """ """
         try:
             func = getattr(self.bitcoind, name)
-            return func(*args, **kwargs)
+            result = func(*args, **kwargs)
+            return result
         except JSONRPCException as e:
             msg = e.error.get("message")
             if msg:
-                raise BitcoindJSONError("Error communication with bitcoind API {}: {}".format(name, msg)) from e
+                # Show error message for more pleasant debugging
+                raise BitcoindJSONError("Error communicating with bitcoind API call {}: {}".format(name, msg)) from e
+            raise
 
     def import_private_key(self, label, key):
-        result = self.api_call("getinfo")
-        import ipdb; ipdb.set_trace()
         result = self.api_call("importprivkey", key, label, False)
-
+        print(result)
+        #import ipdb; ipdb.set_trace()
 
     def create_address(self, label):
         """ Create a new receiving address.
