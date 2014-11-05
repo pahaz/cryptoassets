@@ -1,0 +1,29 @@
+---
+# YAML
+# Cryptoassets.core configuration for the wallet sample project
+
+database:
+  url: sqlite:///:memory:?check_same_thread=false
+  pool_size: 1
+
+# What cryptocurrencies we are configuring to the database
+models:
+  btc: cryptoassets.core.coin.bitcoin.models
+  doge: cryptoassets.core.coin.dogecoin.models
+
+# What services we use to run talk to the cryptocurrency networks
+backends:
+    btc:
+        class: cryptoassets.core.backend.blockio.BlockIo
+        # API key is to BTCTEST
+        api_key: 923f-e3e9-a580-dfb2
+        pin: foobar123
+
+    doge:
+        class: cryptoassets.core.backend.blockio.BlockIo
+        # API key is to Dogetest
+        api_key: 0266-c2b6-c2c8-ee07
+        pin: foobar123
+
+locking:
+  - class: cryptoassets.core.lock.simple

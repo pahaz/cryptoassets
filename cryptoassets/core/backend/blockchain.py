@@ -1,4 +1,4 @@
-""" blockchain.info backend.
+"""blockchain.info backend.
 
 Currently does not support incoming transactions.
 

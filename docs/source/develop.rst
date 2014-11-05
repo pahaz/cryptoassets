@@ -20,6 +20,11 @@ Example::
     # block.io receiving transaction testing
     export PUSHER_API_KEY="e9f5cc20074501ca7395"
 
+    # bitcoind TESTNET credenditals
+    export BITCOIND_URL="e9f5cc20074501ca7395"
+    # import this private address where we have some TESTNET balance
+    export BITCOIND_TESTNET_FUND_ADDRESS="x"
+
     # A real wallet, not testnet!
     export BLOCKCHAIN_IDENTIFIER="x"
     export BLOCKCHAIN_PASSWORD="y"
@@ -31,4 +36,25 @@ Running all tests::
 Running a single test::
 
     python -m unittest cryptoassets.core.tests.test_block_io.BlockIoBTCTestCase.test_send_receive_external
+
+Bitcoind testnet
+------------------
+
+On OSX
++++++++++
+
+Edit ``/Users/mikko/Library/Application Support/Bitcoin/bitcoin.conf``::
+
+    testnet=1
+    server=1
+    rpcuser=foo
+    rpcpassword=bar
+    rpctimeout=30
+    rpcport=8332
+
+Restart **Bitcoin-Qt**. Now it should give green icon instead of standard orange.
+
+    open Bitcoin-Qt.app --args -server
+
+http://suffix.be/blog/getting-started-bitcoin-testnet
 

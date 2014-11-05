@@ -27,6 +27,7 @@ from sqlalchemy.schema import UniqueConstraint
 from zope.sqlalchemy import ZopeTransactionExtension
 
 from .backend import registry as backendregistry
+from . import lock
 
 # Create a thread-local DB session constructor
 DBSession = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
@@ -36,6 +37,10 @@ Base = declarative_base()
 
 def _now():
     return datetime.datetime.utcnow()
+
+
+def _get_lock(name):
+    lock.get_or_carete_lock(name)
 
 
 class NotEnoughAccountBalance(Exception):
@@ -132,7 +137,7 @@ class GenericAccount(TableName, Base, CoinBackend):
 
         This lock must be acquired for all operations touching the balance.
         """
-        return self.backend.get_lock("{}_account_lock_{}".format(self.coin, self.id))
+        return _get_lock("{}_account_lock_{}".format(self.coin, self.id))
 
 
 class GenericAddress(TableName, Base):
@@ -360,7 +365,7 @@ class GenericWallet(TableName, Base, CoinBackend):
         This lock must be acquired for all operations touching the wallet balance,
         or adding a new address.
         """
-        return self.backend.get_lock("{}_wallet_lock_{}".format(self.coin, self.id))
+        return _get_lock("{}_wallet_lock_{}".format(self.coin, self.id))
 
     def create_account(self, name):
         """Create a new account inside this wallet.
@@ -663,7 +668,7 @@ class GenericWallet(TableName, Base, CoinBackend):
         # Get all outgoing pending transactions
         txs = session.query(self.Transaction).filter(self.Transaction.state == "pending", self.Transaction.receiving_account == None)  # noqa
 
-        broadcast_lock = self.backend.get_lock("{}_broadcast_lock".format(self.coin, self.id))
+        broadcast_lock = _get_lock("{}_broadcast_lock".format(self.coin, self.id))
         with broadcast_lock:
             outgoing = Counter()
             for tx in txs:

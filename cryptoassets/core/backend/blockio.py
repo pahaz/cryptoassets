@@ -1,4 +1,4 @@
-""" Block.Io API backend.
+"""Block.Io API backend.
 
 Supports Bitcoin, Dogecoin and Litecoin on `block.io <https://block.io>`_ API.
 
@@ -20,6 +20,7 @@ from slugify import slugify
 
 from block_io import BlockIo as _BlockIo
 
+from .base import CoinBackend
 
 logger = logging.getLogger(__name__)
 
@@ -45,15 +46,15 @@ def _convert_to_decimal(satoshis):
     return str(d2.quantize(Decimal("0.00000001")))
 
 
-class BlockIo:
-    """ Synchronous block.io API. """
+class BlockIo(CoinBackend):
+    """Block.io API."""
 
-    def __init__(self, coin, api_key, pin, lock_factory):
+    def __init__(self, coin, api_key, pin):
         """
         """
         self.coin = coin
         self.block_io = _BlockIo(api_key, pin, 2)
-        self.lock_factory = lock_factory
+        # self.lock_factory = lock_factory
         self.monitor = None
 
     def to_internal_amount(self, amount):

@@ -1,6 +1,9 @@
+"""Bitcoind raw JSON-RPC testing.
+
+Test bitcoind API.
+"""
 import os
 import unittest
-import time
 
 from sqlalchemy import create_engine
 
@@ -8,7 +11,7 @@ from ..models import DBSession
 from ..models import Base
 from ..backend import registry as backendregistry
 
-from ..backend.blockchain import BlockChain
+from ..backend.bitcoind import Bitcoind
 from ..backend import registry as backendregistry
 from ..lock.simple import create_thread_lock
 
@@ -16,11 +19,24 @@ from ..lock.simple import create_thread_lock
 from .base import CoinTestCase
 
 
-class BlockChainBTCTestCase(CoinTestCase, unittest.TestCase):
+class BitcoindTestCase(CoinTestCase, unittest.TestCase):
+    """ Run bitcoind tests on TESTNET network.
+
+    Import a pre-defined private key where
+    we have some TESTNET balance available for the tests.
+    """
+
+    def setup_receiving(self, wallet):
+        pass
+
+    def teardown_receiving(self):
+        pass
 
     def setup_coin(self):
 
-        backendregistry.register("btc", BlockChain(os.environ["BLOCKCHAIN_IDENTIFIER"], os.environ["BLOCKCHAIN_PASSWORD"], create_thread_lock))
+        bitcoind = Bitcoind(url=os.environ["BITCOIND_URL"])
+        backendregistry.register("btc", bitcoind)
+        self.backend = bitcoind
 
         engine = create_engine('sqlite://')
         from ..coin.bitcoin.models import BitcoinWallet
@@ -42,11 +58,3 @@ class BlockChainBTCTestCase(CoinTestCase, unittest.TestCase):
         self.network_fee = 1000
         # Wait 10 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 60 * 10
-
-    def setup_test_fund_address(self, wallet, account):
-        # Import some TESTNET coins
-        wallet.add_address(account, "Test import {}".format(time.time()), os.environ["BLOCKCHAIN_TESTNET_TEST_FUND_ADDRESS"])
-
-    def test_send_receive_external(self):
-        # Not implemented
-        pass

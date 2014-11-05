@@ -1,3 +1,4 @@
+import abc
 import os
 import transaction
 import time
@@ -42,25 +43,11 @@ logger = logging.getLogger(__name__)
 
 
 class CoinTestCase:
-    """ Base class for different tests. """
+    """Abstract base class for all cryptocurrency backend tests.
 
-    def create_engine(self):
-
-        # Nuke previous test run
-        if os.path.exists("unittest.sqlite"):
-            os.remove("unittest.sqlite")
-
-        # XXX: Not sure what would be the correct way to run tests,
-        # so that we respect transaction consistency in external received transactions
-        # which are usually done in external thread or process
-        # pool = pool.SingletonThreadPool()
-        # engine = create_engine('sqlite:///unittest.sqlite', echo=False, poolclass=pool.SingletonThreadPool)
-
-        engine = create_engine('sqlite://',
-                            connect_args={'check_same_thread':False},
-                            poolclass=pool.StaticPool)
-
-        return engine
+    Inherit form this test case, implement abstract method and run the test case.
+    If all test passes, the backend is compatible with `cryptoassets.core`.
+    """
 
     def setUp(self):
 
@@ -88,11 +75,35 @@ class CoinTestCase:
             DBSession.query(self.Wallet).delete()
             DBSession.query(self.Account).delete()
 
-    def setup_coin(self):
-        raise NotImplementedError()
+    def create_engine(self):
+        """Create SQLAclhemy database engine for the tests."""
+        # Nuke previous test run
+        if os.path.exists("unittest.sqlite"):
+            os.remove("unittest.sqlite")
 
-    def setup_test_find_address(self, wallet, acount):
-        raise NotImplementedError()
+        # XXX: Not sure what would be the correct way to run tests,
+        # so that we respect transaction consistency in external received transactions
+        # which are usually done in external thread or process
+        # pool = pool.SingletonThreadPool()
+        # engine = create_engine('sqlite:///unittest.sqlite', echo=False, poolclass=pool.SingletonThreadPool)
+
+        engine = create_engine('sqlite://',
+                            connect_args={'check_same_thread':False},
+                            poolclass=pool.StaticPool)
+
+        return engine
+
+    @abc.abstractmethod
+    def setup_receiving(self, wallet):
+        """Necerssary setup to monitor incoming transactions for the backend."""
+
+    @abc.abstractmethod
+    def teardown_receiving(self):
+        """Teardown incoming transaction monitoring."""
+
+    @abc.abstractmethod
+    def setup_coin(self):
+        """Setup coin backend for this test case."""
 
     def tearDown(self):
         DBSession.remove()
@@ -485,5 +496,4 @@ class CoinTestCase:
             self.assertEqual(txs.count(), 0)
 
             self.assertGreater(account.balance, 0, "Timeouted receiving external transaction")
-
 

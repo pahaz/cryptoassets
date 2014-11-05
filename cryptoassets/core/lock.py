@@ -1,9 +1,4 @@
-"""
-
-    Simple locking implementatoin.
-
-    Only safe for single process applications.
-
+"""Distributed lock management.
 """
 
 import threading
@@ -16,3 +11,11 @@ def create_thread_lock(name):
         _locks[name] = threading.Lock()
 
     return _locks[name]
+
+
+def configure():
+    pass
+
+
+def get_or_create_lock(name):
+    return create_thread_lock(name)
