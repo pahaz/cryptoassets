@@ -1,0 +1,6 @@
+---
+# Broken config - no backends
+#
+database:
+  url: sqlite:///:memory:?check_same_thread=false
+  pool_size: 1

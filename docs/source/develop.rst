@@ -21,9 +21,9 @@ Example::
     export PUSHER_API_KEY="e9f5cc20074501ca7395"
 
     # bitcoind TESTNET credenditals
-    export BITCOIND_URL="e9f5cc20074501ca7395"
+    export BITCOIND_URL="http://foo:bar@127.0.0.1:8332/"
     # import this private address where we have some TESTNET balance
-    export BITCOIND_TESTNET_FUND_ADDRESS="x"
+    export BITCOIND_TESTNET_FUND_ADDRESS="cR32RVCvf1uUQzqqaKM2q7kEoWZ2EyabxDdAGGD9hFj5ZnEYjchV"
 
     # A real wallet, not testnet!
     export BLOCKCHAIN_IDENTIFIER="x"
@@ -40,8 +40,8 @@ Running a single test::
 Bitcoind testnet
 ------------------
 
-On OSX
-+++++++++
+Setting up TESTNET bitcoind on OSX
+++++++++++++++++++++++++++++++++++++
 
 Edit ``/Users/mikko/Library/Application Support/Bitcoin/bitcoin.conf``::
 
@@ -54,7 +54,25 @@ Edit ``/Users/mikko/Library/Application Support/Bitcoin/bitcoin.conf``::
 
 Restart **Bitcoin-Qt**. Now it should give green icon instead of standard orange.
 
-    open Bitcoin-Qt.app --args -server
+Test the JSON-RPC server connection::
+
+     curl --user foo:bar --data-binary '{"id":"t0", "method": "getinfo", "params": [] }' http://127.0.0.1:8332/
 
 http://suffix.be/blog/getting-started-bitcoin-testnet
+
+TESTNET faucet
+++++++++++++++++
+
+Get TESTNET coins from here:
+
+http://tpfaucet.appspot.com/
+
+Dumping your TESTNET private address for importing in tests
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Example using public address ``mk2o9anFwtHFGFKeD89Qxh5YBhNMQk7NrS``::
+
+    curl --user foo:bar --data-binary '{"id":"t0", "method": "dumpprivkey", "params": ["mk2o9anFwtHFGFKeD89Qxh5YBhNMQk7NrS"] }' http://127.0.0.1:8332/
+
+
 

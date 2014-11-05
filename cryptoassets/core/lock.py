@@ -13,9 +13,5 @@ def create_thread_lock(name):
     return _locks[name]
 
 
-def configure():
-    pass
-
-
 def get_or_create_lock(name):
     return create_thread_lock(name)

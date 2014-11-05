@@ -40,7 +40,7 @@ def _now():
 
 
 def _get_lock(name):
-    lock.get_or_carete_lock(name)
+    return lock.get_or_create_lock(name)
 
 
 class NotEnoughAccountBalance(Exception):

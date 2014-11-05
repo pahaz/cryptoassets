@@ -1,6 +1,6 @@
 """Configuring cryptoassets.core for your project.
 
-Setup backends, etc. based on dictionary or config-file input.
+Setup SQLAlchemy, backends, etc. based on individual dictionaries or YAML syntax configuration file.
 """
 
 import io
@@ -43,6 +43,10 @@ def setup_backends(backends):
 
     :param backends: dictionary of coin name -> backend data
     """
+
+    if not backends:
+        raise ConfigurationError("backends section missing in config")
+
     for name, data in backends.items():
         data = data.copy()  # No mutate in place
         klass = data.pop("class")
@@ -87,7 +91,9 @@ def load_yaml_file(fname):
     """Load config from a YAML file."""
     stream = io.open(fname, "rt")
     config = yaml.safe_load(stream)
-    print(config)
+
+    if not type(config) == dict:
+        raise ConfigurationError("YAML configuration file must be mapping like")
 
     setup_engine(config.get("database"))
     setup_backends(config.get("backends"))

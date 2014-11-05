@@ -48,10 +48,10 @@ class ConfigureTestCase(unittest.TestCase):
         }
         configure.setup_engine(engine)
 
-        models = [
-            "cryptoassets.core.coin.bitcoin.models",
-            "cryptoassets.core.coin.dogecoin.models"
-        ]
+        models = {
+            "btc": "cryptoassets.core.coin.bitcoin.models",
+            "doge": "cryptoassets.core.coin.dogecoin.models"
+        }
 
         configure.setup_models(models)
 
@@ -73,3 +73,14 @@ class ConfigureTestCase(unittest.TestCase):
         self.assertTrue(os.path.exists(sample_file), "Did not found {}".format(sample_file))
         configure.load_yaml_file(sample_file)
         configure.check()
+
+    def test_load_no_backend(self):
+        """ Load broken configuration file where backends section is missing.
+        """
+        sample_file = os.path.join(os.path.dirname(__file__), "broken-config-no-backend.yaml")
+        self.assertTrue(os.path.exists(sample_file), "Did not found {}".format(sample_file))
+
+        def try_it():
+            configure.load_yaml_file(sample_file)
+
+        self.assertRaises(configure.ConfigurationError, try_it)

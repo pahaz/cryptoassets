@@ -3,6 +3,7 @@
 Test bitcoind API.
 """
 import os
+import time
 import unittest
 
 from sqlalchemy import create_engine
@@ -13,7 +14,6 @@ from ..backend import registry as backendregistry
 
 from ..backend.bitcoind import Bitcoind
 from ..backend import registry as backendregistry
-from ..lock.simple import create_thread_lock
 
 
 from .base import CoinTestCase
@@ -25,6 +25,19 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
     Import a pre-defined private key where
     we have some TESTNET balance available for the tests.
     """
+
+    def top_up_balance(self, wallet, account):
+        """ Add some test balance on the wallet. """
+
+    def setup_test_fund_address(self, wallet, account):
+        # Import some TESTNET coins
+        label = "Test import {}".format(time.time())
+        key = os.environ["BITCOIND_TESTNET_FUND_ADDRESS"]
+        result = self.backend.import_private_key(label, key)
+        print(result)
+        import ipdb; ipdb.set_trace()
+        # public_address
+        wallet.add_address(account, public_address)
 
     def setup_receiving(self, wallet):
         pass

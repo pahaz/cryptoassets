@@ -105,6 +105,10 @@ class CoinTestCase:
     def setup_coin(self):
         """Setup coin backend for this test case."""
 
+    @abc.abstractmethod
+    def top_up_balance(self):
+        """Add some test balance on the wallet."""
+
     def tearDown(self):
         DBSession.remove()
         testing.tearDown()

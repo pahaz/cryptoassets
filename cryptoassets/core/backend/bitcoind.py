@@ -1,9 +1,17 @@
 """bitcoind and bitcoind-likes backend.
 
+Created upon https://github.com/4tar/python-bitcoinrpc/tree/p34-compatablity
 
 """
 
+from bitcoinrpc.authproxy import AuthServiceProxy
+from bitcoinrpc.authproxy import JSONRPCException
+
 from .base import CoinBackend
+
+
+class BitcoindJSONError(Exception):
+    pass
 
 
 class BitcoindDerivate(CoinBackend):
@@ -15,10 +23,23 @@ class Bitcoind(BitcoindDerivate):
 
     def __init__(self, url):
         self.url = url
-        self.bitcoind_api = None
+        self.bitcoind = AuthServiceProxy(url)
+
+    def api_call(self, name, *args, **kwargs):
+        """ """
+        try:
+            func = getattr(self.bitcoind, name)
+            return func(*args, **kwargs)
+        except JSONRPCException as e:
+            msg = e.error.get("message")
+            if msg:
+                raise BitcoindJSONError("Error communication with bitcoind API {}: {}".format(name, msg)) from e
 
     def import_private_key(self, label, key):
-        self.bitcoind.importprivkey(key, label)
+        result = self.api_call("getinfo")
+        import ipdb; ipdb.set_trace()
+        result = self.api_call("importprivkey", key, label, False)
+
 
     def create_address(self, label):
         """ Create a new receiving address.
