@@ -24,7 +24,11 @@ class CoinBackend(abc.ABC):
 
     @abc.abstractmethod
     def get_balances(self, addresses):
-        """ Get balances on multiple addresses.
+        """Get balances on multiple addresses.
+
+        Return the address balance in the native format (backend converts to satoshis, etc.)
+
+        :yield: (address, balance) tuples
         """
 
     @abc.abstractmethod

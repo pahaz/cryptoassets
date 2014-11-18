@@ -15,15 +15,17 @@ from ..backend import registry as backendregistry
 from ..backend.bitcoind import Bitcoind
 from ..backend import registry as backendregistry
 
-
+from .. import configure
 from .base import CoinTestCase
 
+# https://github.com/onenameio/coinkit/blob/master/coinkit/keypair.py#L51
 
 class BitcoindTestCase(CoinTestCase, unittest.TestCase):
-    """ Run bitcoind tests on TESTNET network.
+    """Run bitcoind tests on TESTNET network.
 
-    Import a pre-defined private key where
-    we have some TESTNET balance available for the tests.
+    Import a pre-defined private key where we have some TESTNET balance available for the tests.
+
+    We need to have locally set up bitcoind running in testnet and its transaction hook set up to call our script.
     """
 
     def top_up_balance(self, wallet, account):
@@ -32,11 +34,10 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
     def setup_test_fund_address(self, wallet, account):
         # Import some TESTNET coins
         label = "Test import {}".format(time.time())
-        key = os.environ["BITCOIND_TESTNET_FUND_ADDRESS"]
-        result = self.backend.import_private_key(label, key)
-        import ipdb; ipdb.set_trace()
-        # public_address
-        wallet.add_address(account, public_address)
+        private_key, public_address = os.environ["BITCOIND_TESTNET_FUND_ADDRESS"].split(":")
+        self.backend.import_private_key(label, private_key)
+        wallet.add_address(account, "Test import {}".format(time.time()), public_address)
+        wallet.scan_wallet()
 
     def setup_receiving(self, wallet):
         pass
@@ -46,18 +47,16 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_coin(self):
 
-        bitcoind = Bitcoind(url=os.environ["BITCOIND_URL"])
-        backendregistry.register("btc", bitcoind)
-        self.backend = bitcoind
+        test_config = os.path.join(os.path.dirname(__file__), "bitcoind.config.yaml")
+        self.assertTrue(os.path.exists(test_config), "Did not found {}".format(test_config))
+        configure.load_yaml_file(test_config)
 
-        engine = create_engine('sqlite://')
+        self.backend = backendregistry.get("btc")
+
         from ..coin.bitcoin.models import BitcoinWallet
         from ..coin.bitcoin.models import BitcoinAddress
         from ..coin.bitcoin.models import BitcoinTransaction
         from ..coin.bitcoin.models import BitcoinAccount
-        DBSession.configure(bind=engine)
-        Base.metadata.create_all(engine)
-
         self.Address = BitcoinAddress
         self.Wallet = BitcoinWallet
         self.Transaction = BitcoinTransaction

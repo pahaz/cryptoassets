@@ -23,7 +23,8 @@ Example::
     # bitcoind TESTNET credenditals
     export BITCOIND_URL="http://foo:bar@127.0.0.1:8332/"
     # import this private address where we have some TESTNET balance
-    export BITCOIND_TESTNET_FUND_ADDRESS="cR32RVCvf1uUQzqqaKM2q7kEoWZ2EyabxDdAGGD9hFj5ZnEYjchV"
+    # this is private key:address tuple
+    export BITCOIND_TESTNET_FUND_ADDRESS="cR32RVCvf1uUQzqqaKM2q7kEoWZ2EyabxDdAGGD9hFj5ZnEYjchV:mk2o9anFwtHFGFKeD89Qxh5YBhNMQk7NrS"
 
     # A real wallet, not testnet!
     export BLOCKCHAIN_IDENTIFIER="x"
@@ -51,6 +52,7 @@ Edit ``/Users/mikko/Library/Application Support/Bitcoin/bitcoin.conf``::
     rpcpassword=bar
     rpctimeout=30
     rpcport=8332
+    txindex=1
 
 Restart **Bitcoin-Qt**. Now it should give green icon instead of standard orange.
 
@@ -59,6 +61,10 @@ Test the JSON-RPC server connection::
      curl --user foo:bar --data-binary '{"id":"t0", "method": "getinfo", "params": [] }' http://127.0.0.1:8332/
 
 http://suffix.be/blog/getting-started-bitcoin-testnet
+
+Starting bitcoind in debug mode::
+
+    /Applications/Bitcoin-Qt.app/Contents/MacOS/Bitcoin-Qt -debug -reindex
 
 TESTNET faucet
 ++++++++++++++++

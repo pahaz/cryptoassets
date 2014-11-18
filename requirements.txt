@@ -27,6 +27,7 @@ pyramid-debugtoolbar==2.2
 pyramid-mako==1.0.2
 pyramid-tm==0.7
 python-slugify==0.0.7
+PyYAML==3.11
 rainbow-logging-handler==2.2.2
 repoze.lru==0.6
 requests==2.4.3
@@ -40,3 +41,4 @@ websocket-client==0.21.0
 zope.deprecation==4.1.1
 zope.interface==4.1.1
 zope.sqlalchemy==0.7.5
+zope.dottedname==4.0.1

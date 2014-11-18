@@ -7,6 +7,8 @@ import io
 
 import yaml
 
+from zope.dottedname.resolve import resolve
+
 from pyramid.path import DottedNameResolver
 
 from sqlalchemy import engine_from_config
@@ -16,6 +18,9 @@ from .models import Base
 
 from .backend.base import CoinBackend
 from .backend import registry
+
+from .notify import registry as notifier_registry
+from .notify.base import Notifier
 
 
 _engine = None
@@ -51,8 +56,7 @@ def setup_backends(backends):
         data = data.copy()  # No mutate in place
         klass = data.pop("class")
         data["coin"] = name
-        from cryptoassets.core.backend.blockio import BlockIo
-        provider = BlockIo
+        provider = resolve(klass)
         # Pass given configuration options to the backend as is
         try:
             instance = provider(**data)
@@ -87,6 +91,43 @@ def setup_models(modules):
     Base.metadata.create_all(_engine)
 
 
+def setup_notifications(notifiers):
+    """Setup SQLAlchemy models.
+
+    Example notifier format:
+
+        {
+            "shell": {
+                "class": "cryptoassets.core.notifiers.shell.ShellNotifier",
+                "script": "/usr/bin/local/new-payment.sh"
+            }
+        }
+    """
+    for name, data in notifiers.items():
+        data = data.copy()  # No mutate in place
+        klass = data.pop("class")
+        provider = resolve(klass)
+        # Pass given configuration options to the backend as is
+        try:
+            instance = provider(**data)
+        except TypeError as te:
+            # TODO: Here we reflect potential passwords from the configuration file
+            # back to the terminal
+            # TypeError: __init__() got an unexpected keyword argument 'network'
+            raise ConfigurationError("Could not initialize notifier {} with options {}".format(klass, data)) from te
+
+        assert isinstance(instance, Notifier)
+        notifier_registry.register(name, instance)
+
+
+def load_from_dict(config):
+    """ Load configuration from Python dictionary. """
+
+    setup_engine(config.get("database"))
+    setup_backends(config.get("backends"))
+    setup_models(config.get("models"))
+
+
 def load_yaml_file(fname):
     """Load config from a YAML file."""
     stream = io.open(fname, "rt")
@@ -95,9 +136,7 @@ def load_yaml_file(fname):
     if not type(config) == dict:
         raise ConfigurationError("YAML configuration file must be mapping like")
 
-    setup_engine(config.get("database"))
-    setup_backends(config.get("backends"))
-    setup_models(config.get("models"))
+    load_from_dict(config)
 
 
 def check():

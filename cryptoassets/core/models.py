@@ -359,6 +359,19 @@ class GenericWallet(TableName, Base, CoinBackend):
     def __init__(self):
         self.balance = 0
 
+    @classmethod
+    def get_or_create_by_name(cls, name, session):
+        """Returns a new or existing wallet with a certain name.
+
+        :return: Wallet instance
+        """
+        instance = session.query(cls).filter_by(name=name).first()
+        if not instance:
+            instance = cls(name=name)
+            session.add(instance)
+
+        return instance
+
     def lock(self):
         """ Get a lock context manager to protect operations targeting this account.
 
@@ -383,6 +396,14 @@ class GenericWallet(TableName, Base, CoinBackend):
         session.add(account)
         return account
 
+    def get_or_create_account_by_name(self, name):
+        session = Session.object_session(self)
+        instance = session.query(self.Account).filter_by(name=name).first()
+        if not instance:
+            instance = self.create_account()
+
+        return instance
+
     def get_or_create_network_fee_account(self):
         """Lazily create the special account where we account all network fees.
 
@@ -390,12 +411,7 @@ class GenericWallet(TableName, Base, CoinBackend):
         charged from the users doing the actual transaction, but it
         must be solved on the application level.
         """
-        session = Session.object_session(self)
-        instance = session.query(self.Account).filter_by(name=self.Account.NETWORK_FEE_ACCOUNT).first()
-        if not instance:
-            instance = self.create_account(self.Account.NETWORK_FEE_ACCOUNT)
-
-        return instance
+        return self.get_or_create_account_by_name(self.Account.NETWORK_FEE_ACCOUNT)
 
     def create_receiving_address(self, account, label):
         """ Creates a new receiving address.
@@ -548,11 +564,11 @@ class GenericWallet(TableName, Base, CoinBackend):
         return self.get_external_received_transactions().filter(self.Transaction.credited_at == None).join(self.Address)  # noqa
 
     def refresh_account_balance(self, account):
-        """ Refresh the balance for one account.
+        """Refresh the balance for one account.
 
         If you have imported any addresses, this will recalculate balances from the backend.
 
-        TODO: This screws ups book keeping, so DON'T call this on production.
+        TODO: This screws ups bookkeeping, so DON'T call this on production.
         It doesn't write fixing entries yet.
 
         :param account: GenericAccount instance
@@ -573,6 +589,17 @@ class GenericWallet(TableName, Base, CoinBackend):
                 session.query(self.Address).filter(self.Address.address == address).update({"balance": balance})
 
             account.balance = total_balance
+
+    def scan_wallet(self, start=0, limit=50, extra={}):
+        """Scans all incoming transactions for this wallet.
+
+        :param extra: Dictoinary of extra parameters to the backend. E.g. `dict(confirmatios=1)`.
+        """
+        session = Session.object_session(self)
+
+        with self.lock():
+            for tx in self.backend.list_transactions(start, limit):
+                import ipdb; ipdb.set_trace()
 
     def send_internal(self, from_account, to_account, amount, label, allow_negative_balance=False):
         """ Tranfer currency internally between the accounts of this wallet.
