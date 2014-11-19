@@ -19,6 +19,7 @@ Contents:
    models
    backends
    coins
+   notifications
    develop
 
 

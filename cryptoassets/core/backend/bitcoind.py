@@ -107,6 +107,7 @@ class Bitcoind(BitcoindDerivate):
         """
         """
         result = self.api_call("listtransactions", "", start, limit)
+        ipdb
         return result
 
     def get_lock(self, name):

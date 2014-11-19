@@ -91,7 +91,7 @@ def setup_models(modules):
     Base.metadata.create_all(_engine)
 
 
-def setup_notifications(notifiers):
+def setup_notify(notifiers):
     """Setup SQLAlchemy models.
 
     Example notifier format:

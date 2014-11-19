@@ -1,10 +1,12 @@
 """Test posting notifications.
 
 """
+import io
 import os
 import stat
 import unittest
 import warnings
+import json
 
 from .. import configure
 from ..notify import notify
@@ -12,12 +14,16 @@ from ..notify import notify
 SAMPLE_SCRIPT_PATH = "/tmp/cryptoassets-test_notifier.sh"
 
 SAMPLE_SCRIPT = """#/bin/sh
+echo Foo
+echo $0
+echo $CRYPTOASSETS_EVENT_NAME
+echo $CRYPTOASSETS_EVENT_DATA
 
-echo $2>> /tmp/cryptoassets-test_notifier
+echo $CRYPTOASSETS_EVENT_DATA > /tmp/cryptoassets-test_notifier
 """
 
 
-class ShellNotificationTestCase(unittest.TestCase):
+class ScriptNotificationTestCase(unittest.TestCase):
     """
     """
 
@@ -27,7 +33,7 @@ class ShellNotificationTestCase(unittest.TestCase):
         warnings.filterwarnings("ignore", category=ResourceWarning)  # noqa
 
         # Create a test script
-        with io.iopen(SAMPLE_SCRIPT_PATH, "wt") as f:
+        with io.open(SAMPLE_SCRIPT_PATH, "wt") as f:
             f.write(SAMPLE_SCRIPT)
 
         st = os.stat(SAMPLE_SCRIPT_PATH)
@@ -38,13 +44,16 @@ class ShellNotificationTestCase(unittest.TestCase):
         """
         config = {
             "test_script": {
-                "class": "cryptoassets.core.notify.shell.ShellNotifier",
+                "class": "cryptoassets.core.notify.script.ScriptNotifier",
                 "script": SAMPLE_SCRIPT_PATH,
+                "log_output": True
             }
         }
-        configure.setup_notifier(config)
+        configure.setup_notify(config)
 
-        notify.notify("foobar", {"test": "abc"})
+        notify("foobar", {"test": "abc"})
 
-
+        with io.open("/tmp/cryptoassets-test_notifier", "rt") as f:
+            data = json.load(f)
+            self.assertEqual(data["test"], "abc")
 

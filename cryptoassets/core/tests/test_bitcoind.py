@@ -5,6 +5,10 @@ Test bitcoind API.
 import os
 import time
 import unittest
+import threading
+import subprocess
+
+from unittest.mock import patch
 
 from sqlalchemy import create_engine
 
@@ -16,9 +20,21 @@ from ..backend.bitcoind import Bitcoind
 from ..backend import registry as backendregistry
 
 from .. import configure
+from ..service.pipe import PipedWalletNotifyHandler
 from .base import CoinTestCase
 
-# https://github.com/onenameio/coinkit/blob/master/coinkit/keypair.py#L51
+WALLETNOTIFY_PIPE = "/tmp/cryptoassets-unittest-walletnotify-pipe"
+
+
+class WalletNotifyPipeThread(PipedWalletNotifyHandler, threading.Thread):
+    """A thread which handles reading from walletnotify named pipe.
+    """
+
+    def __init__(self, coin, name):
+        PipedWalletNotifyHandler.__init__(self, coin, name)
+        threading.Thread.__init__(self)
+        self.daemon = True
+
 
 class BitcoindTestCase(CoinTestCase, unittest.TestCase):
     """Run bitcoind tests on TESTNET network.
@@ -40,10 +56,13 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         wallet.scan_wallet()
 
     def setup_receiving(self, wallet):
-        pass
+        self.walletnotify_pipe = WalletNotifyPipeThread(self.Wallet.coin, WALLETNOTIFY_PIPE)
+        self.walletnotify_pipe.start()
 
     def teardown_receiving(self):
-        pass
+        walletnotify_pipe = getattr(self, "walletnotify_pipe")
+        if walletnotify_pipe:
+            walletnotify_pipe.stop()
 
     def setup_coin(self):
 
@@ -69,3 +88,26 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         self.network_fee = 1000
         # Wait 10 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 60 * 10
+
+    def test_piped_walletnotify(self):
+        """Check that we receive notifications through the named pipe"""
+
+        wallet = self.Wallet()
+
+        with patch.object(PipedWalletNotifyHandler, 'handle_tx_update', return_value=None) as mock_method:
+            self.setup_receiving(wallet)
+
+            # Wait until walletnotifier has set up the pipe
+            deadline = time.time() + 25
+            while not self.walletnotify_pipe.ready:
+                time.sleep(0.1)
+                self.assertLess(time.time(), deadline, "PipedWalletNotifyHandler never become ready")
+
+            self.assertTrue(self.walletnotify_pipe.is_alive())
+            self.assertTrue(os.path.exists(WALLETNOTIFY_PIPE))
+
+            subprocess.call("echo faketransactionid >> {}".format(WALLETNOTIFY_PIPE), shell=True)
+            time.sleep(0.1)  # Let walletnotify thread to pick it up
+
+            mock_method.assert_called_once_with("faketransactionid")
+

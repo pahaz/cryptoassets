@@ -14,4 +14,4 @@ def register(name, notifier):
 
 
 def get_all():
-    return _registry.itervalues()
+    return _registry.values()
