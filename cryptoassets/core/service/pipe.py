@@ -65,23 +65,23 @@ def nonblocking_readlines(fd):
 class PipedWalletNotifyHandler:
     """Handle walletnofify notificatians from bitcoind through named UNIX pipe."""
 
-    def __init__(self, coin, fname, mode=0o703):
+    def __init__(self, transaction_updater, fname, mode=0o703):
         """
-        :param coin: Three letter coin acronym
+        :param transaction_updater: Instance of :py:class:`cryptoassets.core.backend.bitcoind.TransactionUpdater` or None
 
         :param name: Full path to the UNIX named pipe
 
         :param mode: Octal UNIX file mode for the named pipe
         """
-        self.coin = coin
+        self.transaction_updater = transaction_updater
         self.running = True
         self.fname = fname
         self.ready = False
         self.mode = mode
 
     def handle_tx_update(self, txid):
-        backend = registry.get(self.coin)
-        backend.handle_tx_update(txid)
+        if self.transaction_updater:
+            self.transaction_updater.handle_wallet_notify(txid)
 
     def run(self):
 

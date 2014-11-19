@@ -17,6 +17,7 @@ from ..models import Base
 from ..backend import registry as backendregistry
 
 from ..backend.bitcoind import Bitcoind
+from ..backend.bitcoind import TransactionUpdater
 from ..backend import registry as backendregistry
 
 from .. import configure
@@ -56,7 +57,10 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         wallet.scan_wallet()
 
     def setup_receiving(self, wallet):
-        self.walletnotify_pipe = WalletNotifyPipeThread(self.Wallet.coin, WALLETNOTIFY_PIPE)
+
+        self.transaction_updater = TransactionUpdater(DBSession, self.backend)
+
+        self.walletnotify_pipe = WalletNotifyPipeThread(self.transaction_updater, WALLETNOTIFY_PIPE)
         self.walletnotify_pipe.start()
 
     def teardown_receiving(self):
@@ -90,15 +94,15 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         self.external_receiving_timeout = 60 * 10
 
     def test_piped_walletnotify(self):
-        """Check that we receive notifications through the named pipe"""
-
-        wallet = self.Wallet()
+        """Check that we receive txids through the named pipe."""
 
         with patch.object(PipedWalletNotifyHandler, 'handle_tx_update', return_value=None) as mock_method:
-            self.setup_receiving(wallet)
 
-            # Wait until walletnotifier has set up the pipe
-            deadline = time.time() + 25
+            self.walletnotify_pipe = WalletNotifyPipeThread(None, WALLETNOTIFY_PIPE)
+            self.walletnotify_pipe.start()
+
+            # Wait until walletnotifier has set up the named pipe
+            deadline = time.time() + 3
             while not self.walletnotify_pipe.ready:
                 time.sleep(0.1)
                 self.assertLess(time.time(), deadline, "PipedWalletNotifyHandler never become ready")
@@ -111,3 +115,56 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
             mock_method.assert_called_once_with("faketransactionid")
 
+    def test_incoming_transaction(self):
+        """Check we get notification for the incoming transaction.
+
+        We will
+
+        # Create an testnet wallet with an account with old known address imported
+
+        # We know one transcation which has gone to this address
+
+        # We manually trigger walletnotify hook with the transaction id
+
+        # WalletNotifier should fetch the transaction from bitcoind, consider it as received transaction
+
+        # Account balance should be updated
+        """
+
+        # Create a wallet
+        wallet = self.Wallet()
+        DBSession.add(wallet)
+        DBSession.flush()
+
+        # Spoof a fake address on the wallet
+        account = wallet.create_account("Test account")
+        DBSession.flush()
+
+        # Testnet transaction id we are spoofing
+        # bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf-000
+        # to
+        # n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr
+        wallet.add_address(account, "Old known address with a transaction", "n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr")
+
+        transaction_updater = TransactionUpdater(DBSession, wallet.id, self.backend)
+
+        self.walletnotify_pipe = WalletNotifyPipeThread(transaction_updater, WALLETNOTIFY_PIPE)
+        self.walletnotify_pipe.start()
+
+        # Wait until walletnotifier has set up the named pipe
+        deadline = time.time() + 3
+        while not self.walletnotify_pipe.ready:
+            time.sleep(0.1)
+            self.assertLess(time.time(), deadline, "PipedWalletNotifyHandler never become ready")
+
+        subprocess.call("echo bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf >> {}".format(WALLETNOTIFY_PIPE), shell=True)
+        time.sleep(0.1)  # Let walletnotify thread to pick it up
+
+        deadline = time.time() + 3
+        while transaction_updater.count == 0:
+            time.sleep(0.1)
+            self.assertLess(time.time(), deadline, "Transaction updater never kicked in")
+
+        # Reload account from the database
+        account = DBSession.query(self.Account).get(account.id)
+        self.assertEqual(account.balance, 0)

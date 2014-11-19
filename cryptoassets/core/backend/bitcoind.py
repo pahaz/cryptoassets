@@ -129,3 +129,27 @@ class Bitcoind(BitcoindDerivate):
         ATM does nothing as this needs to be set up in bitcoind config file.
         """
 
+
+class BadWalletNotify(Exception):
+    pass
+
+
+class TransactionUpdater:
+    """Write transactions updates from bitcoind to the database."""
+
+    def __init__(self, session, wallet_id, backend):
+        """
+        :param session: SQLAlchemy database session
+        """
+        self.backend = backend
+        self.wallet_id = wallet_id
+        self.session = session
+
+        # Simple book-keeping of number of transactions we have handled
+        self.count = 0
+
+    def handle_wallet_notify(self, txid):
+        """Incoming walletnotify event.
+        """
+        self.count += 1
+
