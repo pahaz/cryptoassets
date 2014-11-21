@@ -7,6 +7,7 @@ import time
 import unittest
 import threading
 import subprocess
+import transaction
 
 from unittest.mock import patch
 
@@ -34,6 +35,9 @@ class WalletNotifyPipeThread(PipedWalletNotifyHandler, threading.Thread):
     def __init__(self, coin, name):
         PipedWalletNotifyHandler.__init__(self, coin, name)
         threading.Thread.__init__(self)
+
+        # If you need to set pdb breakpoints inside the transaction updater,
+        # you need to first flip this around
         self.daemon = True
 
 
@@ -45,16 +49,28 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
     We need to have locally set up bitcoind running in testnet and its transaction hook set up to call our script.
     """
 
-    def top_up_balance(self, wallet, account):
-        """ Add some test balance on the wallet. """
+    def refresh_account_balance(self, wallet, account):
+        """ """
+        transaction_updater = TransactionUpdater(DBSession, self.backend, self.Wallet, wallet.id)
+
+        # We should find at least one transaction topping up our testnet wallet
+        found = transaction_updater.rescan_all()
+        self.assertGreater(found, 0)
+
+        # Because we have imported public address to database previously,
+        # transaction_updater should have updated the balance on this address
+        account = DBSession.query(self.Account).get(account.id)
+        self.assertGreater(account.balance, 0)
 
     def setup_test_fund_address(self, wallet, account):
         # Import some TESTNET coins
+        assert wallet.id
+        assert account.id
         label = "Test import {}".format(time.time())
         private_key, public_address = os.environ["BITCOIND_TESTNET_FUND_ADDRESS"].split(":")
         self.backend.import_private_key(label, private_key)
         wallet.add_address(account, "Test import {}".format(time.time()), public_address)
-        wallet.scan_wallet()
+        self.assertGreater(wallet.get_receiving_addresses().count(), 0)
 
     def setup_receiving(self, wallet):
 
@@ -87,9 +103,11 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         self.external_transaction_confirmation_count = 0
 
+        self.Transaction.confirmation_count = 1
+
         # Withdrawal amounts must be at least 0.00002000 BTCTEST, and at most 50.00000000 BTCTEST.
         self.external_send_amount = 2100
-        self.network_fee = 1000
+        self.network_fee = 10000
         # Wait 10 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 60 * 10
 
@@ -115,6 +133,8 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
             mock_method.assert_called_once_with("faketransactionid")
 
+        self.walletnotify_pipe.stop()
+
     def test_incoming_transaction(self):
         """Check we get notification for the incoming transaction.
 
@@ -131,22 +151,25 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         # Account balance should be updated
         """
 
-        # Create a wallet
-        wallet = self.Wallet()
-        DBSession.add(wallet)
-        DBSession.flush()
+        with transaction.manager:
+            # Create a wallet
+            wallet = self.Wallet()
+            DBSession.add(wallet)
+            DBSession.flush()
 
-        # Spoof a fake address on the wallet
-        account = wallet.create_account("Test account")
-        DBSession.flush()
+            # Spoof a fake address on the wallet
+            account = wallet.create_account("Test account")
+            DBSession.flush()
 
-        # Testnet transaction id we are spoofing
-        # bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf-000
-        # to
-        # n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr
-        wallet.add_address(account, "Old known address with a transaction", "n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr")
+            # Testnet transaction id we are spoofing
+            # bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf-000
+            # to
+            # n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr
+            wallet.add_address(account, "Old known address with a transaction", "n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr")
 
-        transaction_updater = TransactionUpdater(DBSession, wallet.id, self.backend)
+            transaction_updater = TransactionUpdater(DBSession, self.backend, self.Wallet, wallet.id)
+
+            account_id = account.id
 
         self.walletnotify_pipe = WalletNotifyPipeThread(transaction_updater, WALLETNOTIFY_PIPE)
         self.walletnotify_pipe.start()
@@ -158,13 +181,60 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
             self.assertLess(time.time(), deadline, "PipedWalletNotifyHandler never become ready")
 
         subprocess.call("echo bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf >> {}".format(WALLETNOTIFY_PIPE), shell=True)
-        time.sleep(0.1)  # Let walletnotify thread to pick it up
 
         deadline = time.time() + 3
         while transaction_updater.count == 0:
             time.sleep(0.1)
             self.assertLess(time.time(), deadline, "Transaction updater never kicked in")
 
-        # Reload account from the database
-        account = DBSession.query(self.Account).get(account.id)
-        self.assertEqual(account.balance, 0)
+        # Check that transaction manager did not die with an exception
+        # in other thread
+        self.assertEqual(transaction_updater.count, 1)
+        self.assertTrue(self.walletnotify_pipe.is_alive())
+
+        with transaction.manager:
+            # Reload account from the database
+            account = DBSession.query(self.Account).get(account_id)
+            self.assertEqual(account.balance, 120000000)
+
+        # Triggering the transaction update again should not change the balance
+        subprocess.call("echo bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf >> {}".format(WALLETNOTIFY_PIPE), shell=True)
+
+        deadline = time.time() + 3
+        while transaction_updater.count == 1:
+            time.sleep(0.1)
+            self.assertLess(time.time(), deadline, "Transaction updater never kicked in")
+
+        with transaction.manager:
+            account = DBSession.query(self.Account).get(account_id)
+            self.assertEqual(account.balance, 120000000)
+
+        self.walletnotify_pipe.stop()
+
+    def test_scan_wallet(self):
+        """Rescan all wallet transactions and rebuild account balances."""
+
+        with transaction.manager:
+            # Create a wallet
+            wallet = self.Wallet()
+            DBSession.add(wallet)
+            DBSession.flush()
+
+            # Spoof a fake address on the wallet
+            account = wallet.create_account("Test account")
+            DBSession.flush()
+
+            # Testnet transaction id we are spoofing
+            # bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf-000
+            # to
+            # n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr
+            wallet.add_address(account, "Old known address with a transaction", "n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr")
+
+        with transaction.manager:
+            transaction_updater = TransactionUpdater(DBSession, self.backend, self.Wallet, 1)
+            transaction_updater.rescan_all()
+
+            self.assertGreater(transaction_updater.count, 0)
+
+            account = DBSession.query(self.Account).get(1)
+            self.assertGreater(account.balance, 0)

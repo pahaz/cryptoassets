@@ -400,7 +400,7 @@ class GenericWallet(TableName, Base, CoinBackend):
         session = Session.object_session(self)
         instance = session.query(self.Account).filter_by(name=name).first()
         if not instance:
-            instance = self.create_account()
+            instance = self.create_account(name)
 
         return instance
 
@@ -507,6 +507,9 @@ class GenericWallet(TableName, Base, CoinBackend):
         :param address: Address instance
         """
         session = Session.object_session(self)
+
+        assert session, "Tried to add address to a non-bound wallet object"
+
         address_obj = self.Address()
         address_obj.address = address
         address_obj.account = account
@@ -524,6 +527,20 @@ class GenericWallet(TableName, Base, CoinBackend):
         # Go through all accounts and all their addresses
 
         return session.query(self.Account).filter(self.Account.wallet_id == self.id)  # noqa
+
+    def get_account_by_address(self, address):
+        """Check if a particular address belongs to receiving address of this wallet and return its account.
+
+        This does not consider bitcoin change addresses and such.
+
+        :return: Account instance or None if the wallet doesn't know about the address
+        """
+        session = Session.object_session(self)
+        addresses = session.query(self.Address).filter(self.Address.address == address).join(self.Account).filter(self.Account.wallet_id == self.id)  # noqa
+        _address = addresses.first()
+        if _address:
+            return _address.account
+        return None
 
     def get_receiving_addresses(self, archived=False):
         """ Get all receiving addresses for this wallet.
@@ -575,6 +592,7 @@ class GenericWallet(TableName, Base, CoinBackend):
         """
         session = Session.object_session(self)
 
+        assert session
         assert account.wallet == self
 
         with account.lock():
@@ -589,17 +607,6 @@ class GenericWallet(TableName, Base, CoinBackend):
                 session.query(self.Address).filter(self.Address.address == address).update({"balance": balance})
 
             account.balance = total_balance
-
-    def scan_wallet(self, start=0, limit=50, extra={}):
-        """Scans all incoming transactions for this wallet.
-
-        :param extra: Dictoinary of extra parameters to the backend. E.g. `dict(confirmatios=1)`.
-        """
-        session = Session.object_session(self)
-
-        with self.lock():
-            for tx in self.backend.list_transactions(start, limit):
-                import ipdb; ipdb.set_trace()
 
     def send_internal(self, from_account, to_account, amount, label, allow_negative_balance=False):
         """ Tranfer currency internally between the accounts of this wallet.
@@ -781,13 +788,13 @@ class GenericWallet(TableName, Base, CoinBackend):
 
         :param extra: Extra variables to set on the transaction object as a dictionary. E.g. `dict(confirmations=5)`.
 
-        :return: new or existing Transaction object
+        :return: tuple (account, new or existing Transaction object)
         """
 
         session = Session.object_session(self)
 
         assert self.id
-        assert amount > 0
+        assert amount > 0, "Receiving transaction to {} with amount {}".format(address, amount)
         assert txid
         assert type(address) == str
 
@@ -836,7 +843,7 @@ class GenericWallet(TableName, Base, CoinBackend):
 
                 session.add(account)
 
-        return transaction
+        return account, transaction
 
     def mark_transaction_processed(self, transaction_id):
         """ Mark that the transaction was processed by the client application.

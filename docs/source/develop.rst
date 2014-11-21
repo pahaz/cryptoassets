@@ -24,7 +24,7 @@ Example::
     export BITCOIND_URL="http://foo:bar@127.0.0.1:8332/"
     # import this private address where we have some TESTNET balance
     # this is private key:address tuple
-    export BITCOIND_TESTNET_FUND_ADDRESS="cR32RVCvf1uUQzqqaKM2q7kEoWZ2EyabxDdAGGD9hFj5ZnEYjchV:mk2o9anFwtHFGFKeD89Qxh5YBhNMQk7NrS"
+    export BITCOIND_TESTNET_FUND_ADDRESS="cRV3TMMPaeGomwwNt76i2Dz2DghAaVmjdRyeHDWcup71pKe2jpcF:mjFc8MHnUefmQrqxWvZmYn1ejeb4vbYZLE"
 
     # A real wallet, not testnet!
     export BLOCKCHAIN_IDENTIFIER="x"
@@ -66,6 +66,13 @@ Starting bitcoind in debug mode::
 
     /Applications/Bitcoin-Qt.app/Contents/MacOS/Bitcoin-Qt -debug -reindex
 
+Topping up bitcoind
+++++++++++++++++++++++
+
+First create a receiving address under ``bitcoind`` accounting account ``cryptoassets``::
+
+    curl --user foo:bar --data-binary '{"id":"t0", "method": "listaccounts", "params": [] }' http://127.0.0.1:8332/
+
 TESTNET faucet
 ++++++++++++++++
 
@@ -73,13 +80,14 @@ Get TESTNET coins from here:
 
 http://tpfaucet.appspot.com/
 
+Send them to the address you created.
+
 Dumping your TESTNET private address for importing in tests
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Example using public address ``mk2o9anFwtHFGFKeD89Qxh5YBhNMQk7NrS``::
 
     curl --user foo:bar --data-binary '{"id":"t0", "method": "dumpprivkey", "params": ["mk2o9anFwtHFGFKeD89Qxh5YBhNMQk7NrS"] }' http://127.0.0.1:8332/
-
 
 Continuous integration
 -----------------------

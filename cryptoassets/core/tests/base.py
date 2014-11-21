@@ -309,16 +309,37 @@ class CoinTestCase:
     def test_charge_network_fee(self):
         """ Do an external transaction and see we account network fees correctly. """
 
+        # These objects must be committed before setup_test_fund_address() is called
         with transaction.manager:
             wallet = self.Wallet()
             DBSession.add(wallet)
             DBSession.flush()
             account = wallet.create_account("Test account")
-            DBSession.flush()
 
-            # Sync wallet with the external balance
+        # Import addresses we know having received balance
+        with transaction.manager:
+            account = DBSession.query(self.Account).get(1)
+            wallet = DBSession.query(self.Wallet).get(1)
             self.setup_test_fund_address(wallet, account)
-            wallet.refresh_account_balance(account)
+            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
+
+        # Refresh from API/bitcoind the balances of imported addresses
+        with transaction.manager:
+            account = DBSession.query(self.Account).get(1)
+            wallet = DBSession.query(self.Wallet).get(1)
+            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
+            self.refresh_account_balance(wallet, account)
+
+        # Make sure we got balance after refresh
+        with transaction.manager:
+            account = DBSession.query(self.Account).get(1)
+            wallet = DBSession.query(self.Wallet).get(1)
+            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
+            self.assertGreater(account.balance, 0, "We need have some balance on the test account to proceed with the send test")
+
+        with transaction.manager:
+            account = DBSession.query(self.Account).get(1)
+            wallet = DBSession.query(self.Wallet).get(1)
 
             receiving_address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
             DBSession.flush()
@@ -500,4 +521,3 @@ class CoinTestCase:
             self.assertEqual(txs.count(), 0)
 
             self.assertGreater(account.balance, 0, "Timeouted receiving external transaction")
-

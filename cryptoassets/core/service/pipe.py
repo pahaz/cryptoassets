@@ -9,6 +9,7 @@ import os
 import logging
 import fcntl
 import time
+import transaction
 
 from cryptoassets.core.backend import registry
 
@@ -80,8 +81,10 @@ class PipedWalletNotifyHandler:
         self.mode = mode
 
     def handle_tx_update(self, txid):
+        """Handle each transaction notify as its own db commit."""
         if self.transaction_updater:
-            self.transaction_updater.handle_wallet_notify(txid)
+            with transaction.manager:
+                self.transaction_updater.handle_wallet_notify(txid)
 
     def run(self):
 
