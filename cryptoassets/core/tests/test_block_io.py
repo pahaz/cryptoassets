@@ -19,7 +19,6 @@ from ..backend.blockio import _convert_to_decimal
 
 
 from .base import CoinTestCase
-from .base import logger
 
 
 class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
@@ -86,6 +85,17 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
             return False
 
         return address.address in wallet.backend.monitor.wallets[wallet.id]["addresses"]
+
+    def wait_receiving_address_ready(self, wallet, receiving_address):
+
+        # Let the Pusher to build the connection
+        # Make sure SoChain started to monitor this address
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            if self.is_address_monitored(wallet, receiving_address):
+                break
+
+        self.assertTrue(self.is_address_monitored(wallet, receiving_address), "The receiving address didn't become monitored {}".format(receiving_address.address))
 
     def test_convert(self):
         """ Test amount conversions. """

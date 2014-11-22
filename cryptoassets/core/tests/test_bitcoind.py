@@ -22,7 +22,7 @@ from ..backend.bitcoind import TransactionUpdater
 from ..backend import registry as backendregistry
 
 from .. import configure
-from ..service.pipe import PipedWalletNotifyHandler
+from ..backend.pipe import PipedWalletNotifyHandler
 from .base import CoinTestCase
 
 WALLETNOTIFY_PIPE = "/tmp/cryptoassets-unittest-walletnotify-pipe"
@@ -38,7 +38,7 @@ class WalletNotifyPipeThread(PipedWalletNotifyHandler, threading.Thread):
 
         # If you need to set pdb breakpoints inside the transaction updater,
         # you need to first flip this around
-        self.daemon = True
+        self.daemon = False
 
 
 class BitcoindTestCase(CoinTestCase, unittest.TestCase):
@@ -51,7 +51,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
     def refresh_account_balance(self, wallet, account):
         """ """
-        transaction_updater = TransactionUpdater(DBSession, self.backend, self.Wallet, wallet.id)
+        transaction_updater = TransactionUpdater(DBSession, self.backend, "btc")
 
         # We should find at least one transaction topping up our testnet wallet
         found = transaction_updater.rescan_all()
@@ -74,13 +74,13 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_receiving(self, wallet):
 
-        self.transaction_updater = TransactionUpdater(DBSession, self.backend)
+        self.transaction_updater = TransactionUpdater(DBSession, self.backend, self.Wallet, 1)
 
         self.walletnotify_pipe = WalletNotifyPipeThread(self.transaction_updater, WALLETNOTIFY_PIPE)
         self.walletnotify_pipe.start()
 
     def teardown_receiving(self):
-        walletnotify_pipe = getattr(self, "walletnotify_pipe")
+        walletnotify_pipe = getattr(self, "walletnotify_pipe", None)
         if walletnotify_pipe:
             walletnotify_pipe.stop()
 
@@ -114,9 +114,13 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
     def test_piped_walletnotify(self):
         """Check that we receive txids through the named pipe."""
 
+        # Generate unique walletnotify filenames for each test, so that when multiple tests are running, one thread stopping in teardown doesn't unlink the pipe of the previous test
+        pipe_fname = WALLETNOTIFY_PIPE + "_test_piped_walletnotify"
+
+        # Patch handle_tx_update() to see it gets called when we write something to the pipe
         with patch.object(PipedWalletNotifyHandler, 'handle_tx_update', return_value=None) as mock_method:
 
-            self.walletnotify_pipe = WalletNotifyPipeThread(None, WALLETNOTIFY_PIPE)
+            self.walletnotify_pipe = WalletNotifyPipeThread(None, pipe_fname)
             self.walletnotify_pipe.start()
 
             # Wait until walletnotifier has set up the named pipe
@@ -126,9 +130,9 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
                 self.assertLess(time.time(), deadline, "PipedWalletNotifyHandler never become ready")
 
             self.assertTrue(self.walletnotify_pipe.is_alive())
-            self.assertTrue(os.path.exists(WALLETNOTIFY_PIPE))
+            self.assertTrue(os.path.exists(pipe_fname))
 
-            subprocess.call("echo faketransactionid >> {}".format(WALLETNOTIFY_PIPE), shell=True)
+            subprocess.call("echo faketransactionid >> {}".format(pipe_fname), shell=True)
             time.sleep(0.1)  # Let walletnotify thread to pick it up
 
             mock_method.assert_called_once_with("faketransactionid")
@@ -167,7 +171,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
             # n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr
             wallet.add_address(account, "Old known address with a transaction", "n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr")
 
-            transaction_updater = TransactionUpdater(DBSession, self.backend, self.Wallet, wallet.id)
+            transaction_updater = TransactionUpdater(DBSession, self.backend, "btc")
 
             account_id = account.id
 
@@ -214,27 +218,31 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
     def test_scan_wallet(self):
         """Rescan all wallet transactions and rebuild account balances."""
 
+        # These objects must be committed before setup_test_fund_address() is called
         with transaction.manager:
-            # Create a wallet
             wallet = self.Wallet()
             DBSession.add(wallet)
             DBSession.flush()
-
-            # Spoof a fake address on the wallet
             account = wallet.create_account("Test account")
-            DBSession.flush()
 
-            # Testnet transaction id we are spoofing
-            # bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf-000
-            # to
-            # n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr
-            wallet.add_address(account, "Old known address with a transaction", "n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr")
-
+        # Import addresses we know having received balance
         with transaction.manager:
-            transaction_updater = TransactionUpdater(DBSession, self.backend, self.Wallet, 1)
-            transaction_updater.rescan_all()
-
-            self.assertGreater(transaction_updater.count, 0)
-
             account = DBSession.query(self.Account).get(1)
-            self.assertGreater(account.balance, 0)
+            wallet = DBSession.query(self.Wallet).get(1)
+            self.setup_test_fund_address(wallet, account)
+            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
+
+        # Refresh from API/bitcoind the balances of imported addresses
+        with transaction.manager:
+            account = DBSession.query(self.Account).get(1)
+            wallet = DBSession.query(self.Wallet).get(1)
+            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
+            self.refresh_account_balance(wallet, account)
+
+        # Make sure we got balance after refresh
+        with transaction.manager:
+            account = DBSession.query(self.Account).get(1)
+            wallet = DBSession.query(self.Wallet).get(1)
+            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
+            self.assertGreater(account.balance, 0, "We need have some balance on the test account to proceed with the send test")
+

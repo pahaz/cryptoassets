@@ -5,8 +5,11 @@ import io
 import os
 import stat
 import unittest
-import warnings
 import json
+import threading
+import warnings
+from http.server import HTTPServer
+from http.server import BaseHTTPRequestHandler
 
 from .. import configure
 from ..notify import notify
@@ -28,9 +31,6 @@ class ScriptNotificationTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        # ResourceWarning: unclosed <ssl.SSLSocket fd=9, family=AddressFamily.AF_INET, type=SocketType.SOCK_STREAM, proto=6, laddr=('192.168.1.4', 56386), raddr=('50.116.26.213', 443)>
-        # http://stackoverflow.com/a/26620811/315168
-        warnings.filterwarnings("ignore", category=ResourceWarning)  # noqa
 
         # Create a test script
         with io.open(SAMPLE_SCRIPT_PATH, "wt") as f:
@@ -56,4 +56,65 @@ class ScriptNotificationTestCase(unittest.TestCase):
         with io.open("/tmp/cryptoassets-test_notifier", "rt") as f:
             data = json.load(f)
             self.assertEqual(data["test"], "abc")
+
+
+class DummyHandler(BaseHTTPRequestHandler):
+
+    counter = 0
+
+    def do_POST(self):
+        self.send_response(200, "OK")
+        self.end_headers()
+        DummyHandler.counter += 1
+
+    def log_message(self, format, *args):
+        pass
+
+
+class TestServer(threading.Thread):
+
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.httpd = None
+
+    def run(self):
+        server_address = ('127.0.0.1', 10000)
+        self.httpd = HTTPServer(server_address, DummyHandler)
+        self.httpd.serve_forever()
+
+    def stop(self):
+        if self.httpd:
+            self.httpd.shutdown()
+
+
+class HTTPNotificationTestCase(unittest.TestCase):
+    """Test sending out HTTP notifications.
+    """
+
+    def test_notify(self):
+        """ Do a succesful notification test.
+        """
+
+        # ResourceWarning: unclosed <ssl.SSLSocket fd=9, family=AddressFamily.AF_INET, type=SocketType.SOCK_STREAM, proto=6, laddr=('192.168.1.4', 56386), raddr=('50.116.26.213', 443)>
+        # http://stackoverflow.com/a/26620811/315168
+        warnings.filterwarnings("ignore", category=ResourceWarning)  # noqa
+
+        config = {
+            "test_script": {
+                "class": "cryptoassets.core.notify.http.HTTPNotifier",
+                "url": "http://localhost:10000"
+            }
+        }
+        configure.setup_notify(config)
+
+        server = TestServer()
+        try:
+            server.start()
+            notify("foobar", {"test": "abc"})
+        finally:
+            server.stop()
+
+        # We did 1 succesful HTTP request
+        self.assertEqual(DummyHandler.counter, 1)
 

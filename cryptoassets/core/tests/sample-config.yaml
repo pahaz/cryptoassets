@@ -14,10 +14,13 @@ models:
 # What services we use to run talk to the cryptocurrency networks
 backends:
     btc:
-        class: cryptoassets.core.backend.blockio.BlockIo
+        class: cryptoassets.core.backend.bitcoind.Bitcoind
         # API key is to BTCTEST
-        api_key: 923f-e3e9-a580-dfb2
-        pin: foobar123
+        url: http://foo:bar@127.0.0.1:8332/
+        walletnotify:
+            class: cryptoassets.core.service.pipe.PipedWalletNotifyHandler
+            wallet: default
+            fname: /tmp/cryptoassets-bitcoin-core-walletnotify
 
     doge:
         class: cryptoassets.core.backend.blockio.BlockIo

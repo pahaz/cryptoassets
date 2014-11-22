@@ -1,4 +1,4 @@
-"""Named pipe handler.
+"""Named pipe incoming transaction notification handler.
 
 Handle incoming tx status as reading from named UNIX pipes.
 
@@ -64,7 +64,11 @@ def nonblocking_readlines(fd):
 
 
 class PipedWalletNotifyHandler:
-    """Handle walletnofify notificatians from bitcoind through named UNIX pipe."""
+    """Handle walletnofify notificatians from bitcoind through named UNIX pipe.
+
+    Creates a named unix pipe, e.g. ``/tmp/cryptoassets-btc-walletnotify``. Whenever the bitcoind, or any backend, sees a new tranasction they can write / echo the transaction id to this pipe and the cryptoassets helper service will update the transaction status to the database.
+
+    """
 
     def __init__(self, transaction_updater, fname, mode=0o703):
         """
@@ -115,6 +119,8 @@ class PipedWalletNotifyHandler:
             logger.exception(e)
 
         finally:
+            self.running = False
+
             if reader:
                 os.close(reader)
 
@@ -122,3 +128,5 @@ class PipedWalletNotifyHandler:
 
     def stop(self):
         self.running = False
+
+

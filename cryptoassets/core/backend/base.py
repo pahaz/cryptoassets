@@ -37,9 +37,20 @@ class CoinBackend(abc.ABC):
 
     @abc.abstractmethod
     def send(self, recipients):
-        """ Broadcast outgoing transaction.
+        """Broadcast outgoing transaction.
 
         This is called by send/receive process.
 
         :param recipients: Dict of (address, internal amount)
+        """
+
+    @abc.abstractmethod
+    def setup_incoming_transactions(self, dbsession):
+        """Setup incoming tranasction handler.
+
+        This is called by cryptoassets helper service. When the service is starting, create necessary files, scripts, HTTP ports, etc. to receive notifications from the backend service. E.g. in the case of bitcoind this sets up ``walletnotify`` handler, so that when bitcoind sees a tranaction our hook is called.
+
+        :param dbsession: SQLAlchemy database session used to update the database for incoming transactions.
+
+        :return: A runnable object with `start()` and `stop()` methods (thread, process, etc.) or ``None`` if no runnable is needed
         """

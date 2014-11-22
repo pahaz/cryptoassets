@@ -585,6 +585,8 @@ class GenericWallet(TableName, Base, CoinBackend):
 
         If you have imported any addresses, this will recalculate balances from the backend.
 
+        TODO: This method will be replaced with wallet import.
+
         TODO: This screws ups bookkeeping, so DON'T call this on production.
         It doesn't write fixing entries yet.
 
@@ -712,7 +714,7 @@ class GenericWallet(TableName, Base, CoinBackend):
                 outgoing[tx.address.address] += tx.amount
 
             if outgoing:
-                txid, fee = self.backend.send(outgoing)
+                txid, fee = self.backend.send(outgoing, "Cryptoassets tx {}".format(tx.id))
                 assert txid
                 txs.update(dict(state="broadcasted", processed_at=_now(), txid=txid))
 

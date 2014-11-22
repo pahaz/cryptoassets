@@ -175,6 +175,9 @@ class BlockIo(CoinBackend):
                 if tx.credited_at:
                     monitor.finish_transaction(wallet.id, tx.txid)
 
+    def setup_incoming_transactions(self, dbsession):
+        return None
+
 
 class SochainConnection(pusherclient.Connection):
 

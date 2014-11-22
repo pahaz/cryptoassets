@@ -4,6 +4,7 @@ Setup SQLAlchemy, backends, etc. based on individual dictionaries or YAML syntax
 """
 
 import io
+import inspect
 
 import yaml
 
@@ -15,9 +16,12 @@ from sqlalchemy import engine_from_config
 
 from .models import DBSession
 from .models import Base
+from .models import GenericWallet
 
 from .backend.base import CoinBackend
 from .backend import registry
+
+from .coin import registry as coin_registry
 
 from .notify import registry as notifier_registry
 from .notify.base import Notifier
@@ -25,7 +29,6 @@ from .notify.base import Notifier
 
 _engine = None
 _backends = {}
-_models = {}
 
 
 class ConfigurationError(Exception):
@@ -87,6 +90,15 @@ def setup_models(modules):
         if not result:
             raise ConfigurationError("Could not resolve {}".format(module))
 
+        # TODO: Better method of resolving model mapping of coins
+        for obj_name in dir(result):
+            if obj_name.startswith("_"):
+                continue
+            obj = getattr(result, obj_name)
+            if inspect.isclass(obj):
+                if issubclass(obj, (GenericWallet,)):
+                    coin_registry.register_wallet_model(name, obj)
+
     DBSession.configure(bind=_engine)
     Base.metadata.create_all(_engine)
 
@@ -128,14 +140,20 @@ def load_from_dict(config):
     setup_models(config.get("models"))
 
 
-def load_yaml_file(fname):
-    """Load config from a YAML file."""
+def prepare_yaml_file(fname):
+    """Extract config dictionary from a YAML file."""
     stream = io.open(fname, "rt")
     config = yaml.safe_load(stream)
 
     if not type(config) == dict:
         raise ConfigurationError("YAML configuration file must be mapping like")
 
+    return config
+
+
+def load_yaml_file(fname):
+    """Load config from a YAML file."""
+    config = prepare_yaml_file(fname)
     load_from_dict(config)
 
 

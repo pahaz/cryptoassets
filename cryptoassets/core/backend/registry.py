@@ -16,3 +16,8 @@ def register(coin, backend):
 
 def get(coin):
     return _backends[coin]
+
+
+def all():
+    """Iterate all coin backends as (name, backend instance) tuples."""
+    return _backends.items()

@@ -24,7 +24,7 @@ Example::
     export BITCOIND_URL="http://foo:bar@127.0.0.1:8332/"
     # import this private address where we have some TESTNET balance
     # this is private key:address tuple
-    export BITCOIND_TESTNET_FUND_ADDRESS="cRV3TMMPaeGomwwNt76i2Dz2DghAaVmjdRyeHDWcup71pKe2jpcF:mjFc8MHnUefmQrqxWvZmYn1ejeb4vbYZLE"
+    export BITCOIND_TESTNET_FUND_ADDRESS="cRV3TMMPaeGomwwNt76i2Dz2DghAaVmjdRyeHDWcup71pKe2jpcF:mxd636hBuxiuJavfWjQ3Aw6EiZQr5MtFZi"
 
     # A real wallet, not testnet!
     export BLOCKCHAIN_IDENTIFIER="x"
@@ -37,6 +37,10 @@ Running all tests::
 Running a single test::
 
     python -m unittest cryptoassets.core.tests.test_block_io.BlockIoBTCTestCase.test_send_receive_external
+
+Running a single test with more verbose logging output:
+
+    VERBOSE_TEST=1 python -m unittest cryptoassets.core.tests.test_block_io.BlockIoBTCTestCase.test_charge_network_fee
 
 Bitcoind testnet
 ------------------
@@ -64,14 +68,19 @@ http://suffix.be/blog/getting-started-bitcoin-testnet
 
 Starting bitcoind in debug mode::
 
-    /Applications/Bitcoin-Qt.app/Contents/MacOS/Bitcoin-Qt -debug -reindex
+    /Applications/Bitcoin-Qt.app/Contents/MacOS/Bitcoin-Qt -printtoconsole -debug
 
 Topping up bitcoind
 ++++++++++++++++++++++
 
 First create a receiving address under ``bitcoind`` accounting account ``cryptoassets``::
 
+    curl --user foo:bar --data-binary '{"id":"t0", "method": "getnewaddress", "params": ["cryptoassets"] }' http://127.0.0.1:8332/
+
+Then list ``bitcoind`` accounts and balances:
+
     curl --user foo:bar --data-binary '{"id":"t0", "method": "listaccounts", "params": [] }' http://127.0.0.1:8332/
+
 
 TESTNET faucet
 ++++++++++++++++

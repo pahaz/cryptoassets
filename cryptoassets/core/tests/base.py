@@ -5,7 +5,6 @@ import time
 import logging
 import sys
 import warnings
-from rainbow_logging_handler import RainbowLoggingHandler
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
@@ -16,30 +15,9 @@ from ..models import DBSession
 from ..models import NotEnoughAccountBalance
 from ..models import SameAccount
 
+from . import testlogging
 
-formatter = logging.Formatter("[%(asctime)s] %(name)s %(funcName)s():%(lineno)d\t%(message)s")  # same as default
-
-# setup `RainbowLoggingHandler`
-# and quiet some logs for the test output
-handler = RainbowLoggingHandler(sys.stderr)
-handler.setFormatter(formatter)
-logger = logging.getLogger()
-logger.addHandler(handler)
-logger.debug("debug msg")
-
-
-logger = logging.getLogger("requests.packages.urllib3.connectionpool")
-logger.setLevel(logging.ERROR)
-
-
-logger = logging.getLogger("cryptoassets.core.backend.blockio")
-logger.setLevel(logging.DEBUG)
-
-# SQL Alchemy transactions
-logger = logging.getLogger("txn")
-logger.setLevel(logging.ERROR)
-
-logger = logging.getLogger(__name__)
+testlogging.setup()
 
 
 class CoinTestCase:
@@ -77,9 +55,6 @@ class CoinTestCase:
 
     def create_engine(self):
         """Create SQLAclhemy database engine for the tests."""
-        # Nuke previous test run
-        if os.path.exists("unittest.sqlite"):
-            os.remove("unittest.sqlite")
 
         # XXX: Not sure what would be the correct way to run tests,
         # so that we respect transaction consistency in external received transactions
@@ -87,9 +62,7 @@ class CoinTestCase:
         # pool = pool.SingletonThreadPool()
         # engine = create_engine('sqlite:///unittest.sqlite', echo=False, poolclass=pool.SingletonThreadPool)
 
-        engine = create_engine('sqlite://',
-                            connect_args={'check_same_thread':False},
-                            poolclass=pool.StaticPool)
+        engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=pool.StaticPool)
 
         return engine
 
@@ -105,9 +78,39 @@ class CoinTestCase:
     def setup_coin(self):
         """Setup coin backend for this test case."""
 
-    @abc.abstractmethod
-    def top_up_balance(self):
-        """Add some test balance on the wallet."""
+    def wait_receiving_address_ready(self, wallet, address):
+        """Wait that API service gets the address on the monitored list."""
+
+    def setup_balance(self):
+        """Create an a wallet and an account with balance. """
+
+        # These objects must be committed before setup_test_fund_address() is called
+        with transaction.manager:
+            wallet = self.Wallet()
+            DBSession.add(wallet)
+            DBSession.flush()
+            account = wallet.create_account("Test account")
+
+        # Import addresses we know having received balance
+        with transaction.manager:
+            account = DBSession.query(self.Account).get(1)
+            wallet = DBSession.query(self.Wallet).get(1)
+            self.setup_test_fund_address(wallet, account)
+            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
+
+        # Refresh from API/bitcoind the balances of imported addresses
+        with transaction.manager:
+            account = DBSession.query(self.Account).get(1)
+            wallet = DBSession.query(self.Wallet).get(1)
+            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
+            self.refresh_account_balance(wallet, account)
+
+        # Make sure we got balance after refresh
+        with transaction.manager:
+            account = DBSession.query(self.Account).get(1)
+            wallet = DBSession.query(self.Wallet).get(1)
+            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
+            self.assertGreater(account.balance, 0, "We need have some balance on the test account to proceed with the send test")
 
     def tearDown(self):
         DBSession.remove()
@@ -261,40 +264,33 @@ class CoinTestCase:
 
     def test_refresh_account_balance(self):
         """ Read the external balance to an account. """
-        with transaction.manager:
-            wallet = self.Wallet()
-            DBSession.add(wallet)
-            DBSession.flush()
-            account = wallet.create_account("Test account")
-            DBSession.flush()
-            self.setup_test_fund_address(wallet, account)
-            wallet.refresh_account_balance(account)
 
+        self.setup_balance()
+
+        with transaction.manager:
+            account = DBSession.query(self.Account).get(1)
             # Assume we have at least 5 TESTNET bitcoins there
             self.assertIsNot(account.balance, 0, "Account balance was zero after refresh_account_balance()")
             self.assertGreater(account.balance, 5)
 
     def test_send_external(self):
         """ Send Bitcoins from external address """
+
+        self.setup_balance()
+
         with transaction.manager:
-            wallet = self.Wallet()
-            DBSession.add(wallet)
-            DBSession.flush()
-            account = wallet.create_account("Test account")
-            DBSession.flush()
-            # Sync wallet with the external balance
-            self.setup_test_fund_address(wallet, account)
-            wallet.refresh_account_balance(account)
+
+            wallet = DBSession.query(self.Wallet).get(1)
+            account = DBSession.query(self.Account).get(1)
 
             receiving_address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
 
             # Send Bitcoins through BlockChain
-            wallet.send_external(account, receiving_address.address, self.external_send_amount, "Test send {}".format(time.time()))
+            tx = wallet.send_external(account, receiving_address.address, self.external_send_amount, "Test send {}".format(time.time()))
 
             # We should have created one transaction
             # which is not broadcasted yet
-            self.assertEqual(DBSession.query(self.Transaction.id).count(), 1)
-            tx = DBSession.query(self.Transaction).first()
+            self.assertGreater(DBSession.query(self.Transaction.id).count(), 0)
             self.assertEqual(tx.sending_account, account)
             self.assertEqual(tx.receiving_account, None)
             self.assertEqual(tx.state, "pending")
@@ -309,33 +305,7 @@ class CoinTestCase:
     def test_charge_network_fee(self):
         """ Do an external transaction and see we account network fees correctly. """
 
-        # These objects must be committed before setup_test_fund_address() is called
-        with transaction.manager:
-            wallet = self.Wallet()
-            DBSession.add(wallet)
-            DBSession.flush()
-            account = wallet.create_account("Test account")
-
-        # Import addresses we know having received balance
-        with transaction.manager:
-            account = DBSession.query(self.Account).get(1)
-            wallet = DBSession.query(self.Wallet).get(1)
-            self.setup_test_fund_address(wallet, account)
-            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
-
-        # Refresh from API/bitcoind the balances of imported addresses
-        with transaction.manager:
-            account = DBSession.query(self.Account).get(1)
-            wallet = DBSession.query(self.Wallet).get(1)
-            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
-            self.refresh_account_balance(wallet, account)
-
-        # Make sure we got balance after refresh
-        with transaction.manager:
-            account = DBSession.query(self.Account).get(1)
-            wallet = DBSession.query(self.Wallet).get(1)
-            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
-            self.assertGreater(account.balance, 0, "We need have some balance on the test account to proceed with the send test")
+        self.setup_balance()
 
         with transaction.manager:
             account = DBSession.query(self.Account).get(1)
@@ -420,47 +390,26 @@ class CoinTestCase:
 
             self.Transaction.confirmation_count = self.external_transaction_confirmation_count
 
-            with transaction.manager:
-                wallet = self.Wallet()
-                DBSession.add(wallet)
-                DBSession.flush()
-
-                account = wallet.create_account("Test sending account")
-                DBSession.flush()
-
-                account = DBSession.query(self.Account).filter(self.Account.wallet_id == wallet.id).first()
-                assert account
-
-                receiving_address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
-
-                # We must commit here so that
-                # the receiver thread sees the wallet
-                wallet_id = wallet.id
+            self.setup_balance()
+            wallet_id = 1
 
             with transaction.manager:
 
                 # Reload objects from db for this transaction
                 wallet = DBSession.query(self.Wallet).get(wallet_id)
-                account = DBSession.query(self.Account).filter(self.Account.wallet_id == wallet_id).first()
-                self.assertEqual(wallet.get_receiving_addresses().count(), 1)
-                receiving_address = wallet.get_receiving_addresses().first()
+                account = DBSession.query(self.Account).get(1)
+                txs_before_send = wallet.get_external_received_transactions().count()
+
+                # Create account for receiving the tx
+                receiving_account = wallet.create_account("Test receiving account {}".format(time.time()))
+                DBSession.flush()
+                receiving_address = wallet.create_receiving_address(receiving_account, "Test receiving address {}".format(time.time()))
 
                 # See that the created address was properly committed
                 self.assertGreater(wallet.get_receiving_addresses().count(), 0)
                 self.setup_receiving(wallet)
 
-                # Let the Pusher to build the connection
-                # Make sure SoChain started to monitor this address
-                deadline = time.time() + 5
-                while time.time() < deadline:
-                    if self.is_address_monitored(wallet, receiving_address):
-                        break
-
-                self.assertTrue(self.is_address_monitored(wallet, receiving_address), "The receiving address didn't become monitored {}".format(receiving_address.address))
-
-                # Sync wallet with the external balance
-                self.setup_test_fund_address(wallet, account)
-                wallet.refresh_account_balance(account)
+                self.wait_receiving_address_ready(wallet, receiving_address)
 
                 tx = wallet.send(account, receiving_address.address, self.external_send_amount, "Test send", force_external=True)
                 self.assertEqual(tx.state, "pending")
@@ -514,7 +463,7 @@ class CoinTestCase:
 
             # The transaction should be external
             txs = wallet.get_external_received_transactions()
-            self.assertEqual(txs.count(), 1)
+            self.assertEqual(txs.count(), txs_before_send + 1)
 
             # The transaction should no longer be active
             txs = wallet.get_active_external_received_transcations()
