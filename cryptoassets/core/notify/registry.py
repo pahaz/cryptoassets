@@ -15,3 +15,7 @@ def register(name, notifier):
 
 def get_all():
     return _registry.values()
+
+
+def clear():
+    _registry.clear()

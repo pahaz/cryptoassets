@@ -106,7 +106,7 @@ def setup_models(modules):
 
 
 def setup_notify(notifiers):
-    """Setup SQLAlchemy models.
+    """Read notification settings.
 
     Example notifier format:
 
@@ -117,6 +117,9 @@ def setup_notify(notifiers):
             }
         }
     """
+
+    notifier_registry.clear()
+
     for name, data in notifiers.items():
         data = data.copy()  # No mutate in place
         klass = data.pop("class")
@@ -154,6 +157,7 @@ def load_from_dict(config):
     setup_backends(config.get("backends"))
     setup_models(config.get("models"))
     setup_status_server(config.get("status-server"))
+    setup_status_server(config.get("notify"))
 
 
 def prepare_yaml_file(fname):

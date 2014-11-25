@@ -14,6 +14,11 @@ from http.server import BaseHTTPRequestHandler
 from .. import configure
 from ..notify import notify
 
+from . import testlogging
+
+testlogging.setup()
+
+
 SAMPLE_SCRIPT_PATH = "/tmp/cryptoassets-test_notifier.sh"
 
 SAMPLE_SCRIPT = """#/bin/sh
@@ -56,6 +61,37 @@ class ScriptNotificationTestCase(unittest.TestCase):
         with io.open("/tmp/cryptoassets-test_notifier", "rt") as f:
             data = json.load(f)
             self.assertEqual(data["test"], "abc")
+
+
+_cb_data = None
+
+
+def test_callback(event_name, data):
+    global _cb_data
+    _cb_data = data
+
+
+class PythonNotificationTestCase(unittest.TestCase):
+    """Test in-process Python notifications.
+    """
+
+    def setUp(self):
+        pass
+
+    def test_notify(self):
+        """ Do a succesful notification test.
+        """
+        config = {
+            "test_python": {
+                "class": "cryptoassets.core.notify.python.InProcessNotifier",
+                "callback": "cryptoassets.core.tests.test_notify.test_callback",
+            }
+        }
+        configure.setup_notify(config)
+
+        notify("foobar", {"test": "abc"})
+
+        self.assertEqual(_cb_data["test"], "abc")
 
 
 class DummyHandler(BaseHTTPRequestHandler):
