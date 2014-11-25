@@ -250,7 +250,7 @@ class TransactionUpdater:
         # if not wallet:
         #     raise RuntimeError("Transaction updater could not find wallet with wallet id {}".format(self.wallet_id))
 
-        Address = coin_registry.get_address_class(self.coin)
+        Address = coin_registry.get_address_model(self.coin)
 
         for address, amount in addresses.items():
 

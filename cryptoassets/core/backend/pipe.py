@@ -146,6 +146,6 @@ class PipedWalletNotifyHandler(PipedWalletNotifyHandlerBase, threading.Thread, I
     """A thread which handles reading from walletnotify named pipe.
     """
 
-    def __init__(self, transaction_updater, fname, mode):
+    def __init__(self, transaction_updater, fname, mode=None):
         PipedWalletNotifyHandlerBase.__init__(self, transaction_updater, fname, mode)
         threading.Thread.__init__(self)

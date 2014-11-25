@@ -5,6 +5,7 @@ import time
 import logging
 import sys
 import warnings
+import logging
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
@@ -18,6 +19,9 @@ from ..models import SameAccount
 from . import testlogging
 
 testlogging.setup()
+
+
+logger = logging.getLogger(__name__)
 
 
 class CoinTestCase:
@@ -411,6 +415,11 @@ class CoinTestCase:
 
                 self.wait_receiving_address_ready(wallet, receiving_address)
 
+                # Make sure we don't have any balance beforehand
+                receiving_account = DBSession.query(self.Account).get(receiving_account.id)
+                self.assertEqual(receiving_account.balance, 0, "Receiving account got some balance already before sending")
+
+                logger.info("Sending from account %d to %s amount %f", account.id, receiving_address.address, self.external_send_amount)
                 tx = wallet.send(account, receiving_address.address, self.external_send_amount, "Test send", force_external=True)
                 self.assertEqual(tx.state, "pending")
                 self.assertEqual(tx.label, "Test send")
@@ -419,10 +428,14 @@ class CoinTestCase:
                 self.assertEqual(tx.state, "broadcasted")
                 self.assertEqual(broadcasted_count, 1)
 
+                tx = DBSession.query(self.Transaction).get(tx.id)
+                logger.info("External transaction is %s", tx.txid)
+
                 receiving_address_id = receiving_address.id
+                tx_id = tx.id
 
                 # Wait until backend notifies us the transaction has been received
-                logger.info("Monitoring address {} on wallet {}".format(receiving_address.address, wallet.id))
+                logger.info("Monitoring receiving address {} on wallet {}".format(receiving_address.address, wallet.id))
 
             deadline = time.time() + self.external_receiving_timeout
             succeeded = False
@@ -445,6 +458,14 @@ class CoinTestCase:
                     if account.balance > 0 and wallet.get_active_external_received_transcations().count() == 0 and len(wallet.transactions) >= 3:
                         succeeded = True
                         break
+
+            with transaction.manager:
+                address = DBSession.query(wallet.Address).filter(self.Address.id == receiving_address_id)
+                account = address.first().account
+                logger.info("Receiving account %d balance %f", account.id, account.balance)
+
+                tx = DBSession.query(self.Transaction).get(tx_id)
+                logger.info("Broadcasted transaction %d txid %s confirmations %s", tx.id, tx.txid, tx.confirmations)
 
             self.assertTrue(succeeded, "Never got the external transaction status through database")
 

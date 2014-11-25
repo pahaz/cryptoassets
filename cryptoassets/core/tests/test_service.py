@@ -38,7 +38,7 @@ class ServiceTestCase(unittest.TestCase):
     def prepare_config(self):
         """ """
 
-        test_config = os.path.join(os.path.dirname(__file__), "bitcoind.config.yaml")
+        test_config = os.path.join(os.path.dirname(__file__), "service.config.yaml")
         self.assertTrue(os.path.exists(test_config), "Did not found {}".format(test_config))
         config = configure.prepare_yaml_file(test_config)
 

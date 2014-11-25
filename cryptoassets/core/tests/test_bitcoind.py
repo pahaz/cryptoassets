@@ -62,7 +62,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_receiving(self, wallet):
 
-        self.transaction_updater = TransactionUpdater(DBSession, self.backend, self.Wallet, 1)
+        self.transaction_updater = TransactionUpdater(DBSession, self.backend, "btc")
 
         self.walletnotify_pipe = PipedWalletNotifyHandler(self.transaction_updater, WALLETNOTIFY_PIPE)
 
@@ -94,7 +94,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         self.Transaction = BitcoinTransaction
         self.Account = BitcoinAccount
 
-        self.external_transaction_confirmation_count = 0
+        self.external_transaction_confirmation_count = 1
 
         self.Transaction.confirmation_count = 1
 
@@ -113,7 +113,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         # Patch handle_tx_update() to see it gets called when we write something to the pipe
         with patch.object(PipedWalletNotifyHandler, 'handle_tx_update', return_value=None) as mock_method:
 
-            self.walletnotify_pipe = WalletNotifyPipeThread(None, pipe_fname)
+            self.walletnotify_pipe = PipedWalletNotifyHandler(None, pipe_fname)
             self.walletnotify_pipe.start()
 
             # Wait until walletnotifier has set up the named pipe
@@ -168,7 +168,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
             account_id = account.id
 
-        self.walletnotify_pipe = WalletNotifyPipeThread(transaction_updater, WALLETNOTIFY_PIPE)
+        self.walletnotify_pipe = PipedWalletNotifyHandler(transaction_updater, WALLETNOTIFY_PIPE)
         self.walletnotify_pipe.start()
 
         # Wait until walletnotifier has set up the named pipe

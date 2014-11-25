@@ -16,3 +16,9 @@ backends:
         walletnotify:
             class: cryptoassets.core.backend.pipe.PipedWalletNotifyHandler
             fname: /tmp/cryptoassets-unittest-walletnotify
+
+status-server:
+    ip: 127.0.0.1
+    port: 18881
+
+
