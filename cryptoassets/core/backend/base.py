@@ -54,3 +54,15 @@ class CoinBackend(abc.ABC):
 
         :return: A runnable object with `start()` and `stop()` methods (thread, process, etc.) or ``None`` if no runnable is needed
         """
+
+
+class IncomingTransactionRunnable(abc.ABC):
+    """Backend specific thread/process taking care of accepting incoming transaction notifications from the network."""
+
+    @abc.abstractmethod
+    def start(self):
+        pass
+
+    @abc.abstractmethod
+    def stop(self):
+        pass

@@ -13,4 +13,12 @@ backends:
     btc:
         class: cryptoassets.core.backend.bitcoind.Bitcoind
         url: http://foo:bar@127.0.0.1:8332/
+        walletnotify:
+            class: cryptoassets.core.backend.pipe.PipedWalletNotifyHandler
+            fname: /tmp/cryptoassets-unittest-walletnotify
+
+status-server:
+    ip: 127.0.0.1
+    port: 18881
+
 

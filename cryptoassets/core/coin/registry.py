@@ -17,7 +17,7 @@ def register_wallet_model(coin, model):
     _wallet_models[coin.lower()] = model
 
 
-def get_wallet_class(coin):
+def get_wallet_model(coin):
     """Get the SQL Alchemy model used as the wallet model for a coin.
 
     :param coin: lowercase letter symbol for the cryptocurrency, like `btc` or `doge`.
@@ -27,7 +27,7 @@ def get_wallet_class(coin):
     return _wallet_models[coin]
 
 
-def get_address_class(coin):
+def get_address_model(coin):
     """Get the SQL Alchemy model used as the address model for a coin.
 
     :param coin: lowercase letter symbol for the cryptocurrency, like `btc` or `doge`.

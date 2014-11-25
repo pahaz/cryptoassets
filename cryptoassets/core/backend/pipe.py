@@ -10,8 +10,11 @@ import logging
 import fcntl
 import time
 import transaction
+import threading
+import datetime
 
-from cryptoassets.core.backend import registry
+from . import registry
+from .base import IncomingTransactionRunnable
 
 
 logger = logging.getLogger(__name__)
@@ -63,14 +66,14 @@ def nonblocking_readlines(fd):
                     buf = buf[(r+1):]
 
 
-class PipedWalletNotifyHandler:
+class PipedWalletNotifyHandlerBase:
     """Handle walletnofify notificatians from bitcoind through named UNIX pipe.
 
     Creates a named unix pipe, e.g. ``/tmp/cryptoassets-btc-walletnotify``. Whenever the bitcoind, or any backend, sees a new tranasction they can write / echo the transaction id to this pipe and the cryptoassets helper service will update the transaction status to the database.
 
     """
 
-    def __init__(self, transaction_updater, fname, mode=0o703):
+    def __init__(self, transaction_updater, fname, mode=None):
         """
         :param transaction_updater: Instance of :py:class:`cryptoassets.core.backend.bitcoind.TransactionUpdater` or None
 
@@ -82,10 +85,16 @@ class PipedWalletNotifyHandler:
         self.running = True
         self.fname = fname
         self.ready = False
+        #: Timestamp of the latest processed notification
+        self.last_notification = None
+        mode = mode if mode else 0o703
         self.mode = mode
 
     def handle_tx_update(self, txid):
         """Handle each transaction notify as its own db commit."""
+
+        self.last_notification = datetime.datetime.utcnow()
+
         if self.transaction_updater:
             with transaction.manager:
                 self.transaction_updater.handle_wallet_notify(txid)
@@ -94,6 +103,7 @@ class PipedWalletNotifyHandler:
 
         reader = None
 
+        logger.info("Starting PipedWalletNotifyHandler")
         try:
             # Clean up previous run
             if os.path.exists(self.fname):
@@ -115,11 +125,13 @@ class PipedWalletNotifyHandler:
                 time.sleep(0.1)
 
         except Exception as e:
-            logger.error("walletnofify error")
+            logger.error("PipedWalletNotifyHandler crashed")
             logger.exception(e)
 
         finally:
+            logger.info("Shutting down PipedWalletNotifyHandler")
             self.running = False
+            self.ready = False
 
             if reader:
                 os.close(reader)
@@ -130,3 +142,10 @@ class PipedWalletNotifyHandler:
         self.running = False
 
 
+class PipedWalletNotifyHandler(PipedWalletNotifyHandlerBase, threading.Thread, IncomingTransactionRunnable):
+    """A thread which handles reading from walletnotify named pipe.
+    """
+
+    def __init__(self, transaction_updater, fname, mode):
+        PipedWalletNotifyHandlerBase.__init__(self, transaction_updater, fname, mode)
+        threading.Thread.__init__(self)

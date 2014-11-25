@@ -26,6 +26,8 @@ from .coin import registry as coin_registry
 from .notify import registry as notifier_registry
 from .notify.base import Notifier
 
+from .service import status
+
 
 _engine = None
 _backends = {}
@@ -132,18 +134,33 @@ def setup_notify(notifiers):
         notifier_registry.register(name, instance)
 
 
+def setup_status_server(config):
+    """Prepare status server instance for the cryptoassets helper service.
+    """
+    if not config:
+        return
+
+    ip = config.get("ip", "127.0.0.1")
+    port = int(config.get("port", "18881"))
+
+    server = status.StatusHTTPServer(ip, port)
+    status.status_http_server = server
+
+
 def load_from_dict(config):
     """ Load configuration from Python dictionary. """
 
     setup_engine(config.get("database"))
     setup_backends(config.get("backends"))
     setup_models(config.get("models"))
+    setup_status_server(config.get("status-server"))
 
 
 def prepare_yaml_file(fname):
     """Extract config dictionary from a YAML file."""
     stream = io.open(fname, "rt")
     config = yaml.safe_load(stream)
+    stream.close()
 
     if not type(config) == dict:
         raise ConfigurationError("YAML configuration file must be mapping like")

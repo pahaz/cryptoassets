@@ -25,20 +25,8 @@ from .. import configure
 from ..backend.pipe import PipedWalletNotifyHandler
 from .base import CoinTestCase
 
+
 WALLETNOTIFY_PIPE = "/tmp/cryptoassets-unittest-walletnotify-pipe"
-
-
-class WalletNotifyPipeThread(PipedWalletNotifyHandler, threading.Thread):
-    """A thread which handles reading from walletnotify named pipe.
-    """
-
-    def __init__(self, coin, name):
-        PipedWalletNotifyHandler.__init__(self, coin, name)
-        threading.Thread.__init__(self)
-
-        # If you need to set pdb breakpoints inside the transaction updater,
-        # you need to first flip this around
-        self.daemon = False
 
 
 class BitcoindTestCase(CoinTestCase, unittest.TestCase):
@@ -76,7 +64,12 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         self.transaction_updater = TransactionUpdater(DBSession, self.backend, self.Wallet, 1)
 
-        self.walletnotify_pipe = WalletNotifyPipeThread(self.transaction_updater, WALLETNOTIFY_PIPE)
+        self.walletnotify_pipe = PipedWalletNotifyHandler(self.transaction_updater, WALLETNOTIFY_PIPE)
+
+        # If you need to set pdb breakpoints inside the transaction updater,
+        # you need to first flip this around
+        self.walletnotify_pipe.daemon = False
+
         self.walletnotify_pipe.start()
 
     def teardown_receiving(self):

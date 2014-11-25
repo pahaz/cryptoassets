@@ -195,12 +195,16 @@ class Bitcoind(BitcoindDerivate):
         """
         config = self.walletnotify_config
 
-        if config.get("class") != "cryptoassets.core.service.pipe.PipedWalletNotifyHandler":
-            raise RuntimeError("At the moment, only named pipe wallet notify handler is supported")
+        if not config:
+            return
 
-        wallet_class = coin_registry.get(self.coin)
+        if config.get("class") != "cryptoassets.core.backend.pipe.PipedWalletNotifyHandler":
+            raise RuntimeError("At the moment, only named pipe wallet notify handler is supported, got {}".format(config["class"]))
 
-        handler = TransactionUpdater(dbsession, self, wallt_class)
+        transaction_updater = TransactionUpdater(dbsession, self, self.coin)
+
+        from cryptoassets.core.backend.pipe import PipedWalletNotifyHandler
+        handler = PipedWalletNotifyHandler(transaction_updater, config["fname"], config.get("mode"))
 
         return handler
 
