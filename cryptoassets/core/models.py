@@ -332,7 +332,7 @@ class GenericWallet(TableName, Base, CoinBackend):
     id = Column(Integer, primary_key=True)
 
     #: The human-readable name for this wallet. Only used for debugging purposes.
-    name = Column(String(255))
+    name = Column(String(255), unique=True)
 
     #: When this wallet was created
     created_at = Column(Date, default=_now)
@@ -361,13 +361,19 @@ class GenericWallet(TableName, Base, CoinBackend):
 
     @classmethod
     def get_or_create_by_name(cls, name, session):
-        """Returns a new or existing wallet with a certain name.
+        """Returns a new or existing instance of a named wallet.
 
         :return: Wallet instance
         """
+
+        assert name
+        assert type(name) == str
+
         instance = session.query(cls).filter_by(name=name).first()
+
         if not instance:
-            instance = cls(name=name)
+            instance = cls()
+            instance.name = name
             session.add(instance)
 
         return instance

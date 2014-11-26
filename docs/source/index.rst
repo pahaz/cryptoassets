@@ -16,6 +16,7 @@ Contents:
    :maxdepth: 2
 
    gettingstarted
+   service
    models
    backends
    coins
