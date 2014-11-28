@@ -261,7 +261,6 @@ class TransactionUpdater:
 
         for address, amount in addresses.items():
 
-            address_id = None
             transaction_id = None
             account_id = None
             confirmations = None
@@ -275,6 +274,9 @@ class TransactionUpdater:
                     confirmations = transaction.confirmations
                     logger.info("Wallet notify account %d, address %s, amount %s, tx confirmations %d", account.id, address, amount, confirmations)
 
+                    # This will cause Transaction instance to get its id
+                    self.session.flush()
+
                     account_id = account.id
                     transaction_id = transaction.id
 
@@ -283,8 +285,11 @@ class TransactionUpdater:
 
             # Tranasactipn is committed in this point, notify the application about the new data in the database
             if transaction_id:
+                logger.info("Starting txupdate notify")
                 event_name, data = events.create_txupdate(txid=txid, transaction=transaction_id, account=account_id, address=address, amount=amount, confirmations=confirmations)
                 notify(event_name, data)
+            else:
+                logger.info("No transaction object was created")
 
         self.count += 1
 
