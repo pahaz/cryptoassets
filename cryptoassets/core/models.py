@@ -227,7 +227,7 @@ class GenericTransaction(TableName, Base):
     #:
     #: **network_fee**: When the transaction has been broadcasted, we create an internal transaction to account the occured network fees
     #:
-    state = Column(Enum('pending', 'broadcasted', 'incoming', 'processed', 'internal', 'network_fee'))
+    state = Column(Enum('pending', 'broadcasted', 'incoming', 'processed', 'internal', 'network_fee', name="transaction_state"))
 
     #: Human readable label what this transaction is all about.
     #: Must be unique for each account
@@ -451,10 +451,8 @@ class GenericWallet(TableName, Base, CoinBackend):
 
             session.add(address)
 
-            # Make sure the address is written to db
-            # before we can make any entires of received
-            # transaction on it in monitoring
-            # session.flush()
+            # Make sure the address is written to db before we can make any entires of received transaction on it in monitoring
+            session.flush()
 
         self.backend.monitor_address(address)
 
