@@ -230,6 +230,9 @@ class TransactionUpdater:
         # Simple book-keeping of number of transactions we have handled
         self.count = 0
 
+        #: UTC timestamp when we got the last transaction notification
+        self.last_wallet_notify = None
+
     def handle_wallet_notify(self, txid, transaction_manager):
         """Incoming walletnotify event.
 
@@ -237,6 +240,7 @@ class TransactionUpdater:
 
         :param transaction_manager: Transaction manager instance which will be used to isolate each transaction update commit
         """
+        self.last_wallet_notify = datetime.datetime.utcnow()
 
         txdata = self.backend.get_transaction(txid)
 

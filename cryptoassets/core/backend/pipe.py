@@ -85,16 +85,11 @@ class PipedWalletNotifyHandlerBase:
         self.running = True
         self.fname = fname
         self.ready = False
-        #: Timestamp of the latest processed notification
-        self.last_notification = None
         mode = mode if mode else 0o703
         self.mode = mode
 
     def handle_tx_update(self, txid):
         """Handle each transaction notify as its own db commit."""
-
-        self.last_notification = datetime.datetime.utcnow()
-
         # Each address object is updated in an isolated transaction,
         # thus we need to pass the db transaction manager to the transaction updater
         if self.transaction_updater:

@@ -22,7 +22,6 @@ Running the service with Python project
 ----------------------------------------
 
 TBD
-
 Running the service with Django
 ---------------------------------
 
