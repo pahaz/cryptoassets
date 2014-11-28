@@ -98,6 +98,40 @@ Example using public address ``mk2o9anFwtHFGFKeD89Qxh5YBhNMQk7NrS``::
 
     curl --user foo:bar --data-binary '{"id":"t0", "method": "dumpprivkey", "params": ["mk2o9anFwtHFGFKeD89Qxh5YBhNMQk7NrS"] }' http://127.0.0.1:8332/
 
+Using bitcoind with multiple backends
+++++++++++++++++++++++++++++++++++++++
+
+If you are using same bitcoind testnet instance to drive several cryptoassets backends, you can multiplex incoming transactions to several wallet notify pipes with a shell script like::
+
+    #!/bin/bash
+    echo "Got txid $1" >> /tmp/txlist.txt
+    # Timeout is needed to work around for hanging named pipe cases where Bitcoin-QT process starts to write to a named pipe, but nobody is reading it, thus preventing clean shutdown of the parent process (bitcoind)
+    gtimeout --kill-after=10 5 /bin/bash -c "echo $1 >> /tmp/cryptoassets-unittest-walletnotify-pipe"
+    gtimeout --kill-after=10 5 /bin/bash -c "echo $1 >> /tmp/tatianastore-cryptoassets-helper-walletnotify"
+    exit 0
+
+Also needs coreutils on OSX::
+
+    brew install coreutils
+
+Conflicted transactions
+++++++++++++++++++++++++++++++++++++++
+
+If Bitcoin-QT starts to display transactions sent via RPC as **conflicted** status
+
+1) Your walletnotifty script might be broken, CTRL+C abort Bitcoin-QT in terminal, check error messages::
+
+    /Users/mikko/code/notify.sh: line 3: timeout: command not found
+    runCommand error: system(/Users/mikko/code/notify.sh 94506c797452745b87e734caf35ec4b62c0ef61f6c7efa5869f22ec0f1a71abf) returned 32512
+
+2) rescan blockchain (unclean shutdown?)::
+
+    /Applications/Bitcoin-Qt.app/Contents/MacOS/Bitcoin-Qt -printtoconsole -debug -rescan
+
+3) Make sure "Spend unconfirmed outputs" is toggled off in Bitcoin-QT preferences
+
+4) Make sure you are displaying correct transactions and not old ones (Bitcoin QT pops old conflicting transactions at the top of the history list). Choose "Today" from Bitcoin QT transaction list filters.
+
 Continuous integration
 -----------------------
 
@@ -105,4 +139,4 @@ Continuous integration is running on drone.io <https://drone.io/bitbucket.org/mi
 
 The recipe to run the tests on Python 3.4::
 
-
+    pass

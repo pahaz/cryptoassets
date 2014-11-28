@@ -63,7 +63,10 @@ class StatusHTTPServer(threading.Thread):
         self.ready = False
 
         server_address = (self.ip, self.port)
-        self.httpd = HTTPServer(server_address, StatusGetHandler)
+        try:
+            self.httpd = HTTPServer(server_address, StatusGetHandler)
+        except OSError as e:
+            raise RuntimeError("Could not start cryptoassets helper service status server at {}:{}".format(self.ip, self.port)) from e
 
     def run(self):
         self.running = True

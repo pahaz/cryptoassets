@@ -95,9 +95,10 @@ class PipedWalletNotifyHandlerBase:
 
         self.last_notification = datetime.datetime.utcnow()
 
+        # Each address object is updated in an isolated transaction,
+        # thus we need to pass the db transaction manager to the transaction updater
         if self.transaction_updater:
-            with transaction.manager:
-                self.transaction_updater.handle_wallet_notify(txid)
+            self.transaction_updater.handle_wallet_notify(txid, transaction_manager=transaction.manager)
 
     def run(self):
 

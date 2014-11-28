@@ -42,7 +42,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         transaction_updater = TransactionUpdater(DBSession, self.backend, "btc")
 
         # We should find at least one transaction topping up our testnet wallet
-        found = transaction_updater.rescan_all()
+        found = transaction_updater.rescan_all(transaction.manager)
         self.assertGreater(found, 0)
 
         # Because we have imported public address to database previously,
@@ -99,7 +99,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         self.Transaction.confirmation_count = 1
 
         # Withdrawal amounts must be at least 0.00002000 BTCTEST, and at most 50.00000000 BTCTEST.
-        self.external_send_amount = 2100
+        self.external_send_amount = 21000
         self.network_fee = 10000
         # Wait 10 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 60 * 10
@@ -128,7 +128,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
             subprocess.call("echo faketransactionid >> {}".format(pipe_fname), shell=True)
             time.sleep(0.1)  # Let walletnotify thread to pick it up
 
-            mock_method.assert_called_once_with("faketransactionid")
+            mock_method.assert_called_with("faketransactionid")
 
         self.walletnotify_pipe.stop()
 

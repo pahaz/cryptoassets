@@ -10,12 +10,15 @@ over various APIs. This includes
 
 import datetime
 import logging
+import transaction
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from .. import configure
 from ..backend import registry
 from ..backend.base import IncomingTransactionRunnable
+
+from ..coin import registry as coin_registry
 
 from ..models import DBSession
 from . import status
@@ -71,10 +74,23 @@ class Service:
                 self.incoming_transaction_runnables[coin] = runnable
 
     def broadcast(self):
-        """"A scheduled task to broadcast any new transactions to the bitcoin network."""
+        """"A scheduled task to broadcast any new transactions to the bitcoin network.
+
+        Each wallet is broadcasted in its own transaction.
+        """
         self.last_broadcast = datetime.datetime.utcnow()
-        for wallet in DBSession.query():
-            pass
+
+        for coin in coin_registry.all():
+            wallet_class = coin_registry.get_wallet_model(coin)
+            with transaction.manager:
+                wallet_ids = [wallet.id for wallet in DBSession.query(wallet_class).all()]
+
+            for wallet_id in wallet_ids:
+                with transaction.manager:
+                    wallet = DBSession.query(wallet_class).get(wallet_id)
+                    logger.info("Broadcasting transactions for wallet class %s wallet %d:%s", wallet_class, wallet.id, wallet.name)
+                    outgoing = wallet.broadcast()
+                    logger.info("%d transactionsn send", outgoing)
 
     def start(self):
         """

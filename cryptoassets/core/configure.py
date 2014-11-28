@@ -28,8 +28,9 @@ from .notify.base import Notifier
 
 from .service import status
 
-
+#: TODO: Move engine definition to its own module
 _engine = None
+
 _backends = {}
 
 
@@ -45,7 +46,8 @@ def setup_engine(configuration):
     :param dict configuration: Parsed INI-like configuration
     """
     global _engine
-    _engine = engine_from_config(configuration, prefix="")
+    echo = configuration.get("echo") in (True, "true")
+    _engine = engine_from_config(configuration, prefix="", echo=echo)
 
 
 def setup_backends(backends):
@@ -120,6 +122,10 @@ def setup_notify(notifiers):
 
     notifier_registry.clear()
 
+    if not notifiers:
+        # Notifiers not configured
+        return
+
     for name, data in notifiers.items():
         data = data.copy()  # No mutate in place
         klass = data.pop("class")
@@ -157,7 +163,7 @@ def load_from_dict(config):
     setup_backends(config.get("backends"))
     setup_models(config.get("models"))
     setup_status_server(config.get("status-server"))
-    setup_status_server(config.get("notify"))
+    setup_notify(config.get("notify"))
 
 
 def prepare_yaml_file(fname):

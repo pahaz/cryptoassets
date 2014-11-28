@@ -24,6 +24,9 @@ from .base import CoinBackend
 from .pipe import PipedWalletNotifyHandler
 
 from ..coin import registry as coin_registry
+from ..notify import events
+from ..notify import notify
+
 
 logger = logging.getLogger(__name__)
 
@@ -227,8 +230,12 @@ class TransactionUpdater:
         # Simple book-keeping of number of transactions we have handled
         self.count = 0
 
-    def handle_wallet_notify(self, txid):
+    def handle_wallet_notify(self, txid, transaction_manager):
         """Incoming walletnotify event.
+
+        :parma txid: Bitcoin network transaction hash
+
+        :param transaction_manager: Transaction manager instance which will be used to isolate each transaction update commit
         """
 
         txdata = self.backend.get_transaction(txid)
@@ -254,18 +261,44 @@ class TransactionUpdater:
 
         for address, amount in addresses.items():
 
-            address_obj = self.session.query(Address).filter(Address.address == address).first()  # noqa
+            address_id = None
+            transaction_id = None
+            account_id = None
+            confirmations = None
 
-            if address_obj:
-                wallet = address_obj.account.wallet
-                account, transaction = wallet.receive(txid, address, amount, extra)
-                logger.info("Imported account %d, address %s, amount %s, tx confirmations %d", account.id, address, amount, transaction.confirmations)
-            else:
-                logger.info("Skipping transaction notify for unknown address %s, amount %s", address, amount)
+            with transaction_manager:
+                address_obj = self.session.query(Address).filter(Address.address == address).first()  # noqa
+
+                if address_obj:
+                    wallet = address_obj.account.wallet
+                    account, transaction = wallet.receive(txid, address, amount, extra)
+                    confirmations = transaction.confirmations
+                    logger.info("Wallet notify account %d, address %s, amount %s, tx confirmations %d", account.id, address, amount, confirmations)
+
+                    account_id = account.id
+                    transaction_id = transaction.id
+
+                else:
+                    logger.info("Skipping transaction notify for unknown address %s, amount %s", address, amount)
+
+            # Tranasactipn is committed in this point, notify the application about the new data in the database
+            if transaction_id:
+                event_name, data = events.create_txupdate(txid=txid, transaction=transaction_id, account=account_id, address=address, amount=amount, confirmations=confirmations)
+                notify(event_name, data)
 
         self.count += 1
 
-    def rescan_all(self):
+    def rescan_address(self, address, confirmations):
+        """
+        :param address: Address object
+        """
+        balance = self.backend.to_internal_amount(self.backend.listreceivedbyaddress(address.address, confirmations, False))
+        if balance != address.balance:
+            # Uh oh, our internal bookkeeping is not up-to-date with address,
+            # need full rescan
+            pass
+
+    def rescan_all(self, transaction_manager):
         """Rescan all transactions in a wallet to see if we have miss any.
 
         TODO: Currently this does not correctly subtract outgoing transactions
@@ -285,7 +318,7 @@ class TransactionUpdater:
 
             for tx in txs:
                 # TODO See if we can optimize this pulling all tx data from listransactions information without need to do one extra JSON-RPC per tx
-                self.handle_wallet_notify(tx["txid"])
+                self.handle_wallet_notify(tx["txid"], transaction_manager)
                 self.count += 1
                 found += 1
 

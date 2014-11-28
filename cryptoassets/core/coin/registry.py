@@ -35,3 +35,11 @@ def get_address_model(coin):
     :return: GenericAddress subclass
     """
     return _wallet_models[coin].Address
+
+
+def all():
+    """Get all registered coin models.
+
+    :return: List of coin names
+    """
+    return _wallet_models.keys()

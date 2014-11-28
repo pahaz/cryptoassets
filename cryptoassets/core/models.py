@@ -454,7 +454,7 @@ class GenericWallet(TableName, Base, CoinBackend):
             # Make sure the address is written to db
             # before we can make any entires of received
             # transaction on it in monitoring
-            session.flush()
+            # session.flush()
 
         self.backend.monitor_address(address)
 
