@@ -21,6 +21,7 @@ from ..backend.base import IncomingTransactionRunnable
 from ..coin import registry as coin_registry
 
 from ..models import DBSession
+from ..models import Base
 from . import status
 
 
@@ -46,6 +47,13 @@ class Service:
         configure.load_from_dict(config)
         self.setup_jobs()
         self.setup_incoming_notifications()
+
+    def initialize_db(self):
+        """ """
+        engine = configure._engine
+        DBSession.configure(bind=engine)
+        Base.metadata.create_all(engine)
+        print("All database tables created for SQLAlchemy")
 
     def setup_jobs(self):
         logger.info("Setting up broadcast scheduled job")
