@@ -9,7 +9,7 @@ Original API call list: https://en.bitcoin.it/wiki/Original_Bitcoin_client/API_c
 
 import logging
 import transaction
-
+import datetime
 from decimal import Decimal
 
 from collections import Counter
@@ -108,6 +108,9 @@ class Bitcoind(BitcoindDerivate):
             func = getattr(self.bitcoind, name)
             result = func(*args, **kwargs)
             return result
+        except ValueError as e:
+            #
+            raise BitcoindJSONError("Probably could not authenticate against bitcoind-like RPC, try manually with curl") from e
         except JSONRPCException as e:
             msg = e.error.get("message")
             if msg:
@@ -201,13 +204,21 @@ class Bitcoind(BitcoindDerivate):
         if not config:
             return
 
-        if config.get("class") != "cryptoassets.core.backend.pipe.PipedWalletNotifyHandler":
-            raise RuntimeError("At the moment, only named pipe wallet notify handler is supported, got {}".format(config["class"]))
+        config = config.copy()
 
         transaction_updater = TransactionUpdater(dbsession, self, self.coin)
 
-        from cryptoassets.core.backend.pipe import PipedWalletNotifyHandler
-        handler = PipedWalletNotifyHandler(transaction_updater, config["fname"], config.get("mode"))
+        klass = config.pop("class")
+        provider = resolve(klass)
+        config["transaction_updater"] = transaction_updater
+        # Pass given configuration options to the backend as is
+        try:
+            handler = provider(**config)
+        except TypeError as te:
+            # TODO: Here we reflect potential passwords from the configuration file
+            # back to the terminal
+            # TypeError: __init__() got an unexpected keyword argument 'network'
+            raise ConfigurationError("Could not initialize backend {} with options {}".format(klass, data)) from te
 
         return handler
 

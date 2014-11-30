@@ -70,6 +70,11 @@ Starting bitcoind in debug mode::
 
     /Applications/Bitcoin-Qt.app/Contents/MacOS/Bitcoin-Qt -printtoconsole -debug
 
+Building bitcoind on Ubuntu
+++++++++++++++++++++++++++++++
+
+* http://bitzuma.com/posts/compile-bitcoin-core-from-source-on-ubuntu/
+
 Topping up bitcoind
 ++++++++++++++++++++++
 

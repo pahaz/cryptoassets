@@ -104,7 +104,6 @@ def setup_models(modules):
                     coin_registry.register_wallet_model(name, obj)
 
     DBSession.configure(bind=_engine)
-    Base.metadata.create_all(_engine)
 
 
 def setup_notify(notifiers):
