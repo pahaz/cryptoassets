@@ -4,15 +4,12 @@
 database:
   url: sqlite:////tmp/cryptoassts-unittest-bitcoind.sqlite
 
-# What cryptocurrencies we are configuring to the database
-models:
-  btc: cryptoassets.core.coin.bitcoin.models
-
 # Locally running bitcoind in testnet
-backends:
+coins:
     btc:
-        class: cryptoassets.core.backend.bitcoind.Bitcoind
-        url: http://foo:bar@127.0.0.1:8332/
-        walletnotify:
-            class: cryptoassets.core.backend.pipe.PipedWalletNotifyHandler
-            fname: /tmp/cryptoassets-unittest-walletnotify
+        backend:
+            class: cryptoassets.core.backend.bitcoind.Bitcoind
+            url: http://foo:bar@127.0.0.1:8332/
+            walletnotify:
+                class: cryptoassets.core.backend.pipe.PipedWalletNotifyHandler
+                fname: /tmp/cryptoassets-unittest-walletnotify

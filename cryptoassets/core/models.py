@@ -80,7 +80,7 @@ class CoinBackend:
         Pulls the associated backend instance (block.io, blockchain.info, etc)
         for the registry.
         """
-        return self.app.coins.get(self.coin).backend
+        return self.backend
 
 
 class GenericAccount(TableName, Base, CoinBackend):

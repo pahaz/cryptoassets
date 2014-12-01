@@ -1,8 +1,6 @@
 """In-process Python notifications for transaction updates.
 """
-import requests
 import logging
-import json
 
 from .base import Notifier
 from zope.dottedname.resolve import resolve

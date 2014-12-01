@@ -6,7 +6,6 @@ from sqlalchemy import create_engine
 
 from ..configure import ConfigurationError
 from ..configure import Configurator
-from ..backend import registry
 from ..backend.blockio import BlockIo
 from ..app import CryptoAssetsApp
 from ..coin.registry import Coin

@@ -52,7 +52,7 @@ class Configurator:
         echo = configuration.get("echo") in (True, "true")
         return engine_from_config(configuration, prefix="", echo=echo)
 
-    def setup_backend(self, name, data):
+    def setup_backend(self, coin, data):
         """Setup backends.
 
         :param data: dictionary of backend configuration entries
@@ -63,7 +63,7 @@ class Configurator:
 
         data = data.copy()  # No mutate in place
         klass = data.pop("class")
-        data["coin"] = name
+        data["coin"] = coin
         provider = resolve(klass)
         # Pass given configuration options to the backend as is
         try:
@@ -120,8 +120,11 @@ class Configurator:
             backend_config = data.get("backend")
             if not backend_config:
                 raise ConfigurationError("No backend config given for {}".format(name))
-            backend = self.setup_backend(name, data.get("backend"))
-            coin = Coin(wallet_model, backend)
+
+            coin = Coin(wallet_model)
+            backend = self.setup_backend(coin, data.get("backend"))
+            coin.backend = backend
+
             coin_registry.register(name, coin)
 
         return coin_registry

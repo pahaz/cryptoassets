@@ -23,9 +23,9 @@ from .base import CoinBackend
 
 from .pipe import PipedWalletNotifyHandler
 
-from ..coin import registry as coin_registry
+from ..coin.registry import Coin
 from ..notify import events
-
+from ..notify.registry import NotifierRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -72,10 +72,13 @@ class Bitcoind(BitcoindDerivate):
 
     def __init__(self, coin, url, walletnotify=None):
         """
-        :param coin: Threel letter coin acronym
+        :param coin: cryptoassets.core.coin.registry.Coin instacne
         :param url: bitcoind connection url
         :param wallet_notify: Wallet notify configuration
         """
+
+        assert isinstance(coin, Coin)
+
         self.url = url
         self.bitcoind = AuthServiceProxy(url)
         self.coin = coin
@@ -90,13 +93,13 @@ class Bitcoind(BitcoindDerivate):
         self.walletnotify_config = walletnotify
 
     def to_internal_amount(self, amount):
-        if self.coin == "btc":
+        if self.coin.name == "btc":
             return _convert_to_satoshi(amount)
         else:
             return int(Decimal(amount))
 
     def to_external_amount(self, amount):
-        if self.coin == "btc":
+        if self.coin.name == "btc":
             return _convert_to_decimal(amount)
         else:
             return int(amount)
@@ -195,7 +198,7 @@ class Bitcoind(BitcoindDerivate):
     def monitor_address(self, address):
         pass
 
-    def setup_incoming_transactions(self, dbsession):
+    def setup_incoming_transactions(self, dbsession, notifiers):
         """Create a named pipe walletnotify handler.
         """
         config = self.walletnotify_config
@@ -205,7 +208,7 @@ class Bitcoind(BitcoindDerivate):
 
         config = config.copy()
 
-        transaction_updater = TransactionUpdater(dbsession, self, self.coin)
+        transaction_updater = TransactionUpdater(dbsession, self, self.coin, notifiers)
 
         klass = config.pop("class")
         provider = resolve(klass)
@@ -229,10 +232,12 @@ class BadWalletNotify(Exception):
 class TransactionUpdater:
     """Write transactions updates from bitcoind to the database."""
 
-    def __init__(self, session, backend, coin):
+    def __init__(self, session, backend, coin, notifiers):
         """
         :param session: SQLAlchemy database session
         """
+        assert isinstance(coin, Coin)
+
         self.backend = backend
         self.coin = coin
         self.session = session
@@ -242,6 +247,13 @@ class TransactionUpdater:
 
         #: UTC timestamp when we got the last transaction notification
         self.last_wallet_notify = None
+
+        if notifiers:
+            assert isinstance(notifiers, NotifierRegistry)
+            #: Notifiers registry we are going to inform about transaction status updates
+            self.notifiers = notifiers
+        else:
+            self.notifiers = None
 
     def handle_wallet_notify(self, txid, transaction_manager):
         """Incoming walletnotify event.
@@ -271,7 +283,7 @@ class TransactionUpdater:
         # if not wallet:
         #     raise RuntimeError("Transaction updater could not find wallet with wallet id {}".format(self.wallet_id))
 
-        Address = coin_registry.get_address_model(self.coin)
+        Address = self.coin.address_model
 
         for address, amount in addresses.items():
 
@@ -300,8 +312,9 @@ class TransactionUpdater:
             # Tranasactipn is committed in this point, notify the application about the new data in the database
             if transaction_id:
                 logger.info("Starting txupdate notify")
-                event_name, data = events.create_txupdate(txid=txid, transaction=transaction_id, account=account_id, address=address, amount=amount, confirmations=confirmations)
-                notify(event_name, data)
+                if self.notifiers:
+                    event_name, data = events.create_txupdate(txid=txid, transaction=transaction_id, account=account_id, address=address, amount=amount, confirmations=confirmations)
+                    self.notifiers.notify(event_name, data)
             else:
                 logger.info("No transaction object was created")
 

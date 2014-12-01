@@ -11,17 +11,13 @@ import transaction
 
 from unittest.mock import patch
 
-from sqlalchemy import create_engine
-
-from ..models import DBSession
-from ..models import Base
-from ..backend import registry as backendregistry
-
 from ..backend.bitcoind import Bitcoind
 from ..backend.bitcoind import TransactionUpdater
-from ..backend import registry as backendregistry
 
 from .. import configure
+from ..app import CryptoAssetsApp
+from ..configure import Configurator
+
 from ..backend.pipe import PipedWalletNotifyHandler
 from ..backend.httpwalletnotify import HTTPWalletNotifyHandler
 from ..backend.httpwalletnotify import WalletNotifyRequestHandler
@@ -41,7 +37,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
     def refresh_account_balance(self, wallet, account):
         """ """
-        transaction_updater = TransactionUpdater(DBSession, self.backend, "btc")
+        transaction_updater = TransactionUpdater(self.session, self.backend, "btc")
 
         # We should find at least one transaction topping up our testnet wallet
         found = transaction_updater.rescan_all(transaction.manager)
@@ -49,7 +45,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         # Because we have imported public address to database previously,
         # transaction_updater should have updated the balance on this address
-        account = DBSession.query(self.Account).get(account.id)
+        account = self.session.query(self.Account).get(account.id)
         self.assertGreater(account.balance, 0)
 
     def setup_test_fund_address(self, wallet, account):
@@ -64,7 +60,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_receiving(self, wallet):
 
-        self.transaction_updater = TransactionUpdater(DBSession, self.backend, "btc")
+        self.transaction_updater = TransactionUpdater(self.session, self.backend, "btc")
 
         self.walletnotify_pipe = PipedWalletNotifyHandler(self.transaction_updater, WALLETNOTIFY_PIPE)
 
@@ -83,18 +79,15 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         test_config = os.path.join(os.path.dirname(__file__), "bitcoind.config.yaml")
         self.assertTrue(os.path.exists(test_config), "Did not found {}".format(test_config))
-        configure.load_yaml_file(test_config)
+        self.configurator.load_yaml_file(test_config)
 
-        self.backend = backendregistry.get("btc")
+        coin = self.app.coins.get("btc")
+        self.backend = coin.backend
 
-        from ..coin.bitcoin.models import BitcoinWallet
-        from ..coin.bitcoin.models import BitcoinAddress
-        from ..coin.bitcoin.models import BitcoinTransaction
-        from ..coin.bitcoin.models import BitcoinAccount
-        self.Address = BitcoinAddress
-        self.Wallet = BitcoinWallet
-        self.Transaction = BitcoinTransaction
-        self.Account = BitcoinAccount
+        self.Address = coin.address_model
+        self.Wallet = coin.wallet_model
+        self.Transaction = coin.transaction_model
+        self.Account = coin.account_model
 
         self.external_transaction_confirmation_count = 1
 
@@ -125,12 +118,12 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         with transaction.manager:
             # Create a wallet
             wallet = self.Wallet()
-            DBSession.add(wallet)
-            DBSession.flush()
+            self.session.add(wallet)
+            self.session.flush()
 
             # Spoof a fake address on the wallet
             account = wallet.create_account("Test account")
-            DBSession.flush()
+            self.session.flush()
 
             # Testnet transaction id we are spoofing
             # bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf-000
@@ -138,7 +131,8 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
             # n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr
             wallet.add_address(account, "Old known address with a transaction", "n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr")
 
-            transaction_updater = TransactionUpdater(DBSession, self.backend, "btc")
+            coin = self.app.coins.get("btc")
+            transaction_updater = TransactionUpdater(self.session, self.backend, coin, None)
 
             account_id = account.id
 
@@ -165,7 +159,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         with transaction.manager:
             # Reload account from the database
-            account = DBSession.query(self.Account).get(account_id)
+            account = self.session.query(self.Account).get(account_id)
             self.assertEqual(account.balance, 120000000)
 
         # Triggering the transaction update again should not change the balance
@@ -177,7 +171,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
             self.assertLess(time.time(), deadline, "Transaction updater never kicked in")
 
         with transaction.manager:
-            account = DBSession.query(self.Account).get(account_id)
+            account = self.session.query(self.Account).get(account_id)
             self.assertEqual(account.balance, 120000000)
 
         self.walletnotify_pipe.stop()
@@ -188,28 +182,28 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         # These objects must be committed before setup_test_fund_address() is called
         with transaction.manager:
             wallet = self.Wallet()
-            DBSession.add(wallet)
-            DBSession.flush()
+            self.session.add(wallet)
+            self.session.flush()
             account = wallet.create_account("Test account")
 
         # Import addresses we know having received balance
         with transaction.manager:
-            account = DBSession.query(self.Account).get(1)
-            wallet = DBSession.query(self.Wallet).get(1)
+            account = self.session.query(self.Account).get(1)
+            wallet = self.session.query(self.Wallet).get(1)
             self.setup_test_fund_address(wallet, account)
             self.assertGreater(wallet.get_receiving_addresses().count(), 0)
 
         # Refresh from API/bitcoind the balances of imported addresses
         with transaction.manager:
-            account = DBSession.query(self.Account).get(1)
-            wallet = DBSession.query(self.Wallet).get(1)
+            account = self.session.query(self.Account).get(1)
+            wallet = self.session.query(self.Wallet).get(1)
             self.assertGreater(wallet.get_receiving_addresses().count(), 0)
             self.refresh_account_balance(wallet, account)
 
         # Make sure we got balance after refresh
         with transaction.manager:
-            account = DBSession.query(self.Account).get(1)
-            wallet = DBSession.query(self.Wallet).get(1)
+            account = self.session.query(self.Account).get(1)
+            wallet = self.session.query(self.Wallet).get(1)
             self.assertGreater(wallet.get_receiving_addresses().count(), 0)
             self.assertGreater(account.balance, 0, "We need have some balance on the test account to proceed with the send test")
 

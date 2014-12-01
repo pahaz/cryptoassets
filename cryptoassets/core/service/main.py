@@ -89,7 +89,7 @@ class Service:
             assert type(name) == str
             assert isinstance(coin, Coin)
             backend = coin.backend
-            runnable = backend.setup_incoming_transactions(self.app.session)
+            runnable = backend.setup_incoming_transactions(self.app.session, self.app.notifiers)
             logger.info("Setting up incoming transaction notifications for %s using %s", coin, runnable.__class__)
             assert isinstance(runnable, IncomingTransactionRunnable)
             if runnable:

@@ -17,7 +17,6 @@ from cgi import parse_header
 from cgi import parse_multipart
 from urllib.parse import parse_qs
 
-from . import registry
 from .base import IncomingTransactionRunnable
 
 
