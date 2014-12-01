@@ -35,20 +35,10 @@ class StatusReportGenerator:
             if not runnable.is_alive():
                 print("%s is dead".format(coin), file=output)
             else:
-                last_notification = runnable.last_notification
+                last_notification = runnable.transaction_updater.last_wallet_notify
                 print("%s is alive, last notification %s".format(coin, last_notification), file=output)
 
         return output.getvalue()
-
-
-class StatusGetHandler(BaseHTTPRequestHandler):
-
-    counter = 0
-
-    def do_GET(self):
-        self.send_response(200, "OK")
-        self.end_headers()
-        status_report_generator.get_plaintext()
 
 
 class StatusHTTPServer(threading.Thread):
@@ -62,11 +52,24 @@ class StatusHTTPServer(threading.Thread):
         self.running = False
         self.ready = False
 
+    def start(self, report_generator):
+
+        class StatusGetHandler(BaseHTTPRequestHandler):
+
+            counter = 0
+
+            def do_GET(self):
+                self.send_response(200, "OK")
+                self.end_headers()
+                report_generator.get_plaintext()
+
         server_address = (self.ip, self.port)
         try:
             self.httpd = HTTPServer(server_address, StatusGetHandler)
         except OSError as e:
             raise RuntimeError("Could not start cryptoassets helper service status server at {}:{}".format(self.ip, self.port)) from e
+
+        threading.Thread.start(self)
 
     def run(self):
         self.running = True
@@ -75,16 +78,8 @@ class StatusHTTPServer(threading.Thread):
         self.running = False
 
     def stop(self):
-        if self.httpd:
+        if self.httpd and self.running:
             logger.info("Shutting down HTTP status server %s", self)
             self.httpd.shutdown()
             self.httpd = None
 
-
-# XXX: Using global state, fix
-
-#: Global StatusHTTPServer thread
-status_http_server = None
-
-#: Global StatusReportGenerator for the curretly running service
-status_report_generator = None

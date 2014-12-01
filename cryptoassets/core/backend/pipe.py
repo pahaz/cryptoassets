@@ -13,7 +13,6 @@ import transaction
 import threading
 import datetime
 
-from . import registry
 from .base import IncomingTransactionRunnable
 
 

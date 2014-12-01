@@ -23,7 +23,6 @@ from .models import Base
 from .models import GenericWallet
 
 from .backend.base import CoinBackend
-from .backend import registry
 
 from .coin import registry as coin_registry
 
@@ -187,7 +186,8 @@ class Configurator:
         self.app.status_server = self.setup_status_server(config.get("status-server"))
         self.app.notifiers = self.setup_notify(config.get("notify"))
 
-    def prepare_yaml_file(self, fname):
+    @staticmethod
+    def prepare_yaml_file(fname):
         """Extract config dictionary from a YAML file."""
         stream = io.open(fname, "rt")
         config = yaml.safe_load(stream)

@@ -25,7 +25,6 @@ from .pipe import PipedWalletNotifyHandler
 
 from ..coin import registry as coin_registry
 from ..notify import events
-from ..notify import notify
 
 
 logger = logging.getLogger(__name__)

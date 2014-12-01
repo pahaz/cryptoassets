@@ -14,14 +14,10 @@ import transaction
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from .. import configure
-from ..backend import registry
+from ..app import CryptoAssetsApp
+from ..configure import Configurator
 from ..backend.base import IncomingTransactionRunnable
-
-from ..coin import registry as coin_registry
-
-from ..models import DBSession
-from ..models import Base
+from ..coin.registry import Coin
 from . import status
 
 
@@ -39,20 +35,34 @@ class Service:
         """
         logger.info("Setting up cryptoassets service")
 
+        self.app = CryptoAssetsApp()
+
+        #: Status server instance
+        self.status_server = None
+
+        #: coin name -> IncomingTransactionRunnable
         self.incoming_transaction_runnables = {}
         self.running = False
         self.last_broadcast = None
-        self.status_http_server = None
 
-        configure.load_from_dict(config)
+        self.config(config)
+        self.setup()
+
+    def config(self, config):
+        self.configurator = Configurator(self.app)
+        self.configurator.load_from_dict(config)
+
+    def setup(self):
         self.setup_jobs()
         self.setup_incoming_notifications()
 
+        # XXX: We are aliasing here, because configurator can only touch app object. Need to figure out something cleaner.
+        self.status_server = self.app.status_server
+
     def initialize_db(self):
         """ """
-        engine = configure._engine
-        DBSession.configure(bind=engine)
-        Base.metadata.create_all(engine)
+        self.app.setup_session()
+        self.app.create_tables()
         print("All database tables created for SQLAlchemy")
 
     def setup_jobs(self):
@@ -65,21 +75,25 @@ class Service:
 
         The server is previously set up by ``configure`` module.We need just to pass the status report generator of this service to it before starting it up.
         """
-        if status.status_http_server:
+        if self.status_server:
             report_generator = status.StatusReportGenerator(self)
-            status.status_report_generator = report_generator
-            logger.info("Starting status server %s with report generators %s", status.status_http_server, status.status_report_generator)
-            status.status_http_server.start()
+            logger.info("Starting status server %s with report generators %s", self.status_server, report_generator)
+            self.status_server.start(report_generator)
 
     def setup_incoming_notifications(self):
         """Start incoming transaction handlers.
         """
-        for coin, backend in registry.all():
-            runnable = backend.setup_incoming_transactions(DBSession)
+
+        assert self.app.session
+        for name, coin, in self.app.coins.all():
+            assert type(name) == str
+            assert isinstance(coin, Coin)
+            backend = coin.backend
+            runnable = backend.setup_incoming_transactions(self.app.session)
             logger.info("Setting up incoming transaction notifications for %s using %s", coin, runnable.__class__)
             assert isinstance(runnable, IncomingTransactionRunnable)
             if runnable:
-                self.incoming_transaction_runnables[coin] = runnable
+                self.incoming_transaction_runnables[name] = runnable
 
     def broadcast(self):
         """"A scheduled task to broadcast any new transactions to the bitcoin network.
@@ -88,8 +102,8 @@ class Service:
         """
         self.last_broadcast = datetime.datetime.utcnow()
 
-        for coin in coin_registry.all():
-            wallet_class = coin_registry.get_wallet_model(coin)
+        for name, coin in self.app.coins.all():
+            wallet_class = coin.get_wallet_model()
             with transaction.manager:
                 wallet_ids = [wallet.id for wallet in DBSession.query(wallet_class).all()]
 
@@ -123,7 +137,7 @@ class Service:
             self.scheduler.shutdown()
 
         logger.info("Attempting of shutdown status server")
-        if status.status_http_server:
-            status.status_http_server.stop()
-            status.status_http_server = None
+        if self.app.status_server:
+            self.app.status_server.stop()
+            self.app.status_server = None
 

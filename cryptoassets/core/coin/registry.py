@@ -25,7 +25,7 @@ class CoinRegistry:
 
         :return: List of coin names
         """
-        return self.coins.keys()
+        return self.coins.items()
 
     def get(self, name):
         return self.coins.get(name)

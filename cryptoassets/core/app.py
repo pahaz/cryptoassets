@@ -15,14 +15,14 @@ class CryptoAssetsApp:
         #: cryptoassets.core.coin.registry.CoinRegistry instance
         self.coins = {}
 
-        #: Status server instance
-        self.status_server = None
-
         #: Dict of notify handlers
         self.notifiers = {}
 
         #: TODO: Make this more explicity?
         self.session = DBSession
+
+        #: Configured status server
+        self.status_server = None
 
     def setup_session(self):
         """Configure SQLAlchemy models."""

@@ -15,8 +15,7 @@ import requests
 
 from cryptoassets.core.service.main import Service
 
-from .. import configure
-from ..notify import notify
+from ..configure import Configurator
 from . import testlogging
 
 from ..service import status
@@ -40,14 +39,19 @@ class ServiceTestCase(unittest.TestCase):
 
         test_config = os.path.join(os.path.dirname(__file__), "service.config.yaml")
         self.assertTrue(os.path.exists(test_config), "Did not found {}".format(test_config))
-        config = configure.prepare_yaml_file(test_config)
+        config = Configurator.prepare_yaml_file(test_config)
 
+        # Dynamically patch in some system-wide globals,
+        # so that shutting down test does not clash the next test
         config["status-server"]["port"] = self.get_next_status_server_port()
-        config["backends"]["btc"]["walletnotify"]["fname"] = "/tmp/cryptoassets-walletnotify-unittest-%d" % self.get_next_status_server_port()
+        config["coins"]["btc"]["backend"]["walletnotify"]["fname"] = "/tmp/cryptoassets-walletnotify-unittest-%d" % self.get_next_status_server_port()
 
         return config
 
     def tearDown(self):
+
+        if not hasattr(self, "service"):
+            return
 
         self.service.shutdown()
 
@@ -58,7 +62,7 @@ class ServiceTestCase(unittest.TestCase):
             self.assertLess(time.time(), deadline)
 
         # See that status server
-        status_http_server = status.status_http_server
+        status_http_server = self.service.status_server
         deadline = time.time() + 3
         if status_http_server:
             while status_http_server.running:
@@ -77,15 +81,16 @@ class ServiceTestCase(unittest.TestCase):
     def test_start_shutdown_service(self):
         """See that service starts and stops with bitcoind config.
         """
+
         config = self.prepare_config()
 
-        self.service = service = Service(config)
+        self.service = Service(config)
         # We should get one thread monitoring bitcoind walletnotify
-        self.assertEqual(len(service.incoming_transaction_runnables), 1)
+        self.assertEqual(len(self.service.incoming_transaction_runnables), 1)
 
-        service.start()
+        self.service.start()
 
-        walletnotify_handler = service.incoming_transaction_runnables["btc"]
+        walletnotify_handler = self.service.incoming_transaction_runnables["btc"]
         deadline = time.time() + 3
         while not walletnotify_handler.ready:
             self.assertLess(time.time(), deadline)
@@ -97,7 +102,8 @@ class ServiceTestCase(unittest.TestCase):
 
         self.service = service = Service(config)
 
-        status_http_server = status.status_http_server
+        status_http_server = self.service.status_server
+        self.assertIsNotNone(status_http_server)
 
         try:
 

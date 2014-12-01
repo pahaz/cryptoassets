@@ -26,7 +26,6 @@ from sqlalchemy.orm.session import Session
 from sqlalchemy.schema import UniqueConstraint
 from zope.sqlalchemy import ZopeTransactionExtension
 
-from .backend import registry as backendregistry
 from . import lock
 
 # Create a thread-local DB session constructor
@@ -81,7 +80,7 @@ class CoinBackend:
         Pulls the associated backend instance (block.io, blockchain.info, etc)
         for the registry.
         """
-        return backendregistry.get(self.coin)
+        return self.app.coins.get(self.coin).backend
 
 
 class GenericAccount(TableName, Base, CoinBackend):

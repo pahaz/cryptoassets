@@ -1,27 +1,13 @@
 import os
 import time
 import unittest
-import threading
 import subprocess
-import transaction
 
 from unittest.mock import patch
 
-from sqlalchemy import create_engine
-
-from ..models import DBSession
-from ..models import Base
-from ..backend import registry as backendregistry
-
-from ..backend.bitcoind import Bitcoind
-from ..backend.bitcoind import TransactionUpdater
-from ..backend import registry as backendregistry
-
-from .. import configure
 from ..backend.pipe import PipedWalletNotifyHandler
 from ..backend.httpwalletnotify import HTTPWalletNotifyHandler
 from ..backend.httpwalletnotify import WalletNotifyRequestHandler
-from .base import CoinTestCase
 
 
 WALLETNOTIFY_PIPE = "/tmp/cryptoassets-unittest-walletnotify-pipe"
