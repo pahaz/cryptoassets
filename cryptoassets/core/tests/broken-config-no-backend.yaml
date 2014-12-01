@@ -1,6 +1,12 @@
 ---
-# Broken config - no backends
-#
+# YAML
+# Cryptoassets.core configuration for the wallet sample project
+
 database:
   url: sqlite:///:memory:?check_same_thread=false
   pool_size: 1
+
+# What services we use to run talk to the cryptocurrency networks
+coins:
+    btc:
+        models: cryptoassets.core.coin.bitcoin.models

@@ -14,6 +14,10 @@ from pyramid.path import DottedNameResolver
 
 from sqlalchemy import engine_from_config
 
+from .coin.defaults import COIN_MODEL_DEFAULTS
+from .coin.registry import Coin
+from .coin.registry import CoinRegistry
+
 from .models import DBSession
 from .models import Base
 from .models import GenericWallet
@@ -23,43 +27,41 @@ from .backend import registry
 
 from .coin import registry as coin_registry
 
-from .notify import registry as notifier_registry
+from .notify.registry import NotifierRegistry
 from .notify.base import Notifier
 
 from .service import status
-
-#: TODO: Move engine definition to its own module
-_engine = None
-
-_backends = {}
 
 
 class ConfigurationError(Exception):
     pass
 
 
-def setup_engine(configuration):
-    """Setup database engine.
+class Configurator:
 
-    See ``sqlalchemy.engine_from_config`` for details.
+    def __init__(self, app):
+        self.app = app
 
-    :param dict configuration: Parsed INI-like configuration
-    """
-    global _engine
-    echo = configuration.get("echo") in (True, "true")
-    _engine = engine_from_config(configuration, prefix="", echo=echo)
+    def setup_engine(self, configuration):
+        """Setup database engine.
 
+        See ``sqlalchemy.engine_from_config`` for details.
 
-def setup_backends(backends):
-    """Setup backends.
+        :param dict configuration: ``engine`` configuration section
+        """
+        global _engine
+        echo = configuration.get("echo") in (True, "true")
+        return engine_from_config(configuration, prefix="", echo=echo)
 
-    :param backends: dictionary of coin name -> backend data
-    """
+    def setup_backend(self, name, data):
+        """Setup backends.
 
-    if not backends:
-        raise ConfigurationError("backends section missing in config")
+        :param data: dictionary of backend configuration entries
+        """
 
-    for name, data in backends.items():
+        if not data:
+            raise ConfigurationError("backends section missing in config")
+
         data = data.copy()  # No mutate in place
         klass = data.pop("class")
         data["coin"] = name
@@ -74,22 +76,19 @@ def setup_backends(backends):
             raise ConfigurationError("Could not initialize backend {} with options {}".format(klass, data)) from te
 
         assert isinstance(instance, CoinBackend)
-        registry.register(name, instance)
+        return instance
 
+    def setup_model(self, module):
+        """Setup SQLAlchemy models.
 
-def setup_models(modules):
-    """Setup SQLAlchemy models.
+        :param module: Python module defining SQLAlchemy models for a cryptocurrency
 
-    :param modules: List of Python modules defining cryptocurrency models.
-    """
-    assert _engine
+        :return: GenericWallet instance
+        """
+        _engine = None
 
-    if not modules:
-        raise ConfigurationError("modules section missing in config")
+        resolver = DottedNameResolver()
 
-    resolver = DottedNameResolver()
-
-    for name, module in modules.items():
         result = resolver.resolve(module)  # Imports module, making SQLAlchemy aware of it
         if not result:
             raise ConfigurationError("Could not resolve {}".format(module))
@@ -101,92 +100,105 @@ def setup_models(modules):
             obj = getattr(result, obj_name)
             if inspect.isclass(obj):
                 if issubclass(obj, (GenericWallet,)):
-                    coin_registry.register_wallet_model(name, obj)
+                    return obj
 
-    DBSession.configure(bind=_engine)
+    def setup_coins(self, coins):
 
+        coin_registry = CoinRegistry()
 
-def setup_notify(notifiers):
-    """Read notification settings.
+        if not coins:
+            raise ConfigurationError("No cryptocurrencies given in the config.")
 
-    Example notifier format:
+        for name, data in coins.items():
+            default_models_module = COIN_MODEL_DEFAULTS.get(name)
+            models_module = data.get("models", default_models_module)
 
-        {
-            "shell": {
-                "class": "cryptoassets.core.notifiers.shell.ShellNotifier",
-                "script": "/usr/bin/local/new-payment.sh"
+            if not models_module:
+                raise ConfigurationError("Don't know which SQLAlchemy model to use for coin {}.".format(name))
+
+            wallet_model = self.setup_model(models_module)
+
+            backend_config = data.get("backend")
+            if not backend_config:
+                raise ConfigurationError("No backend config given for {}".format(name))
+            backend = self.setup_backend(name, data.get("backend"))
+            coin = Coin(wallet_model, backend)
+            coin_registry.register(name, coin)
+
+        return coin_registry
+
+    def setup_notify(self, notifiers):
+        """Read notification settings.
+
+        Example notifier format:
+
+            {
+                "shell": {
+                    "class": "cryptoassets.core.notifiers.shell.ShellNotifier",
+                    "script": "/usr/bin/local/new-payment.sh"
+                }
             }
-        }
-    """
+        """
 
-    notifier_registry.clear()
+        notifier_registry = NotifierRegistry()
 
-    if not notifiers:
-        # Notifiers not configured
-        return
+        if not notifiers:
+            # Notifiers not configured
+            return
 
-    for name, data in notifiers.items():
-        data = data.copy()  # No mutate in place
-        klass = data.pop("class")
-        provider = resolve(klass)
-        # Pass given configuration options to the backend as is
-        try:
-            instance = provider(**data)
-        except TypeError as te:
-            # TODO: Here we reflect potential passwords from the configuration file
-            # back to the terminal
-            # TypeError: __init__() got an unexpected keyword argument 'network'
-            raise ConfigurationError("Could not initialize notifier {} with options {}".format(klass, data)) from te
+        for name, data in notifiers.items():
+            data = data.copy()  # No mutate in place
+            klass = data.pop("class")
+            provider = resolve(klass)
+            # Pass given configuration options to the backend as is
+            try:
+                instance = provider(**data)
+            except TypeError as te:
+                # TODO: Here we reflect potential passwords from the configuration file
+                # back to the terminal
+                # TypeError: __init__() got an unexpected keyword argument 'network'
+                raise ConfigurationError("Could not initialize notifier {} with options {}".format(klass, data)) from te
 
-        assert isinstance(instance, Notifier)
-        notifier_registry.register(name, instance)
+            assert isinstance(instance, Notifier)
+            notifier_registry.register(name, instance)
 
+        return notifier_registry
 
-def setup_status_server(config):
-    """Prepare status server instance for the cryptoassets helper service.
-    """
-    if not config:
-        return
+    def setup_status_server(self, config):
+        """Prepare status server instance for the cryptoassets helper service.
+        """
+        if not config:
+            return
 
-    ip = config.get("ip", "127.0.0.1")
-    port = int(config.get("port", "18881"))
+        ip = config.get("ip", "127.0.0.1")
+        port = int(config.get("port", "18881"))
 
-    server = status.StatusHTTPServer(ip, port)
-    status.status_http_server = server
+        server = status.StatusHTTPServer(ip, port)
+        return server
 
+    def load_from_dict(self, config):
+        """ Load configuration from Python dictionary.
 
-def load_from_dict(config):
-    """ Load configuration from Python dictionary. """
+        Populates ``app`` with instances required to run ``cryptocurrency.core`` framework.
+        """
 
-    setup_engine(config.get("database"))
-    setup_backends(config.get("backends"))
-    setup_models(config.get("models"))
-    setup_status_server(config.get("status-server"))
-    setup_notify(config.get("notify"))
+        self.app.engine = self.setup_engine(config.get("database"))
+        self.app.coins = self.setup_coins(config.get("coins"))
+        self.app.status_server = self.setup_status_server(config.get("status-server"))
+        self.app.notifiers = self.setup_notify(config.get("notify"))
 
+    def prepare_yaml_file(self, fname):
+        """Extract config dictionary from a YAML file."""
+        stream = io.open(fname, "rt")
+        config = yaml.safe_load(stream)
+        stream.close()
 
-def prepare_yaml_file(fname):
-    """Extract config dictionary from a YAML file."""
-    stream = io.open(fname, "rt")
-    config = yaml.safe_load(stream)
-    stream.close()
+        if not type(config) == dict:
+            raise ConfigurationError("YAML configuration file must be mapping like")
 
-    if not type(config) == dict:
-        raise ConfigurationError("YAML configuration file must be mapping like")
+        return config
 
-    return config
-
-
-def load_yaml_file(fname):
-    """Load config from a YAML file."""
-    config = prepare_yaml_file(fname)
-    load_from_dict(config)
-
-
-def check():
-    """Check if we are all good to go."""
-    if len(registry._backends) == 0:
-        raise ConfigurationError("No backends given")
-
-    if len(Base.metadata.tables.keys()) == 0:
-        raise ConfigurationError("No models given")
+    def load_yaml_file(self, fname):
+        """Load config from a YAML file."""
+        config = self.prepare_yaml_file(fname)
+        self.load_from_dict(config)

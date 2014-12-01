@@ -12,7 +12,8 @@ from http.server import HTTPServer
 from http.server import BaseHTTPRequestHandler
 
 from .. import configure
-from ..notify import notify
+from ..app import CryptoAssetsApp
+from ..configure import Configurator
 
 from . import testlogging
 
@@ -37,6 +38,9 @@ class ScriptNotificationTestCase(unittest.TestCase):
 
     def setUp(self):
 
+        self.app = CryptoAssetsApp()
+        self.configurator = Configurator(self.app)
+
         # Create a test script
         with io.open(SAMPLE_SCRIPT_PATH, "wt") as f:
             f.write(SAMPLE_SCRIPT)
@@ -54,9 +58,9 @@ class ScriptNotificationTestCase(unittest.TestCase):
                 "log_output": True
             }
         }
-        configure.setup_notify(config)
+        notifiers = self.configurator.setup_notify(config)
 
-        notify("foobar", {"test": "abc"})
+        notifiers.notify("foobar", {"test": "abc"})
 
         with io.open("/tmp/cryptoassets-test_notifier", "rt") as f:
             data = json.load(f)
@@ -76,7 +80,8 @@ class PythonNotificationTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        pass
+        self.app = CryptoAssetsApp()
+        self.configurator = Configurator(self.app)
 
     def test_notify(self):
         """ Do a succesful notification test.
@@ -87,9 +92,9 @@ class PythonNotificationTestCase(unittest.TestCase):
                 "callback": "cryptoassets.core.tests.test_notify.test_callback",
             }
         }
-        configure.setup_notify(config)
+        notifiers = self.configurator.setup_notify(config)
 
-        notify("foobar", {"test": "abc"})
+        notifiers.notify("foobar", {"test": "abc"})
 
         self.assertEqual(_cb_data["test"], "abc")
 
@@ -128,6 +133,10 @@ class HTTPNotificationTestCase(unittest.TestCase):
     """Test sending out HTTP notifications.
     """
 
+    def setUp(self):
+        self.app = CryptoAssetsApp()
+        self.configurator = Configurator(self.app)
+
     def test_notify(self):
         """ Do a succesful notification test.
         """
@@ -142,12 +151,12 @@ class HTTPNotificationTestCase(unittest.TestCase):
                 "url": "http://localhost:10000"
             }
         }
-        configure.setup_notify(config)
+        notifiers = self.configurator.setup_notify(config)
 
         server = TestServer()
         try:
             server.start()
-            notify("foobar", {"test": "abc"})
+            notifiers.notify("foobar", {"test": "abc"})
         finally:
             server.stop()
 

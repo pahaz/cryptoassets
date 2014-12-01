@@ -1,20 +1,20 @@
-"""Test our configure file format.
-
-"""
 import os
 import unittest
 import warnings
 
 from sqlalchemy import create_engine
 
-from .. import configure
+from ..configure import ConfigurationError
+from ..configure import Configurator
 from ..backend import registry
 from ..backend.blockio import BlockIo
-
+from ..app import CryptoAssetsApp
+from ..coin.registry import Coin
+from ..coin.bitcoin.models import BitcoinWallet
+from ..backend.bitcoind import Bitcoind
 
 class ConfigureTestCase(unittest.TestCase):
-    """
-    """
+    """Stress out configuration functionality and loading YAMLs."""
 
     def setUp(self):
 
@@ -22,57 +22,56 @@ class ConfigureTestCase(unittest.TestCase):
         # http://stackoverflow.com/a/26620811/315168
         warnings.filterwarnings("ignore", category=ResourceWarning)  # noqa
 
-    def test_backends(self):
+        self.app = CryptoAssetsApp()
+        self.configurator = Configurator(self.app)
+
+    def test_coins(self):
         """Test configuring coin backends.
         """
-        backends = {
+
+        coins = {
             "btc": {
-                "class": "cryptoassets.core.backend.blockio.BlockIo",
-                "api_key": "923f-e3e9-a580-dfb2",
-                "pin": "foobar123",
+                "backend": {
+                    "class": "cryptoassets.core.backend.bitcoind.Bitcoind",
+                    "url": "http://foo:bar@127.0.0.1:8332/",
+                }
             }
         }
 
-        configure.setup_backends(backends)
 
-        self.assertIsInstance(registry.get("btc"), BlockIo)
+        coin_registry = self.configurator.setup_coins(coins)
 
-    def test_models(self):
-        """Test configuring coin backends.
-        """
-        engine = {
-            "url": 'sqlite:///:memory:?check_same_thread=false',
-            #"poolclass": "pool.StaticPool",
-            "pool_size": 1,
+        self.assertIsInstance(coin_registry.get("btc"), Coin)
+        coin = coin_registry.get("btc")
 
-        }
-        configure.setup_engine(engine)
-
-        models = {
-            "btc": "cryptoassets.core.coin.bitcoin.models",
-            "doge": "cryptoassets.core.coin.dogecoin.models"
-        }
-
-        configure.setup_models(models)
+        self.assertIsInstance(coin.backend, Bitcoind)
+        self.assertEqual(coin.wallet_model, BitcoinWallet)
 
     def test_engine(self):
         """Test configuring the database engine."""
-        engine = {
+        config = {
             "url": 'sqlite://',
             "connect_args": {
                 "check_same_thread": "false",
                 "poolclass": "pool.StaticPool"
             }
         }
-        configure.setup_engine(engine)
+        engine = self.configurator.setup_engine(config)
+        self.assertIsNotNone(engine)
 
     def test_load_yaml(self):
         """ Load a sample configuration file and see it's all dandy.
         """
         sample_file = os.path.join(os.path.dirname(__file__), "sample-config.yaml")
         self.assertTrue(os.path.exists(sample_file), "Did not found {}".format(sample_file))
-        configure.load_yaml_file(sample_file)
-        configure.check()
+        self.configurator.load_yaml_file(sample_file)
+
+        self.assertIsNotNone(self.app.engine)
+
+        coin = self.app.coins.get("btc")
+
+        self.assertIsInstance(coin.backend, Bitcoind)
+        self.assertEqual(coin.wallet_model, BitcoinWallet)
 
     def test_load_no_backend(self):
         """ Load broken configuration file where backends section is missing.
@@ -81,6 +80,6 @@ class ConfigureTestCase(unittest.TestCase):
         self.assertTrue(os.path.exists(sample_file), "Did not found {}".format(sample_file))
 
         def try_it():
-            configure.load_yaml_file(sample_file)
+            self.configurator.load_yaml_file(sample_file)
 
-        self.assertRaises(configure.ConfigurationError, try_it)
+        self.assertRaises(ConfigurationError, try_it)

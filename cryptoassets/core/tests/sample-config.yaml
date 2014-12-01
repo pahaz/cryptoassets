@@ -6,27 +6,33 @@ database:
   url: sqlite:///:memory:?check_same_thread=false
   pool_size: 1
 
-# What cryptocurrencies we are configuring to the database
-models:
-  btc: cryptoassets.core.coin.bitcoin.models
-  doge: cryptoassets.core.coin.dogecoin.models
-
 # What services we use to run talk to the cryptocurrency networks
-backends:
+coins:
     btc:
-        class: cryptoassets.core.backend.bitcoind.Bitcoind
-        # API key is to BTCTEST
-        url: http://foo:bar@127.0.0.1:8332/
-        walletnotify:
-            class: cryptoassets.core.service.pipe.PipedWalletNotifyHandler
-            wallet: default
-            fname: /tmp/cryptoassets-bitcoin-core-walletnotify
+        models: cryptoassets.core.coin.bitcoin.models
+        backend:
+            class: cryptoassets.core.backend.bitcoind.Bitcoind
+            # API key is to BTCTEST
+            url: http://foo:bar@127.0.0.1:8332/
+            walletnotify:
+                class: cryptoassets.core.service.pipe.PipedWalletNotifyHandler
+                wallet: default
+                fname: /tmp/cryptoassets-bitcoin-core-walletnotify
 
     doge:
-        class: cryptoassets.core.backend.blockio.BlockIo
-        # API key is to Dogetest
-        api_key: 0266-c2b6-c2c8-ee07
-        pin: foobar123
+        models: cryptoassets.core.coin.dogecoin.models
+        backend:
+            class: cryptoassets.core.backend.blockio.BlockIo
+            # API key is to Dogetest
+            api_key: 0266-c2b6-c2c8-ee07
+            pin: foobar123
+    ltc:
+        backend:
+            class: cryptoassets.core.backend.bitcoind.Bitcoind
+            # API key is to BTCTEST
+            url: http://foo:bar@127.0.0.1:8332/
+            walletnotify:
+                class: cryptoassets.core.service.pipe.PipedWalletNotifyHandler
+                wallet: default
+                fname: /tmp/cryptoassets-bitcoin-core-walletnotify
 
-locking:
-  - class: cryptoassets.core.lock.simple

@@ -3,43 +3,29 @@
 Each cryptocurrency provides its own Wallet SQLAlchemy model.
 Other models and database tables are derived from the wallet model.
 """
-_wallet_models = {}
+
+class Coin:
+    """Cryptocurrenct configuration entry."""
+
+    def __init__(self, wallet_model, backend):
+        self.wallet_model = wallet_model
+        self.backend = backend
 
 
-def register_wallet_model(coin, model):
-    """Register a wallet model to be used for cryptocurrency management.
+class CoinRegistry:
 
-    :param coin: lowercase letter symbol for the cryptocurrency, like `btc` or `doge`.
+    def __init__(self):
+        self.coins = {}
 
-    :param backend: Instance of :py:class:`cryptocurrency.core.backend.base.CoinBackend`.
-    """
-    assert type(coin) == str
-    _wallet_models[coin.lower()] = model
+    def register(self, name, coin):
+        self.coins[name] = coin
 
+    def all(self):
+        """Get all registered coin models.
 
-def get_wallet_model(coin):
-    """Get the SQL Alchemy model used as the wallet model for a coin.
+        :return: List of coin names
+        """
+        return self.coins.keys()
 
-    :param coin: lowercase letter symbol for the cryptocurrency, like `btc` or `doge`.
-
-    :return: GenericWallet subclass
-    """
-    return _wallet_models[coin]
-
-
-def get_address_model(coin):
-    """Get the SQL Alchemy model used as the address model for a coin.
-
-    :param coin: lowercase letter symbol for the cryptocurrency, like `btc` or `doge`.
-
-    :return: GenericAddress subclass
-    """
-    return _wallet_models[coin].Address
-
-
-def all():
-    """Get all registered coin models.
-
-    :return: List of coin names
-    """
-    return _wallet_models.keys()
+    def get(self, name):
+        return self.coins.get(name)
