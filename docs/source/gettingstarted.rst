@@ -4,7 +4,6 @@ Getting started
 
 .. contents:: :local:
 
-
 .. warning ::
 
     Advanced SQLAlchemy experience required.

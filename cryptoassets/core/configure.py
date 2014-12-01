@@ -190,6 +190,19 @@ class Configurator:
         self.app.notifiers = self.setup_notify(config.get("notify"))
 
     @staticmethod
+    def setup_logging(self, config):
+        """Setup Python loggers.
+
+        Note: This is not called by default, as your parent application might want to do its own Python logging setup.
+        """
+        if not config:
+            logging.basicConfig()
+
+    @staticmethod
+    def load_standalone_from_dict(config):
+        setup_logging(config.get("logging"))
+
+    @staticmethod
     def prepare_yaml_file(fname):
         """Extract config dictionary from a YAML file."""
         stream = io.open(fname, "rt")

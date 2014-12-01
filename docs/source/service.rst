@@ -21,7 +21,10 @@ Even if network connections go down, you lose connection to APIs or cryptocurren
 Running the service with Python project
 ----------------------------------------
 
-TBD
+After installing ``cryptoassets.core`` to your virtualenv you should be able to run the cryptoassets helper service as following::
+
+    cryptoassethelper <your YAML config file>
+
 Running the service with Django
 ---------------------------------
 

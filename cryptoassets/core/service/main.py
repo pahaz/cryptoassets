@@ -8,9 +8,11 @@ over various APIs. This includes
 * Handle incoming transactions and write them to the database
 """
 
+import sys
 import datetime
 import logging
 import transaction
+import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -90,10 +92,11 @@ class Service:
             assert isinstance(coin, Coin)
             backend = coin.backend
             runnable = backend.setup_incoming_transactions(self.app.session, self.app.notifiers)
-            logger.info("Setting up incoming transaction notifications for %s using %s", coin, runnable.__class__)
-            assert isinstance(runnable, IncomingTransactionRunnable)
             if runnable:
-                self.incoming_transaction_runnables[name] = runnable
+                logger.info("Setting up incoming transaction notifications for %s using %s", coin, runnable.__class__)
+                assert isinstance(runnable, IncomingTransactionRunnable)
+                if runnable:
+                    self.incoming_transaction_runnables[name] = runnable
 
     def broadcast(self):
         """"A scheduled task to broadcast any new transactions to the bitcoin network.
@@ -140,4 +143,33 @@ class Service:
         if self.app.status_server:
             self.app.status_server.stop()
             self.app.status_server = None
+
+# setuptools entry points
+
+
+def parse_config_argv():
+    if len(sys.argv) < 2:
+        sys.exit("Usage: {} <configfile.config.yaml".format(sys.argv[0]))
+
+    config = Configurator.prepare_yaml_file(sys.argv[1])
+
+    return config
+
+
+def initializedb():
+    config = parse_config_argv()
+    Configurator.load_standalone_from_dict(config)
+    service = Service(config)
+    config.initializedb()
+
+
+def helper():
+    config = parse_config_argv()
+    Configurator.load_standalone_from_dict(config)
+    service = Service(config)
+    service.start()
+    while True:
+        time.sleep(1)
+
+
 

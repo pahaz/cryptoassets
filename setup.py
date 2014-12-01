@@ -36,16 +36,15 @@ setup(name='cryptoassets.core',
       author='Cryptoassets library authors',
       author_email='mikko@opensourcehacker.com',
       url='https://bitbucket.org/miohtama/cryptoassets',
-      keywords='web wsgi bfg pylons pyramid',
+      keywords='bitcoin litecoin dogecoin sqlalchemy',
       packages=find_packages(),
       include_package_data=True,
       zip_safe=False,
       test_suite='cryptoassets.core',
       install_requires=requires,
       entry_points="""\
-      [paste.app_factory]
-      main = cryptoassets:main
       [console_scripts]
-      initialize_cryptoassets_db = cryptoassets.core.scripts.initializedb:main
+      cryptoassets-initializedb = cryptoassets.core.service.main:initializedb
+      cryptoassets-helper = cryptoassets.core.service.main:helper
       """,
       )

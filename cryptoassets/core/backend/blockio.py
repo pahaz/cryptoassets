@@ -175,7 +175,7 @@ class BlockIo(CoinBackend):
                 if tx.credited_at:
                     monitor.finish_transaction(wallet.id, tx.txid)
 
-    def setup_incoming_transactions(self, dbsession):
+    def setup_incoming_transactions(self, dbsession, notifiers):
         return None
 
 
