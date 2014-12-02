@@ -12,6 +12,7 @@ from collections import Counter
 
 from sqlalchemy import Column
 from sqlalchemy import Integer
+from sqlalchemy import Numeric
 from sqlalchemy import String
 from sqlalchemy import Date
 from sqlalchemy import DateTime
@@ -73,14 +74,8 @@ class TableName:
 class CoinBackend:
     """Mix-in class to allow coin backend property on models."""
 
-    @property
-    def backend(self):
-        """Return the configured coin backend for this model.
-
-        Pulls the associated backend instance (block.io, blockchain.info, etc)
-        for the registry.
-        """
-        return self.backend
+    #: Set by cryptoassets.app.CryptoassetsApp.setup_session
+    backend = None
 
 
 class GenericAccount(TableName, Base, CoinBackend):
@@ -114,7 +109,8 @@ class GenericAccount(TableName, Base, CoinBackend):
     updated_at = Column(DateTime, onupdate=_now)
 
     #: Available internal balance on this account
-    balance = Column(Integer, default=0)
+    #: NOTE: Accuracy checked for bitcoin only
+    balance = Column(Numeric(21, 8), default=0)
 
     def __init__(self):
         self.balance = 0
@@ -157,7 +153,8 @@ class GenericAddress(TableName, Base):
     label = Column(String(255), unique=True)
 
     #: How much we know this address has balance. Concerns only
-    balance = Column(Integer, default=0, nullable=False)
+    #: NOTE: Accuracy checked for Bitcoin only
+    balance = Column(Numeric(21, 8), default=0, nullable=False)
     created_at = Column(DateTime, default=_now)
     updated_at = Column(DateTime, onupdate=_now)
 
@@ -210,7 +207,8 @@ class GenericTransaction(TableName, Base):
     processed_at = Column(DateTime, nullable=True, default=None)
 
     #: Amount in the cryptocurrency minimum unit
-    amount = Column(Integer())
+    #: Note: Accuracy checked for Bitcoin only
+    amount = Column(Numeric(21, 8))
 
     #: Different states this transaction can be
     #:
@@ -340,7 +338,8 @@ class GenericWallet(TableName, Base, CoinBackend):
     updated_at = Column(Date, onupdate=_now)
 
     #: The total balance of this wallet in the minimum unit of cryptocurrency
-    balance = Column(Integer())
+    #: NOTE: accuracy checked for Bitcoin only
+    balance = Column(Numeric(21, 8))
 
     #: Reference to the Address class used by this wallet
     Address = None

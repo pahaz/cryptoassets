@@ -5,22 +5,13 @@ Test bitcoind API.
 import os
 import time
 import unittest
-import threading
 import subprocess
 import transaction
+from decimal import Decimal
 
-from unittest.mock import patch
-
-from ..backend.bitcoind import Bitcoind
 from ..backend.bitcoind import TransactionUpdater
 
-from .. import configure
-from ..app import CryptoAssetsApp
-from ..configure import Configurator
-
 from ..backend.pipe import PipedWalletNotifyHandler
-from ..backend.httpwalletnotify import HTTPWalletNotifyHandler
-from ..backend.httpwalletnotify import WalletNotifyRequestHandler
 from .base import CoinTestCase
 
 
@@ -37,7 +28,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
     def refresh_account_balance(self, wallet, account):
         """ """
-        transaction_updater = TransactionUpdater(self.session, self.backend, "btc")
+        transaction_updater = self.backend.create_transaction_updater(self.session, self.app.notifiers)
 
         # We should find at least one transaction topping up our testnet wallet
         found = transaction_updater.rescan_all(transaction.manager)
@@ -52,9 +43,9 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         # Import some TESTNET coins
         assert wallet.id
         assert account.id
-        label = "Test import {}".format(time.time())
+        #label = "Test import {}".format(time.time())
         private_key, public_address = os.environ["BITCOIND_TESTNET_FUND_ADDRESS"].split(":")
-        self.backend.import_private_key(label, private_key)
+        #self.backend.import_private_key(label, private_key)
         wallet.add_address(account, "Test import {}".format(time.time()), public_address)
         self.assertGreater(wallet.get_receiving_addresses().count(), 0)
 
@@ -94,8 +85,8 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         self.Transaction.confirmation_count = 1
 
         # Withdrawal amounts must be at least 0.00002000 BTCTEST, and at most 50.00000000 BTCTEST.
-        self.external_send_amount = 21000
-        self.network_fee = 10000
+        self.external_send_amount = Decimal("21000") / Decimal(10**8)
+        self.network_fee = Decimal("10000") / Decimal(10**8)
         # Wait 10 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 60 * 10
 
@@ -160,7 +151,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         with transaction.manager:
             # Reload account from the database
             account = self.session.query(self.Account).get(account_id)
-            self.assertEqual(account.balance, 120000000)
+            self.assertEqual(account.balance, Decimal("1.2"))
 
         # Triggering the transaction update again should not change the balance
         subprocess.call("echo bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf >> {}".format(WALLETNOTIFY_PIPE), shell=True)
@@ -172,7 +163,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         with transaction.manager:
             account = self.session.query(self.Account).get(account_id)
-            self.assertEqual(account.balance, 120000000)
+            self.assertEqual(account.balance, Decimal("1.2"))
 
         self.walletnotify_pipe.stop()
 

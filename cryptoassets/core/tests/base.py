@@ -6,6 +6,7 @@ import logging
 import sys
 import warnings
 import logging
+from decimal import Decimal
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
@@ -49,8 +50,8 @@ class CoinTestCase:
         self.Account = None
 
         # How many satoshis we use in send_external()
-        self.external_send_amount = 100
-        self.network_fee = 1000
+        self.external_send_amount = Decimal("0.0001")
+        self.network_fee = Decimal("0.0001")
 
         self.setup_coin()
 
@@ -281,7 +282,7 @@ class CoinTestCase:
             account = self.session.query(self.Account).get(1)
             # Assume we have at least 5 TESTNET bitcoins there
             self.assertIsNot(account.balance, 0, "Account balance was zero after refresh_account_balance()")
-            self.assertGreater(account.balance, 5)
+            self.assertGreater(account.balance, Decimal("0.001"))
 
     def test_send_external(self):
         """ Send Bitcoins from external address """

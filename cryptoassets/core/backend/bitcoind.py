@@ -10,6 +10,7 @@ Original API call list: https://en.bitcoin.it/wiki/Original_Bitcoin_client/API_c
 import logging
 import transaction
 import datetime
+import socket
 from decimal import Decimal
 
 from collections import Counter
@@ -28,35 +29,6 @@ from ..notify import events
 from ..notify.registry import NotifierRegistry
 
 logger = logging.getLogger(__name__)
-
-
-def _address_from_private_key(private_key):
-    """ """
-    secret_exponent = int(binascii.hexlify(b58check_decode(private_key)), 16)
-    ecdsa_private_key = ecdsa.keys.SigningKey.from_secret_exponent(secret_exponent, self._curve, self._hash_function)
-    ecdsa_public_key = ecdsa_private_key.get_verifying_key()
-    return b58check_encode(self._bin_hash160(), version_byte=self.version_byte('pubkey_hash'))
-
-
-def is_integer(d):
-    """ Check if Decimal instance has fractional part. """
-    return d == d.to_integral_value()
-
-
-def _convert_to_satoshi(amount):
-    """ BlockIO reports balances as decimals. Our database represents them as satoshi integers. """
-    d = Decimal(amount)
-    d2 = d * Decimal("100000000")
-    # Safety check
-    assert is_integer(d2)
-    return int(d2)
-
-
-def _convert_to_decimal(satoshis):
-    """ BlockIO reports balances as decimals. Our database represents them as satoshi integers. """
-    d = Decimal(satoshis)
-    d2 = d / Decimal("100000000")
-    return str(d2.quantize(Decimal("0.00000001")))
 
 
 class BitcoindJSONError(Exception):
@@ -93,16 +65,10 @@ class Bitcoind(BitcoindDerivate):
         self.walletnotify_config = walletnotify
 
     def to_internal_amount(self, amount):
-        if self.coin.name == "btc":
-            return _convert_to_satoshi(amount)
-        else:
-            return int(Decimal(amount))
+        return Decimal(amount)
 
     def to_external_amount(self, amount):
-        if self.coin.name == "btc":
-            return _convert_to_decimal(amount)
-        else:
-            return int(amount)
+        return Decimal(amount)
 
     def api_call(self, name, *args, **kwargs):
         """ """
@@ -113,6 +79,8 @@ class Bitcoind(BitcoindDerivate):
         except ValueError as e:
             #
             raise BitcoindJSONError("Probably could not authenticate against bitcoind-like RPC, try manually with curl") from e
+        except socket.timeout as e:
+            raise BitcoindJSONError("Got timeout when doing bitcoin RPC call {}. Maybe bitcoind was not synced with network?".format(name)) from e
         except JSONRPCException as e:
             msg = e.error.get("message")
             if msg:
@@ -198,6 +166,10 @@ class Bitcoind(BitcoindDerivate):
     def monitor_address(self, address):
         pass
 
+    def create_transaction_updater(self, session, notifiers):
+        tx_updater = TransactionUpdater(session, self, self.coin, notifiers)
+        return tx_updater
+
     def setup_incoming_transactions(self, dbsession, notifiers):
         """Create a named pipe walletnotify handler.
         """
@@ -208,7 +180,7 @@ class Bitcoind(BitcoindDerivate):
 
         config = config.copy()
 
-        transaction_updater = TransactionUpdater(dbsession, self, self.coin, notifiers)
+        transaction_updater = self.create_transaction_updater(dbsession, notifiers)
 
         klass = config.pop("class")
         provider = resolve(klass)

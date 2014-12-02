@@ -52,8 +52,11 @@ class WalletNotifyRequestHandler(BaseHTTPRequestHandler):
 
         # Each address object is updated in an isolated transaction,
         # thus we need to pass the db transaction manager to the transaction updater
-        if self.transaction_updater:
-            self.transaction_updater.handle_wallet_notify(txid, transaction_manager=transaction.manager)
+        transaction_updater = self.server.transaction_updater
+        if transaction_updater is not None:
+            transaction_updater.handle_wallet_notify(txid, transaction_manager=transaction.manager)
+        else:
+            logger.warn("Got txupdate, but no transaction_updater instance available, %s", txid)
 
 
 class HTTPWalletNotifyHandlerBase:
@@ -65,14 +68,10 @@ class HTTPWalletNotifyHandlerBase:
         self.port = port
         self.ready = False
 
-        def create_request_handler():
-            handler = WalletNotifyRequestHandler()
-            hander.transaction_updater = transaction_updater
-            return handler
-
         server_address = (self.ip, self.port)
         try:
             self.httpd = HTTPServer(server_address, WalletNotifyRequestHandler)
+            self.httpd.transaction_updater = transaction_updater
         except OSError as e:
             raise RuntimeError("Could not start cryptoassets HTTP walletnotify notifiaction server at {}:{}".format(self.ip, self.port)) from e
 
@@ -95,6 +94,14 @@ class HTTPWalletNotifyHandler(HTTPWalletNotifyHandlerBase, threading.Thread, Inc
     Creates a HTTP server running in port 28882. To receive a new transaction notification do a HTTP POST to this server:
 
         curl --data "txid=%s" http://localhost:28882
+
+    To test that the server correctly handles wallet notify
+
+    1. Make sure ``cryptoassetshelper`` service is running
+
+    2. Do curl --data "txid=foobar" http://localhost:28882
+
+    3. You should see in the logs of ``cryptoassetshelper``: *Error communicating with bitcoind API call gettransaction: Invalid or non-wallet transaction id*
     """
 
     def __init__(self, transaction_updater, ip, port):
