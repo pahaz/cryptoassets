@@ -51,7 +51,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_receiving(self, wallet):
 
-        self.transaction_updater = TransactionUpdater(self.session, self.backend, "btc")
+        self.transaction_updater = self.backend.create_transaction_updater(self.session, self.app.notifiers)
 
         self.walletnotify_pipe = PipedWalletNotifyHandler(self.transaction_updater, WALLETNOTIFY_PIPE)
 

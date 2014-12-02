@@ -11,6 +11,7 @@ import logging
 import transaction
 import datetime
 import socket
+import time
 from decimal import Decimal
 
 from collections import Counter
@@ -52,7 +53,7 @@ class Bitcoind(BitcoindDerivate):
         assert isinstance(coin, Coin)
 
         self.url = url
-        self.bitcoind = AuthServiceProxy(url)
+        self.bitcoind = AuthServiceProxy(url, timeout=2)
         self.coin = coin
         self.default_confirmations = 3
 
@@ -131,8 +132,25 @@ class Bitcoind(BitcoindDerivate):
     def list_transactions(self, start, limit):
         """
         """
-        result = self.api_call("listtransactions", self.bitcoind_account_name, limit, start)
-        return result
+
+        # http://bitcoin.stackexchange.com/questions/32839/bitcoind-json-rpc-interface-timeouts-under-unit-tests
+        now = time.time()
+        attemps = 4
+        while attemps:
+
+            logger.info("listtransactions attempts #%d %s %s %s", attemps, self.bitcoind_account_name, limit, start)
+            try:
+                result = self.api_call("listtransactions", self.bitcoind_account_name, limit, start)
+                return result
+            except:
+                logger.error("listtransactions timeout failure after %f seconds", time.time() - now)
+                attemps -= 1
+                if attemps:
+                    # Recreate connection
+                    self.bitcoind = AuthServiceProxy(self.url)
+                    continue
+                else:
+                    raise
 
     def get_transaction(self, txid):
         """ """

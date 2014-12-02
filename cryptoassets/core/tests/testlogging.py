@@ -24,6 +24,9 @@ def setup():
     logger = logging.getLogger("cryptoassets.core.backend.blockio")
     logger.setLevel(logging.DEBUG)
 
+    logger = logging.getLogger("cryptoassets.core.backend.bitcoind")
+    logger.setLevel(logging.WARN)
+
     # SQL Alchemy transactions
     logger = logging.getLogger("txn")
     logger.setLevel(logging.ERROR)
