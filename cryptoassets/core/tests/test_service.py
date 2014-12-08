@@ -14,6 +14,7 @@ import faulthandler
 import requests
 
 from cryptoassets.core.service.main import Service
+from cryptoassets.core.app import ALL_SUBSYSTEMS
 
 from ..configure import Configurator
 from . import testlogging
@@ -84,7 +85,7 @@ class ServiceTestCase(unittest.TestCase):
 
         config = self.prepare_config()
 
-        self.service = Service(config)
+        self.service = Service(config, ALL_SUBSYSTEMS)
         # We should get one thread monitoring bitcoind walletnotify
         self.assertEqual(len(self.service.incoming_transaction_runnables), 1)
 
@@ -100,7 +101,7 @@ class ServiceTestCase(unittest.TestCase):
 
         config = self.prepare_config()
 
-        self.service = service = Service(config)
+        self.service = service = Service(config, ALL_SUBSYSTEMS)
 
         status_http_server = self.service.status_server
         self.assertIsNotNone(status_http_server)

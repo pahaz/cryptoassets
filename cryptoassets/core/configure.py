@@ -30,6 +30,7 @@ from .notify.registry import NotifierRegistry
 from .notify.base import Notifier
 
 from .service import status
+from .app import Subsystem
 
 
 class ConfigurationError(Exception):
@@ -48,7 +49,11 @@ class Configurator:
 
         :param dict configuration: ``engine`` configuration section
         """
-        global _engine
+
+        # Do not enable database
+        if not self.app.is_enabled(Subsystem.database):
+            return
+
         echo = configuration.get("echo") in (True, "true")
         return engine_from_config(configuration, prefix="", echo=echo)
 
@@ -57,6 +62,10 @@ class Configurator:
 
         :param data: dictionary of backend configuration entries
         """
+
+        # Do not enable
+        if not self.app.is_enabled(Subsystem.backend):
+            return
 
         if not data:
             raise ConfigurationError("backends section missing in config")
@@ -142,6 +151,10 @@ class Configurator:
             }
         """
 
+        # Do not enable notifiers
+        if not self.app.is_enabled(Subsystem.notifiers):
+            return
+
         notifier_registry = NotifierRegistry()
 
         if not notifiers:
@@ -170,6 +183,10 @@ class Configurator:
         """Prepare status server instance for the cryptoassets helper service.
         """
         if not config:
+            return
+
+        # Do not enable status server
+        if not self.app.is_enabled(Subsystem.status_server):
             return
 
         ip = config.get("ip", "127.0.0.1")

@@ -13,6 +13,7 @@ from http.server import BaseHTTPRequestHandler
 
 from .. import configure
 from ..app import CryptoAssetsApp
+from ..app import Subsystem
 from ..configure import Configurator
 
 from . import testlogging
@@ -38,7 +39,7 @@ class ScriptNotificationTestCase(unittest.TestCase):
 
     def setUp(self):
 
-        self.app = CryptoAssetsApp()
+        self.app = CryptoAssetsApp([Subsystem.database, Subsystem.notifiers])
         self.configurator = Configurator(self.app)
 
         # Create a test script
@@ -80,7 +81,7 @@ class PythonNotificationTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        self.app = CryptoAssetsApp()
+        self.app = CryptoAssetsApp([Subsystem.database, Subsystem.notifiers])
         self.configurator = Configurator(self.app)
 
     def test_notify(self):
@@ -134,16 +135,12 @@ class HTTPNotificationTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        self.app = CryptoAssetsApp()
+        self.app = CryptoAssetsApp([Subsystem.database, Subsystem.notifiers])
         self.configurator = Configurator(self.app)
 
     def test_notify(self):
         """ Do a succesful notification test.
         """
-
-        # ResourceWarning: unclosed <ssl.SSLSocket fd=9, family=AddressFamily.AF_INET, type=SocketType.SOCK_STREAM, proto=6, laddr=('192.168.1.4', 56386), raddr=('50.116.26.213', 443)>
-        # http://stackoverflow.com/a/26620811/315168
-        warnings.filterwarnings("ignore", category=ResourceWarning)  # noqa
 
         config = {
             "test_script": {
@@ -162,4 +159,3 @@ class HTTPNotificationTestCase(unittest.TestCase):
 
         # We did 1 succesful HTTP request
         self.assertEqual(DummyHandler.counter, 1)
-

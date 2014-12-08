@@ -6,6 +6,7 @@ from ..app import CryptoAssetsApp
 from ..configure import Configurator
 from cryptoassets.core.models import DBSession
 
+from . import warnhide
 
 
 class GenericWalletTestCase(unittest.TestCase):
@@ -14,6 +15,8 @@ class GenericWalletTestCase(unittest.TestCase):
     def setUp(self):
         """
         """
+
+        warnhide.begone()
 
         self.app = CryptoAssetsApp()
         self.configurator = Configurator(self.app)

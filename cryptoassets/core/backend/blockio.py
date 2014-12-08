@@ -25,27 +25,6 @@ from .base import CoinBackend
 logger = logging.getLogger(__name__)
 
 
-def is_integer(d):
-    """ Check if Decimal instance has fractional part. """
-    return d == d.to_integral_value()
-
-
-def _convert_to_satoshi(amount):
-    """ BlockIO reports balances as decimals. Our database represents them as satoshi integers. """
-    d = Decimal(amount)
-    d2 = d * Decimal("100000000")
-    # Safety check
-    assert is_integer(d2)
-    return int(d2)
-
-
-def _convert_to_decimal(satoshis):
-    """ BlockIO reports balances as decimals. Our database represents them as satoshi integers. """
-    d = Decimal(satoshis)
-    d2 = d / Decimal("100000000")
-    return str(d2.quantize(Decimal("0.00000001")))
-
-
 class BlockIo(CoinBackend):
     """Block.io API."""
 
@@ -58,20 +37,12 @@ class BlockIo(CoinBackend):
         self.monitor = None
 
     def to_internal_amount(self, amount):
-        if self.coin == "btc":
-            return _convert_to_satoshi(amount)
-        else:
-            return int(Decimal(amount))
+        return amount
 
     def to_external_amount(self, amount):
-        if self.coin == "btc":
-            return _convert_to_decimal(amount)
-        else:
-            return int(amount)
+        return amount
 
     def create_address(self, label):
-        """
-        """
 
         # block.io does not allow arbitrary characters in labels
         # {'data': {'address': '2N2Qqvj5rXv27rS6b7rMejUvapwvRQ1ahUq', 'user_id': 5, 'label': 'slange11', 'network': 'BTCTEST'}, 'status': 'success'}

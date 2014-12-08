@@ -9,6 +9,7 @@ See cryptoassets.coin modules for examples.
 
 import datetime
 from collections import Counter
+from decimal import Decimal
 
 from sqlalchemy import Column
 from sqlalchemy import Integer
@@ -491,9 +492,13 @@ class GenericWallet(TableName, Base, CoinBackend):
         """
         session = Session.object_session(self)
 
+        assert isinstance(from_account, self.Account)
+        assert type(receiving_address) == str
+        assert isinstance(amount, Decimal)
+
         internal_receiving_address = session.query(self.Address).filter(self.Address.address == receiving_address).first()
         if internal_receiving_address and not force_external:
-            to_account = session.query(self.Account).get(internal_receiving_address.account)
+            to_account = internal_receiving_address.account
             return self.send_internal(from_account, to_account, amount, label)
         else:
             return self.send_external(from_account, receiving_address, amount, label)

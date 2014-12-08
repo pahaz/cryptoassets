@@ -17,6 +17,7 @@ import time
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from ..app import CryptoAssetsApp
+from ..app import Subsystem
 from ..configure import Configurator
 from ..backend.base import IncomingTransactionRunnable
 from ..coin.registry import Coin
@@ -31,13 +32,13 @@ class Service:
 
     You can launch this as a command line job, or wrap this to be started through your Python framework (e.g. Django)
     """
-    def __init__(self, config):
+    def __init__(self, config, subsystems):
         """
         :param config: cryptoassets configuration dictionary
         """
         logger.info("Setting up cryptoassets service")
 
-        self.app = CryptoAssetsApp()
+        self.app = CryptoAssetsApp(subsystems)
 
         #: Status server instance
         self.status_server = None
@@ -169,17 +170,14 @@ def parse_config_argv():
 def initializedb():
     config = parse_config_argv()
     Configurator.load_standalone_from_dict(config)
-    service = Service(config)
-    config.initializedb()
+    service = Service(config, (Subsystem.database,))
+    service.initializedb()
 
 
 def helper():
     config = parse_config_argv()
     Configurator.load_standalone_from_dict(config)
-    service = Service(config)
+    service = Service(config, (Subsystem.database, Subsystem.status_server, Subsystem.backend, Subsystem.notifiers))
     service.start()
     while True:
         time.sleep(1)
-
-
-

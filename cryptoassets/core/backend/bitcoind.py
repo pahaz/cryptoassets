@@ -13,7 +13,7 @@ import datetime
 import socket
 import time
 from decimal import Decimal
-
+from http.client import BadStatusLine
 from collections import Counter
 
 from zope.dottedname.resolve import resolve
@@ -31,6 +31,8 @@ from ..notify.registry import NotifierRegistry
 
 logger = logging.getLogger(__name__)
 
+
+TIMEOUT = 10
 
 class BitcoindJSONError(Exception):
     pass
@@ -53,7 +55,7 @@ class Bitcoind(BitcoindDerivate):
         assert isinstance(coin, Coin)
 
         self.url = url
-        self.bitcoind = AuthServiceProxy(url, timeout=2)
+        self.bitcoind = AuthServiceProxy(url, timeout=TIMEOUT)
         self.coin = coin
         self.default_confirmations = 3
 
@@ -82,6 +84,23 @@ class Bitcoind(BitcoindDerivate):
             raise BitcoindJSONError("Probably could not authenticate against bitcoind-like RPC, try manually with curl") from e
         except socket.timeout as e:
             raise BitcoindJSONError("Got timeout when doing bitcoin RPC call {}. Maybe bitcoind was not synced with network?".format(name)) from e
+        except BadStatusLine as e:
+            # This is the exception with SSH forwarding if the bitcoind is dead/stuck?
+
+            # Clean up HTTP client, as otherwise the persistent connection will get stuck
+            #   File "/Users/mikko/code/cryptoassets/cryptoassets/cryptoassets/core/backend/bitcoind.py", line 78, in api_call
+            #     result = func(*args, **kwargs)
+            #   File "/Users/mikko/code/applebytestore/venv/src/python-bitcoinrpc/bitcoinrpc/authproxy.py", line 125, in __call__
+            #     'Content-type': 'application/json'})
+            #   File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/http/client.py", line 1090, in request
+            #     self._send_request(method, url, body, headers)
+            #   File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/http/client.py", line 1118, in _send_request
+            #     self.putrequest(method, url, **skips)
+            #   File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/http/client.py", line 966, in putrequest
+            #     raise CannotSendRequest(self.__state)
+            # http.client.CannotSendRequest: Request-sent
+            self.bitcoind = AuthServiceProxy(self.url, timeout=TIMEOUT)
+            raise
         except JSONRPCException as e:
             msg = e.error.get("message")
             if msg:

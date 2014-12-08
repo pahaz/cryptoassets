@@ -54,9 +54,10 @@ Edit ``/Users/mikko/Library/Application Support/Bitcoin/bitcoin.conf``::
     server=1
     rpcuser=foo
     rpcpassword=bar
-    rpctimeout=30
+    rpctimeout=5
     rpcport=8332
     txindex=1
+    rpcthreads=64
 
 Restart **Bitcoin-Qt**. Now it should give green icon instead of standard orange.
 

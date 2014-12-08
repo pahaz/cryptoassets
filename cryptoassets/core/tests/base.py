@@ -16,9 +16,11 @@ from ..models import NotEnoughAccountBalance
 from ..models import SameAccount
 
 from ..app import CryptoAssetsApp
+from ..app import Subsystem
 from ..configure import Configurator
 
 from . import testlogging
+from . import warnhide
 
 testlogging.setup()
 
@@ -35,11 +37,9 @@ class CoinTestCase:
 
     def setUp(self):
 
-        # ResourceWarning: unclosed <ssl.SSLSocket fd=9, family=AddressFamily.AF_INET, type=SocketType.SOCK_STREAM, proto=6, laddr=('192.168.1.4', 56386), raddr=('50.116.26.213', 443)>
-        # http://stackoverflow.com/a/26620811/315168
-        warnings.filterwarnings("ignore", category=ResourceWarning)  # noqa
+        warnhide.begone()
 
-        self.app = CryptoAssetsApp()
+        self.app = CryptoAssetsApp([Subsystem.database, Subsystem.backend, Subsystem.notifiers])
         self.configurator = Configurator(self.app)
 
         self.session = self.app.session
@@ -206,7 +206,6 @@ class CoinTestCase:
             receiving_account = wallet.create_account("Test account 2")
             self.session.flush()
             sending_account.balance = 100
-
             wallet.send_internal(sending_account, receiving_account, 100, "Test transaction")
             self.assertEqual(receiving_account.balance, 100)
             self.assertEqual(sending_account.balance, 0)
