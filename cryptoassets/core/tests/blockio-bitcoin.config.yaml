@@ -1,0 +1,18 @@
+---
+# Cryptoassets.core configuration for running block.io unit tests
+
+database:
+  url: sqlite:////tmp/cryptoassts-unittest-blockio.sqlite
+
+# Locally running bitcoind in testnet
+coins:
+    btc:
+        backend:
+            class: cryptoassets.core.backend.blockio.BlockIo
+            # These are TESTNET credentials, nothing to lose here
+            api_key: 923f-e3e9-a580-dfb2
+            pin: foobar123
+            walletnotify:
+                class: cryptoassets.core.backend.sochainwalletnotify.SoChainWalletNotifyHandler
+                pusher_app_key: e9f5cc20074501ca7395
+                network: btctest

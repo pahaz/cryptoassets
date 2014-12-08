@@ -45,15 +45,44 @@ class CoinBackend(abc.ABC):
         """
 
     @abc.abstractmethod
-    def setup_incoming_transactions(self, dbsession):
-        """Setup incoming tranasction handler.
+    def scan_addresses(self, addresses):
+        """Give all known transactions to list of addresses.
 
-        This is called by cryptoassets helper service. When the service is starting, create necessary files, scripts, HTTP ports, etc. to receive notifications from the backend service. E.g. in the case of bitcoind this sets up ``walletnotify`` handler, so that when bitcoind sees a tranaction our hook is called.
+        :param addresses: List of address strings
 
-        :param dbsession: SQLAlchemy database session used to update the database for incoming transactions.
-
-        :return: A runnable object with `start()` and `stop()` methods (thread, process, etc.) or ``None`` if no runnable is needed
+        :yield: Tuples of (txid, address, amount, confirmations)
         """
+
+    def setup_incoming_transactions(self, dbsession, notifiers):
+        """Create a named pipe walletnotify handler.
+
+        TODO: I feel this base class should be kept fully abstract and this method moved to an adapter or such.
+        """
+
+        from ..configure import ConfigurationError
+
+        config = self.walletnotify_config
+
+        if not config:
+            return
+
+        config = config.copy()
+
+        transaction_updater = self.create_transaction_updater(dbsession, notifiers)
+
+        klass = config.pop("class")
+        provider = resolve(klass)
+        config["transaction_updater"] = transaction_updater
+        # Pass given configuration options to the backend as is
+        try:
+            handler = provider(**config)
+        except TypeError as te:
+            # TODO: Here we reflect potential passwords from the configuration file
+            # back to the terminal
+            # TypeError: __init__() got an unexpected keyword argument 'network'
+            raise ConfigurationError("Could not initialize backend {} with options {}".format(klass, data)) from te
+
+        return handler
 
 
 class IncomingTransactionRunnable(abc.ABC):
@@ -66,3 +95,6 @@ class IncomingTransactionRunnable(abc.ABC):
     @abc.abstractmethod
     def stop(self):
         pass
+
+
+

@@ -2,23 +2,19 @@ import os
 import unittest
 import time
 import logging
+from decimal import Decimal
 
 from mock import patch
 import transaction
 
-from ..models import DBSession
-from ..models import Base
 from ..models import _now
-from ..backend import registry as backendregistry
-
-from ..backend.blockio import BlockIo
-from ..backend.blockio import _BlockIo
-from ..backend.blockio import SochainMonitor
-from ..backend.blockio import _convert_to_satoshi
-from ..backend.blockio import _convert_to_decimal
+from ..models import DBSession
 
 
 from .base import CoinTestCase
+
+
+logger = logging.getLogger(__name__)
 
 
 class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
@@ -32,41 +28,29 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         if logger.level < logging.WARN:
             enableTrace(True)
 
-        self.backend.monitor = SochainMonitor(self.backend, [wallet], os.environ["PUSHER_API_KEY"], "btctest")
-
     def teardown_receiving(self):
         if self.backend.monitor:
             self.backend.monitor.close()
 
     def setup_coin(self):
 
-        self.backend = BlockIo("btc", os.environ["BLOCK_IO_API_KEY"], os.environ["BLOCK_IO_PIN"])
-        backendregistry.register("btc", self.backend)
-        self.monitor = None
+        test_config = os.path.join(os.path.dirname(__file__), "blockio-bitcoin.config.yaml")
+        self.assertTrue(os.path.exists(test_config), "Did not found {}".format(test_config))
+        self.configurator.load_yaml_file(test_config)
 
-        # We cannot use :memory db as,
-        # SQLite does not support multithread access for it
-        # http://stackoverflow.com/a/15681692/315168
+        coin = self.app.coins.get("btc")
+        self.backend = coin.backend
 
-        engine = self.create_engine()
-
-        from ..coin.bitcoin.models import BitcoinWallet
-        from ..coin.bitcoin.models import BitcoinAddress
-        from ..coin.bitcoin.models import BitcoinTransaction
-        from ..coin.bitcoin.models import BitcoinAccount
-        DBSession.configure(bind=engine)
-        Base.metadata.create_all(engine)
-
-        self.Address = BitcoinAddress
-        self.Wallet = BitcoinWallet
-        self.Transaction = BitcoinTransaction
-        self.Account = BitcoinAccount
+        self.Address = coin.address_model
+        self.Wallet = coin.wallet_model
+        self.Transaction = coin.transaction_model
+        self.Account = coin.account_model
 
         self.external_transaction_confirmation_count = 0
 
         # Withdrawal amounts must be at least 0.00002000 BTCTEST, and at most 50.00000000 BTCTEST.
-        self.external_send_amount = 2100
-        self.network_fee = 1000
+        self.external_send_amount = Decimal(2100) / Decimal(10**8)
+        self.network_fee = Decimal(1000) / Decimal(10**8)
         # Wait 10 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 60 * 10
 
@@ -97,28 +81,6 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
 
         self.assertTrue(self.is_address_monitored(wallet, receiving_address), "The receiving address didn't become monitored {}".format(receiving_address.address))
 
-    def test_convert(self):
-        """ Test amount conversions. """
-        v = _convert_to_satoshi("1")
-        v2 = _convert_to_decimal(v)
-        self.assertEqual(float(v2), 1.0)
-
-    def test_store_all_the_satoshis(self):
-        """ See that we can correctly store very big amount of satoshi on the account. """
-        v = _convert_to_satoshi("21000000")
-
-        with transaction.manager:
-            wallet = self.Wallet()
-            DBSession.add(wallet)
-            DBSession.flush()
-
-            account = wallet.create_account("Test account")
-            account.balance = v
-
-        with transaction.manager:
-            account = DBSession.query(self.Account).first()
-            self.assertEqual(account.balance, v)
-
     def test_get_active_transactions(self):
         """ Query for the list of unconfirmed transactions.
         """
@@ -127,17 +89,20 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         # - one internal
         # - one external, confirmed
         # - one external, unconfirmed
+        #
+
+        session = self.app.session
 
         with transaction.manager:
             wallet = self.Wallet()
-            DBSession.add(wallet)
-            DBSession.flush()
+            session.add(wallet)
+            session.flush()
 
             account = wallet.create_account("Test account")
-            DBSession.flush()
+            session.flush()
 
             address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
-            DBSession.flush()
+            session.flush()
 
             # internal
             t = wallet.Transaction()
@@ -147,7 +112,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
             t.wallet = wallet
             t.credited_at = _now()
             t.label = "tx1"
-            DBSession.add(t)
+            session.add(t)
 
             # external, confirmed
             t = wallet.Transaction()
@@ -160,7 +125,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
             t.txid = "txid2"
             t.confirmations = 6
             t.address = address
-            DBSession.add(t)
+            session.add(t)
 
             # external, unconfirmed
             t = wallet.Transaction()
@@ -173,9 +138,9 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
             t.txid = "txid3"
             t.confirmations = 1
             t.address = address
-            DBSession.add(t)
+            session.add(t)
 
-            DBSession.flush()
+            session.flush()
 
             external_txs = wallet.get_external_received_transactions()
             self.assertEqual(external_txs.count(), 2)
@@ -193,15 +158,17 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
 
         try:
 
+            session = self.app.session
+
             with transaction.manager:
                 wallet = self.Wallet()
-                DBSession.add(wallet)
-                DBSession.flush()
+                session.add(wallet)
+                session.flush()
 
                 account = wallet.create_account("Test sending account")
-                DBSession.flush()
+                session.flush()
 
-                account = DBSession.query(self.Account).filter(self.Account.wallet_id == wallet.id).first()
+                account = session.query(self.Account).filter(self.Account.wallet_id == wallet.id).first()
                 assert account
 
                 receiving_address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
@@ -210,11 +177,13 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
                 # the receiver thread sees the wallet
                 wallet_id = wallet.id
 
+            session = self.app.session
+
             with transaction.manager:
 
                 # Reload objects from db for this transaction
-                wallet = DBSession.query(self.Wallet).get(wallet_id)
-                account = DBSession.query(self.Account).filter(self.Account.wallet_id == wallet_id).first()
+                wallet = session.query(self.Wallet).get(wallet_id)
+                account = session.query(self.Account).filter(self.Account.wallet_id == wallet_id).first()
                 self.assertEqual(wallet.get_receiving_addresses().count(), 1)
                 receiving_address = wallet.get_receiving_addresses().first()
 
@@ -314,7 +283,8 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
             self.assertGreater(account.balance, 0, "Timeouted receiving external transaction")
 
 
-class BlockIoDogeTestCase(BlockIoBTCTestCase):
+#: TODO: Disabled
+class XBlockIoDogeTestCase(object):
 
     def setup_test_fund_address(self, wallet, account):
         # Import some TESTNET coins

@@ -5,7 +5,7 @@ import subprocess
 
 from unittest.mock import patch
 
-from ..backend.pipe import PipedWalletNotifyHandler
+from ..backend.pipewalletnotify import PipedWalletNotifyHandler
 from ..backend.httpwalletnotify import HTTPWalletNotifyHandler
 from ..backend.httpwalletnotify import WalletNotifyRequestHandler
 

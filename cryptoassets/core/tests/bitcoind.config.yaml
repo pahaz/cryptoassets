@@ -11,5 +11,5 @@ coins:
             class: cryptoassets.core.backend.bitcoind.Bitcoind
             url: http://foo:bar@127.0.0.1:8332/
             walletnotify:
-                class: cryptoassets.core.backend.pipe.PipedWalletNotifyHandler
+                class: cryptoassets.core.backend.pipewalletnotify.PipedWalletNotifyHandler
                 fname: /tmp/cryptoassets-unittest-walletnotify
