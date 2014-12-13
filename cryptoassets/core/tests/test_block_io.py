@@ -17,6 +17,10 @@ from .base import CoinTestCase
 logger = logging.getLogger(__name__)
 
 
+#: This is a known address in the testnet test wallet with some funds on it
+BLOCK_IO_TESTNET_TEST_FUND_ADDRESS = "2MsgW3kCrRFtJuo9JNjkorWXaZSvLk4EWRr"
+
+
 class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
     """ Test that our BTC accounting works on top of block.io API. """
 
@@ -27,6 +31,15 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         from websocket._core import enableTrace
         if logger.level < logging.WARN:
             enableTrace(True)
+
+    def refresh_account_balance(self, wallet, account):
+        """Rescan the """
+        transaction_updater = self.backend.create_transaction_updater(self.session, None)
+
+        # Because we have imported public address to database previously,
+        # transaction_updater should have updated the balance on this address
+        account = self.session.query(self.Account).get(account.id)
+        self.assertGreater(account.balance, 0)
 
     def teardown_receiving(self):
         if self.backend.monitor:
@@ -56,7 +69,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_test_fund_address(self, wallet, account):
         # Import some TESTNET coins
-        wallet.add_address(account, "Test import {}".format(time.time()), os.environ["BLOCK_IO_TESTNET_TEST_FUND_ADDRESS"])
+        wallet.add_address(account, "Test import {}".format(time.time()), BLOCK_IO_TESTNET_TEST_FUND_ADDRESS)
 
     def is_address_monitored(self, wallet, address):
         """ Check if we can get notifications from an incoming transactions for a certain address.

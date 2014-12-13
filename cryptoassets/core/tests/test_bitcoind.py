@@ -11,7 +11,7 @@ from decimal import Decimal
 
 from ..backend.bitcoind import TransactionUpdater
 
-from ..backend.pipe import PipedWalletNotifyHandler
+from ..backend.pipewalletnotify import PipedWalletNotifyHandler
 from .base import CoinTestCase
 
 
@@ -43,9 +43,9 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         # Import some TESTNET coins
         assert wallet.id
         assert account.id
-        #label = "Test import {}".format(time.time())
+        label = "Test import {}".format(time.time())
         private_key, public_address = os.environ["BITCOIND_TESTNET_FUND_ADDRESS"].split(":")
-        #self.backend.import_private_key(label, private_key)
+        self.backend.import_private_key(label, private_key)
         wallet.add_address(account, "Test import {}".format(time.time()), public_address)
         self.assertGreater(wallet.get_receiving_addresses().count(), 0)
 

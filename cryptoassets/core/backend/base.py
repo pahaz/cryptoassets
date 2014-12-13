@@ -53,6 +53,10 @@ class CoinBackend(abc.ABC):
         :yield: Tuples of (txid, address, amount, confirmations)
         """
 
+    def monitor_address(self, address):
+        # XXX: Remove
+        pass
+
     def setup_incoming_transactions(self, dbsession, notifiers):
         """Create a named pipe walletnotify handler.
 

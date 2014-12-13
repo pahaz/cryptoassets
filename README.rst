@@ -9,27 +9,27 @@ cryptoassets.core
 
 .. contents:: :local:
 
-A Python library for building Bitcoin and cryptocurrency service.
-Provides Bitcoin, cryptocurrency and cryptoassets APIs, database models and accounting.
+A Python library for building Bitcoin and cryptocurrency service. Provide Bitcoin, cryptocurrency and cryptoassets APIs, database models and accounting.
 
+Why to build your application of the top of cryptocurrency.core
+----------------------------------------------------------------------
 
+* Easy, user-friendly, APIs.
 
-Features
------------------
+* Accounting off the box: makes sure your business can generate bookeeping reports out of records.
 
-* Support your favorite cryptocurrency from the vast list, or easily extend to support your own coin
+* Safe - a lot of effort and experience goes into defensive programming and making this fault tolerant against human and network errors.
 
-* Accounting: Make professional cryptocurrency services where pro forma bookkeeping reports can be generated
+* Vendor independent: choose an API service or self-host a cryptocurrency daemon like bitcoind
 
-* Off-chain and internal transactions for building ecommerce, recurring payment and escrow sites
+* Use any cryptocurrency and support future currencies and assets through extensible framework.
 
-* Fault tolerant architecture, ACID transactions
+* Customizable: you can override any part of the framework with a custom component if you need to scale up or specialize in the future.
 
-* Built the scalability in mind - up to thousands of transactions per second
+Getting started
+---------------
 
-* Vendor independent - allows you to use API services or run raw cryptocurrency protocol daemon
-
-* Test coverage > 90 %
+See Getting Started.
 
 Requirements
 ---------------
@@ -49,6 +49,10 @@ Cryptocurrencies
 * Dogecoin
 
 * Litecoin
+
+* AppleByte
+
+It is easy to add support for other cryptocurrencies.
 
 Databases
 ++++++++++++++++++++

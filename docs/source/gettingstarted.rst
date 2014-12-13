@@ -4,34 +4,91 @@ Getting started
 
 .. contents:: :local:
 
-.. warning ::
+Introduction
+==============
 
-    Advanced SQLAlchemy experience required.
+``cryptoassets.core`` provides safe, scalable and future-proof cryptocurrency and cryptoassets management for your Python application. It is built on the top of *SQLAlchemy* technology.
 
-As the maturity of this project is very alpha, there aren't yet specific starting instructions.
-You need to understand SQLAlchemy basics before you can start working on it.
-However, as the project matures more comprehensive tutorials will follow.
+Basics
+======
 
-For the examples, see ``test_block_io.py`` which stresses out Bitcoin and Dogecoin
-using *block.io* backend.
+* You can use ``cryptoassets.core`` library in any Python application, including Django applications.
 
-**Walkthrough**
+* ``cryptoassets.core`` support various cryptocurrencies and assets and is designed to be extended to support
+everything
 
-* Create an SQLAlchemy models in your database by importing your
-  supported currencies from cryptoassets.core.coin and running `
-  ``Base.metadata.create_all()``.
+* ``cryptoassets.core`` works with various cryptocurrency API services (block.io, blockchain.info) or with protocl daemons (``bitcoind``, ``dogecoind``). You need to choose either to register account on any of API services or run the daemon on your own server. Please note that running ``bitcoind`` requires at least 2 GB of RAM and 20 GB of disk space.
 
-* Create a backend object and register it
+* Some basic SQLAlchemy knowledge might be required. It is mostly covered in this documentation.
 
-* Get or create a default ``Wallet`` instance for your application
+* ``cryptoassets.core`` uses its own database or database connections to store cryptoasset transaction and accounting information. For the safety reasons used database connections has very high transaction isolation level, which your normal web application might not do.
 
-* Use ``Wallet`` to create account, then create address inside it
+* ``cryptoassetes.core`` requires running a separate :doc:`helper service process <./service>` which takes are of communicating with various Python network.
 
-* Send in a transaction to this address
+* ``cryptoassets.core`` is initialized from its own configuration which can be passed in as Python dictionary or YAML configuration file.
 
-* You need to have external receiver process communicating with the network
-  and then writing the transaction when it arrives (see ``test_send_receive_external``
-  and ``setup_receiving``)
+Walkthrough
+============
 
-* Check that the address balance, account balance and wallet balances are updated
+Here is an example walkthrough how to set up a command line application.
 
+For Django users there is a separate, Django specific package and README you should follow.
+
+Requirements
+-------------
+
+You need at least Python version 3.4.
+
+* Install Python 3.4 on Ubuntu
+
+* Install Python 3.4 on OSX
+
+Older Python versions might be supported in the future if there is demand for the support.
+
+Create a virtualenv
+---------------------
+
+``cryptoassets.core`` is distributed as a Python package. By following the Python community best create a virtualenv where you are going to install ``cryptoassets.core`` package and its dependencies.
+
+Ubuntu. Ubuntu and Debian has an open issue regarding Python 3.4 virtualenv support. Thus, follow the instructions here carefully or refer to future best practices from Ubuntu community::
+
+OSX::
+
+    mkdir myproject
+    cd myproject
+    python3.4 -m venv venv
+    source venv/bin/activate
+
+Installing cryptoassets package
+---------------------------------
+
+After virtualenv is created and active you can run::
+
+    pip install cryptoassets.core
+
+Example application
+-------------------
+
+Running the example application::
+
+xx
+
+Example configuration
+----------------------
+
+xxx
+
+Creating database
+------------------
+
+xx
+
+Running the application
+------------------------
+
+xxx
+
+Running the helper service
+----------------------------
+
+xxx
