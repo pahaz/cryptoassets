@@ -21,6 +21,12 @@ class Subsystem(AutoNumber):
     #: Try to connect to backend APIs
     backend = ()
 
+    #: Start processes and threads for broadcasting outgoing transactions
+    broadcast = ()
+
+    #: Start processes and threads for walletnotify hooks
+    incoming_transactions = ()
+
     #: Post notifications
     notifiers = ()
 
@@ -31,7 +37,7 @@ ALL_SUBSYSTEMS = Subsystem.__members__.values()
 class CryptoAssetsApp:
     """This class ties all strings together to make a runnable cryptoassets app."""
 
-    def __init__(self, subsystems):
+    def __init__(self, subsystems=[Subsystem.database, Subsystem.backend]):
         """Initialize a cryptoassets framework.
 
         :param subsystems: Give the list of subsystems you want to initialize. Because the same configuration file can be used by e.g. both web server and command line application, and config file parts like status server are only relevant in the context of the command line application, this can tell the cryptoassets framework how to set up itself. By default it initializes all the subsystems.

@@ -14,6 +14,7 @@ import socket
 import time
 from decimal import Decimal
 from http.client import BadStatusLine
+#from os import ConnectionRefusedError
 from collections import Counter
 
 from zope.dottedname.resolve import resolve
@@ -85,7 +86,7 @@ class Bitcoind(BitcoindDerivate):
             raise BitcoindJSONError("Probably could not authenticate against bitcoind-like RPC, try manually with curl") from e
         except socket.timeout as e:
             raise BitcoindJSONError("Got timeout when doing bitcoin RPC call {}. Maybe bitcoind was not synced with network?".format(name)) from e
-        except BadStatusLine as e:
+        except (BadStatusLine, ConnectionRefusedError) as e:
             # This is the exception with SSH forwarding if the bitcoind is dead/stuck?
 
             # Clean up HTTP client, as otherwise the persistent connection will get stuck

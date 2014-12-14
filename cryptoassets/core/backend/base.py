@@ -6,6 +6,8 @@
 
 import abc
 
+from zope.dottedname.resolve import resolve
+
 
 class CoinBackend(abc.ABC):
     """ Cryptocurrency management backend.
@@ -84,7 +86,7 @@ class CoinBackend(abc.ABC):
             # TODO: Here we reflect potential passwords from the configuration file
             # back to the terminal
             # TypeError: __init__() got an unexpected keyword argument 'network'
-            raise ConfigurationError("Could not initialize backend {} with options {}".format(klass, data)) from te
+            raise RuntimeError("Could not initialize backend {} with options {}".format(klass, data)) from te
 
         return handler
 

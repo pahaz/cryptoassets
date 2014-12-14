@@ -32,9 +32,11 @@ class Service:
 
     You can launch this as a command line job, or wrap this to be started through your Python framework (e.g. Django)
     """
-    def __init__(self, config, subsystems):
+    def __init__(self, config, subsystems=[Subsystem.database, Subsystem.backend]):
         """
         :param config: cryptoassets configuration dictionary
+
+        :param subsystems: List of subsystems needed to initialize for this process
         """
         logger.info("Setting up cryptoassets service")
 
@@ -56,8 +58,12 @@ class Service:
         self.configurator.load_from_dict(config)
 
     def setup(self):
-        self.setup_jobs()
-        self.setup_incoming_notifications()
+        """Start background threads and such."""
+        if Subsystem.broadcast in self.app.subsystems:
+            self.setup_jobs()
+
+        if Subsystem.incoming_transactions in self.app.subsystems:
+            self.setup_incoming_notifications()
 
         # XXX: We are aliasing here, because configurator can only touch app object. Need to figure out something cleaner.
         self.status_server = self.app.status_server

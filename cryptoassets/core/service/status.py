@@ -36,7 +36,7 @@ class StatusReportGenerator:
                 print("%s is dead".format(coin), file=output)
             else:
                 last_notification = runnable.transaction_updater.last_wallet_notify
-                print("%s is alive, last notification %s".format(coin, last_notification), file=output)
+                print("{} is alive, last notification {}".format(coin, last_notification), file=output)
 
         return output.getvalue()
 
@@ -60,8 +60,10 @@ class StatusHTTPServer(threading.Thread):
 
             def do_GET(self):
                 self.send_response(200, "OK")
+                self.send_header("Content-type", "text/plain")
                 self.end_headers()
-                report_generator.get_plaintext()
+                text = report_generator.get_plaintext()
+                self.wfile.write(text.encode("utf-8"))
 
         server_address = (self.ip, self.port)
         try:
