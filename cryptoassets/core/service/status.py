@@ -24,23 +24,8 @@ class TableCreator:
     def __init__(self, buffer):
         self.buffer = buffer
 
-    def nav(self):
-        """
-        """
-        def link(href, name):
-            print("<a href='{}'>[ {} ]</a> ".format(href, name), file=self.buffer)
-
-        print("<p>", file=self.buffer)
-        link("/", "Main")
-        link("/accounts", "Accounts")
-        link("/addresses", "Addresses")
-        link("/transactions", "Transactions")
-        link("/wallets", "Wallets")
-        print("</p>", file=self.buffer)
-
     def open(self, *columns):
         print("<style>th, td {text-align: left; vertical-align: top; padding-bottom: 0.5em; padding-right: 0.5em;}</style>", file=self.buffer)
-        self.nav()
         print("<table>", file=self.buffer)
         print("<tr>", file=self.buffer)
         for col in columns:
@@ -182,17 +167,37 @@ class StatusHTTPServer(threading.Thread):
 
             counter = 0
 
+            def nav(self, writer):
+                """
+                """
+
+                # Allow upstream web server to tell in which location our pages are
+                prefix = self.headers.get('X-Status-Server-Location', "")
+
+                def link(href, name):
+                    print("<a href='{}{}'>[ {} ]</a> ".format(prefix, href, name), file=writer)
+
+                print("<p>", file=writer)
+                link("/", "Main")
+                link("/accounts", "Accounts")
+                link("/addresses", "Addresses")
+                link("/transactions", "Transactions")
+                link("/wallets", "Wallets")
+                print("</p>", file=writer)
+
             def do_GET(self):
                 """Handle responses to status pages."""
 
-                print(self.path)
+                # Allow upstream web server to tell in which location our pages are
+                prefix = self.headers.get('X-Status-Server-Location', "")
+
                 # What pages we serve
                 paths = {
-                    "/": report_generator.index,
-                    "/accounts": report_generator.accounts,
-                    "/addresses": report_generator.addresses,
-                    "/transactions": report_generator.transactions,
-                    "/wallets": report_generator.wallets
+                    "{}/".format(prefix): report_generator.index,
+                    "{}/accounts".format(prefix): report_generator.accounts,
+                    "{}/addresses".format(prefix): report_generator.addresses,
+                    "{}/transactions".format(prefix): report_generator.transactions,
+                    "{}/wallets".format(prefix): report_generator.wallets
                 }
 
                 func = paths.get(self.path)
@@ -206,6 +211,7 @@ class StatusHTTPServer(threading.Thread):
 
                 # http://www.macfreek.nl/memory/Encoding_of_Python_stdout
                 writer = codecs.getwriter('utf-8')(self.wfile, 'strict')
+                self.nav(writer)
                 func(writer)
 
         server_address = (self.ip, self.port)
