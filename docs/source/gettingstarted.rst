@@ -92,3 +92,10 @@ Running the helper service
 ----------------------------
 
 xxx
+
+More about SQLAlchemy
+----------------------
+
+Please see these tutorils
+
+* http://www.pythoncentral.io/sqlalchemy-orm-examples/ (filtering, etc.)

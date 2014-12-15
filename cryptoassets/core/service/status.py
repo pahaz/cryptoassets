@@ -1,8 +1,10 @@
+# -*- coding: utf-8 -*-
 """Status displayer for cryptoassets service.
 """
 
 import os
 import threading
+import codecs
 from io import StringIO
 import logging
 
@@ -11,6 +13,48 @@ from http.server import BaseHTTPRequestHandler
 
 
 logger = logging.getLogger(__name__)
+
+
+class TableCreator:
+    """Simple HTML tabular info renderer.
+
+    Totally unsafe, unprofessinal, use only for debug purposes.
+    """
+
+    def __init__(self, buffer):
+        self.buffer = buffer
+
+    def nav(self):
+        """
+        """
+        def link(href, name):
+            print("<a href='{}'>[ {} ]</a> ".format(href, name), file=self.buffer)
+
+        print("<p>", file=self.buffer)
+        link("/", "Main")
+        link("/accounts", "Accounts")
+        link("/addresses", "Addresses")
+        link("/transactions", "Transactions")
+        link("/wallets", "Wallets")
+        print("</p>", file=self.buffer)
+
+    def open(self, *columns):
+        print("<style>th, td {text-align: left; vertical-align: top; padding-bottom: 0.5em; padding-right: 0.5em;}</style>", file=self.buffer)
+        self.nav()
+        print("<table>", file=self.buffer)
+        print("<tr>", file=self.buffer)
+        for col in columns:
+            print("<th>{}</th>".format(col), file=self.buffer)
+        print("</tr>", file=self.buffer)
+
+    def row(self, *data):
+        print("<tr>", file=self.buffer)
+        for d in data:
+            print("<td>{}</td>".format(d), file=self.buffer)
+        print("</tr>", file=self.buffer)
+
+    def close(self):
+        print("</table>", file=self.buffer)
 
 
 class StatusReportGenerator:
@@ -22,26 +66,106 @@ class StatusReportGenerator:
     def __init__(self, service):
         self.service = service
 
-    def get_plaintext(self):
-        """Return plaintext status output."""
-        output = StringIO()
-        service = self.service
-        print("Cryptoassets helper process id: {}".format(os.getpid()), file=output)
-        print("".format(service.last_broadcast), file=output)
-        print("Last transaction broadcast (UTC): {}".format(service.last_broadcast), file=output)
-        print("", file=output)
-        print("Incoming transaction monitors", file=output)
-        for coin, runnable in service.incoming_transaction_runnables.items():
-            if not runnable.is_alive():
-                print("%s is dead".format(coin), file=output)
-            else:
-                last_notification = runnable.transaction_updater.last_wallet_notify
-                print("{} is alive, last notification {}".format(coin, last_notification), file=output)
+    def accounts(self, output):
+        """Dump all account data. """
+        t = TableCreator(output)
 
-        return output.getvalue()
+        session = self.service.app.open_readonly_session()
+
+        try:
+            t.open("Currency", "id", "name", "balance", "address count", "received tx count", "sent tx count")
+            for coin_name, coin in self.service.app.coins.all():
+                Account = coin.account_model
+                # TODO: optimize counting
+                # http://stackoverflow.com/questions/19484059/sqlalchemy-query-for-object-with-count-of-relationship
+                for acc in session.query(Account).all():
+                    t.row(coin_name, acc.id, acc.name, acc.balance, len(acc.addresses), len(acc.received_transactions), len(acc.sent_transactions))
+                    output.flush()
+            t.close()
+
+        finally:
+            session.close()
+
+    def transactions(self, output):
+        c = TableCreator(output)
+
+        session = self.service.app.open_readonly_session()
+
+        try:
+            c.open("Currency", "id", "txid", "state", "amount", "label", "confirmations", "created_at", "credited_at", "processed_at", "wallet", "sending account", "receiving account")
+            for coin_name, coin in self.service.app.coins.all():
+                Transaction = coin.transaction_model
+                # TODO: optimize counting
+                # http://stackoverflow.com/questions/19484059/sqlalchemy-query-for-object-with-count-of-relationship
+                for t in session.query(Transaction).all():
+                    # TODO: remove confirmations when cryptocurrency does not support it
+                    c.row(coin_name, t.id, t.txid, t.state, t.amount, t.label, t.confirmations, t.created_at, t.credited_at, t.processed_at, t.wallet.id, t.sending_account and t.sending_account.id, t.receiving_account and t.receiving_account.id)
+                    output.flush()
+            c.close()
+
+        finally:
+            session.close()
+
+    def addresses(self, output):
+        t = TableCreator(output)
+
+        session = self.service.app.open_readonly_session()
+
+        try:
+            t.open("Currency", "id", "address", "account_id", "name", "balance")
+            for coin_name, coin in self.service.app.coins.all():
+                Address = coin.address_model
+                # TODO: optimize counting
+                # http://stackoverflow.com/questions/19484059/sqlalchemy-query-for-object-with-count-of-relationship
+                for addr in session.query(Address).all():
+                    t.row(coin_name, addr.id, addr.address, addr.account.id, addr.label, addr.balance)
+                    output.flush()
+            t.close()
+
+        finally:
+            session.close()
+
+    def wallets(self, output):
+        t = TableCreator(output)
+
+        session = self.service.app.open_readonly_session()
+
+        try:
+            t.open("Currency", "id", "accounts", "balance")
+            for coin_name, coin in self.service.app.coins.all():
+                Wallet = coin.wallet_model
+                # TODO: optimize counting
+                # http://stackoverflow.com/questions/19484059/sqlalchemy-query-for-object-with-count-of-relationship
+                for w in session.query(Wallet).all():
+                    t.row(coin_name, w.id, len(w.accounts), w.balance)
+                    output.flush()
+            t.close()
+
+        finally:
+            session.close()
+
+    def index(self, output):
+        """Return plaintext status output."""
+        service = self.service
+
+        t = TableCreator(output)
+
+        t.open("coin", "incoming transactions alive", "last incoming tx notification", "last broadcast", "backend last success", "backend error count")
+        for coin, runnable in service.incoming_transaction_runnables.items():
+            alive = runnable.is_alive()
+            last_notification = runnable.transaction_updater.last_wallet_notify
+            t.row(coin, alive, last_notification, "TODO", "TODO", "TODO")
+
+        t.close()
+
+        print("<p>Last transaction broadcast (UTC): {}</p>".format(service.last_broadcast), file=output)
 
 
 class StatusHTTPServer(threading.Thread):
+    """
+
+    http://pymotw.com/2/BaseHTTPServer/
+    """
 
     def __init__(self, ip, port):
         threading.Thread.__init__(self)
@@ -59,11 +183,30 @@ class StatusHTTPServer(threading.Thread):
             counter = 0
 
             def do_GET(self):
+                """Handle responses to status pages."""
+
+                print(self.path)
+                # What pages we serve
+                paths = {
+                    "/": report_generator.index,
+                    "/accounts": report_generator.accounts,
+                    "/addresses": report_generator.addresses,
+                    "/transactions": report_generator.transactions,
+                    "/wallets": report_generator.wallets
+                }
+
+                func = paths.get(self.path)
+                if not func:
+                    self.send_error(404)
+                    return
+
                 self.send_response(200, "OK")
-                self.send_header("Content-type", "text/plain")
+                self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
-                text = report_generator.get_plaintext()
-                self.wfile.write(text.encode("utf-8"))
+
+                # http://www.macfreek.nl/memory/Encoding_of_Python_stdout
+                writer = codecs.getwriter('utf-8')(self.wfile, 'strict')
+                func(writer)
 
         server_address = (self.ip, self.port)
         try:

@@ -82,6 +82,15 @@ class CryptoAssetsApp:
             coin.transaction_model.backend = coin.backend
             coin.account_model.backend = coin.backend
 
+    def open_readonly_session(self):
+        """Get new read-only access to database.
+
+        This session can never write to db, so db can ignore transactions and optimize for speed.
+
+        TODO
+        """
+        return self.session
+
     def create_tables(self):
         """Create database tables.
 
