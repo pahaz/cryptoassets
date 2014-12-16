@@ -14,7 +14,6 @@ class TransactionUpdater:
     """Write transactions updates from API/backend to the database.
 
     The backend has hooked up some kind of wallet notify handler. The wallet notify handler uses TransactionUpdater to write updates of incoming transactoins to the database. TransactionUpdater is also responsible to fire any notification handlers to signal the cryptoassets client application to handle new transactions.
-
     """
 
     def __init__(self, session, backend, coin, notifiers):
@@ -77,7 +76,8 @@ class TransactionUpdater:
 
         # Tranasactipn is committed in this point, notify the application about the new data in the database
         if transaction_id:
-            logger.info("Starting txupdate notify")
+            notifier_count = len(self.notifiers) if self.notifiers else 0
+            logger.info("Posting txupdate notify for %d notifiers", notifier_count)
             if self.notifiers:
                 event_name, data = events.create_txupdate(txid=txid, transaction=transaction_id, account=account_id, address=address, amount=amount, confirmations=confirmations)
                 self.notifiers.notify(event_name, data)

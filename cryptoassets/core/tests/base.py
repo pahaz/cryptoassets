@@ -39,7 +39,7 @@ class CoinTestCase:
 
         warnhide.begone()
 
-        self.app = CryptoAssetsApp([Subsystem.database, Subsystem.backend, Subsystem.notifiers])
+        self.app = CryptoAssetsApp([Subsystem.database, Subsystem.backend, Subsystem.notifiers, Subsystem.incoming_transactions])
         self.configurator = Configurator(self.app)
 
         self.session = self.app.session
@@ -354,6 +354,8 @@ class CoinTestCase:
         Don't actually receive anything, spoof the incoming transaction.
         """
 
+        test_amount = 1000
+
         with transaction.manager:
             wallet = self.Wallet()
             self.session.add(wallet)
@@ -363,22 +365,23 @@ class CoinTestCase:
             self.session.flush()
             receiving_address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
             txid = "fakefakefakefake"
-            wallet.receive(txid, receiving_address.address, 1000, dict(confirmations=0))
+            wallet.receive(txid, receiving_address.address, test_amount, dict(confirmations=0))
 
-            # First we should just register the transaction
+            # First we should just register the transaction as incoming
             txs = self.session.query(self.Transaction).filter(self.Transaction.state == "incoming")
             self.assertEqual(txs.count(), 1)
-            self.assertEqual(txs.first().amount, 1000)
+            self.assertEqual(txs.first().amount, test_amount)
             self.assertFalse(txs.first().can_be_confirmed())
             self.assertEqual(account.balance, 0)
             self.assertEqual(wallet.balance, 0)
             self.assertIsNone(txs.first().processed_at)
 
             # Exceed the confirmation threshold
-            wallet.receive(txid, receiving_address.address, 1000, dict(confirmations=6))
+            wallet.receive(txid, receiving_address.address, test_amount, dict(confirmations=6))
             self.assertTrue(txs.first().can_be_confirmed())
-            self.assertEqual(account.balance, 1000)
-            self.assertEqual(wallet.balance, 1000)
+            self.assertEqual(account.balance, test_amount)
+            self.assertEqual(wallet.balance, test_amount)
+            self.assertEqual(receiving_address.balance, test_amount)
             self.assertIsNone(txs.first().processed_at)
 
             # Mark the transaction as processed the transaction
@@ -439,6 +442,7 @@ class CoinTestCase:
 
                 receiving_address_id = receiving_address.id
                 tx_id = tx.id
+                receiving_address_str = receiving_address.address
 
                 # Wait until backend notifies us the transaction has been received
                 logger.info("Monitoring receiving address {} on wallet {}".format(receiving_address.address, wallet.id))
@@ -465,6 +469,11 @@ class CoinTestCase:
                         succeeded = True
                         break
 
+            # Check txid on
+            # https://chain.so/testnet/btc
+            self.assertTrue(succeeded, "Never got the external transaction status through database, backend:{} txid:{} receiving address:{} wait:{}s".format(self.backend, tx_id, receiving_address_str, self.external_receiving_timeout))
+
+            # Just some debug output
             with transaction.manager:
                 address = self.session.query(wallet.Address).filter(self.Address.id == receiving_address_id)
                 account = address.first().account
@@ -472,8 +481,6 @@ class CoinTestCase:
 
                 tx = self.session.query(self.Transaction).get(tx_id)
                 logger.info("Broadcasted transaction %d txid %s confirmations %s", tx.id, tx.txid, tx.confirmations)
-
-            self.assertTrue(succeeded, "Never got the external transaction status through database")
 
         finally:
             self.Transaction.confirmation_count = 3

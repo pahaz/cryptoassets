@@ -3,7 +3,8 @@
 from .models import DBSession
 from .models import Base
 
-from .utils import AutoNumber
+from .utils.enum import AutoNumber
+from .utils.conflictresolved import managed_transaction
 
 
 class Subsystem(AutoNumber):
@@ -61,6 +62,9 @@ class CryptoAssetsApp:
         #: See notes in cryptoassets.core.service.main.Service
         self.status_server = None
 
+        #: How many times we'll try to resolve conflicted serialized SQL transaction
+        self.transaction_retries = 0
+
     def is_enabled(self, subsystem):
         """Are we running with a specific subsystem enabled."""
         return subsystem in self.subsystems
@@ -100,3 +104,5 @@ class CryptoAssetsApp:
             raise RuntimeError("Database subsystem was not enabled")
 
         Base.metadata.create_all(self.engine)
+
+    managed_transaction =

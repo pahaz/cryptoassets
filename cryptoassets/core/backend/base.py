@@ -55,6 +55,15 @@ class CoinBackend(abc.ABC):
         :yield: Tuples of (txid, address, amount, confirmations)
         """
 
+    @abc.abstractmethod
+    def get_backend_balance(self):
+        """Get full available hot wallet balance on the backend.
+
+        May take backend-specific optional kwargs like ``confirmations``.
+
+        :return: Decimal
+        """
+
     def monitor_address(self, address):
         # XXX: Remove
         pass

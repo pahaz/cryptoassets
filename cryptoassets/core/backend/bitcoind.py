@@ -139,6 +139,12 @@ class Bitcoind(BitcoindDerivate):
         """
         raise NotImplementedError()
 
+    def get_backend_balance(self, confirmations=3):
+        """Get full available hot wallet balance on the backend.
+        :return Decimal:
+        """
+        return self.api_call("getbalance", self.bitcoind_account_name, confirmations)
+
     def get_received_by_address(self, address, confirmations=None):
         """
         """

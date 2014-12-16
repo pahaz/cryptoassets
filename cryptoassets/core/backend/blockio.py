@@ -89,6 +89,12 @@ class BlockIo(CoinBackend):
         for balance in result["data"]["balances"]:
             yield balance["address"], self.to_internal_amount(balance["available_balance"])
 
+    def get_backend_balance(self, confirmations=3):
+        """Get full available hot wallet balance on the backend.
+        :return Decimal:
+        """
+        return Decimal(0)
+
     def get_lock(self, name):
         """ Create a named lock to protect the operation. """
         return self.lock_factory(name)

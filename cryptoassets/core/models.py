@@ -153,8 +153,8 @@ class GenericAddress(TableName, Base):
     #: Human-readable label for this address. User for the transaction history listing of the user. Must be unique across the whole system.
     label = Column(String(255), unique=True)
 
-    #: How much we know this address has balance. Concerns only
-    #: NOTE: Accuracy checked for Bitcoin only
+    #: Received balance of this address
+    #: NOTE: Numeric Accuracy checked for Bitcoin only ATM
     balance = Column(Numeric(21, 8), default=0, nullable=False)
     created_at = Column(DateTime, default=_now)
     updated_at = Column(DateTime, onupdate=_now)
@@ -400,6 +400,11 @@ class GenericWallet(TableName, Base, CoinBackend):
         account.wallet = self
         session.add(account)
         return account
+
+    def get_account_by_name(self, name):
+        session = Session.object_session(self)
+        instance = session.query(self.Account).filter_by(name=name).first()
+        return instance
 
     def get_or_create_account_by_name(self, name):
         session = Session.object_session(self)
@@ -846,9 +851,8 @@ class GenericWallet(TableName, Base, CoinBackend):
                 # Consider this transaction to be confirmed and update the receiving account
                 transaction.credited_at = _now()
                 account.balance += transaction.amount
-
-                with self.lock():
-                    self.balance += transaction.amount
+                _address.balance += transaction.amount
+                account.wallet.balance += transaction.amount
 
                 session.add(account)
 

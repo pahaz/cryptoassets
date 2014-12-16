@@ -11,7 +11,6 @@ import logging
 from http.server import HTTPServer
 from http.server import BaseHTTPRequestHandler
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -135,11 +134,13 @@ class StatusReportGenerator:
 
         t = TableCreator(output)
 
-        t.open("coin", "incoming transactions alive", "last incoming tx notification", "last broadcast", "backend last success", "backend error count")
+        t.open("coin", "alive", "hot wallet", "last incoming tx notification", "last broadcast", "backend last success", "backend error count")
         for coin, runnable in service.incoming_transaction_runnables.items():
+            backend = self.service.app.coins.get(coin).backend
+            hot_wallet_balance = backend.get_backend_balance()
             alive = runnable.is_alive()
             last_notification = runnable.transaction_updater.last_wallet_notify
-            t.row(coin, alive, last_notification, "TODO", "TODO", "TODO")
+            t.row(coin, alive, hot_wallet_balance, last_notification, "TODO", "TODO", "TODO")
 
         t.close()
 

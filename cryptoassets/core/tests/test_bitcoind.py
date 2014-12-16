@@ -88,7 +88,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         self.external_send_amount = Decimal("21000") / Decimal(10**8)
         self.network_fee = Decimal("10000") / Decimal(10**8)
         # Wait 10 minutes for 1 confimation from the BTC TESTNET
-        self.external_receiving_timeout = 60 * 10
+        self.external_receiving_timeout = 80 * 10
 
     def test_incoming_transaction(self):
         """Check we get notification for the incoming transaction.
