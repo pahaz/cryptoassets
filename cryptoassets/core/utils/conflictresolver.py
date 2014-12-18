@@ -1,4 +1,4 @@
-"""Serialized SQL transaction conflict resolution."""
+"""Serialized SQL transaction conflict resolution as a function decorator."""
 
 import warnings
 import logging
@@ -95,52 +95,42 @@ class ConflictResolver:
 
         ``managed_transaction`` decorator will retry to run everyhing inside the function
 
-        Usage:
+        Usage::
 
-            from decimal import Decimal
+            # Create new session for SQLAlchemy engine
+            def create_session():
+                Session = sessionmaker()
+                Session.configure(bind=engine)
+                return Session()
 
-            from myapp import cryptoassetsapp
+            conflict_resolver = ConflictResolver(create_session, retries=3)
 
-            def get_my_website_wallet(session):
-                Wallet = cryptoassets.coins.get("btc").wallet_model
-                wallet = Wallet.get_or_create_by_name("default", session)
-                return wallet
+            # Create a decorated function which can try to re-run itself in the case of conflict
+            @conflict_resolver.managed_transaction
+            def myfunc(session):
 
-            def my_stuff():
+                # Both threads modify the same wallet simultaneously
+                w = session.query(BitcoinWallet).get(1)
+                w.balance += 1
 
-                coin = "btc"
-
-                # We'll put the transaction sensitive code inside a closure function.
-                # In the case there is a conflict error inside the function,
-                # the tranaction manager tries to replay the code for X times
-                # before giving up with CannotResolveDatabaseConflict
-
-                @cryptoassetsapp.managed_transaction
-                def transaction(session):
-
-                    # You'll get SQLAlchemy session as the parameter to the function
-                    wallet = get_my_website_wallet(session)
-                    from_account = wallet.get_account_by_name("sender")
-                    to_account = wallet.get_account_by_name("receiver")
-                    wallet.send_internal(from_account, to_account, Decimal("1.0"), "test transfer")
-
-                transaction()
+            # Execute the conflict sensitive code inside a managed transaction
+            myfunc()
 
         The rules:
 
         - You must not swallow all exceptions within ``managed_transactions``. Example how to handle exceptions::
 
-            from cryptoassets.core.utils.transactionmanager import DATABASE_COFLICT_ERRORS
+            # Create a decorated function which can try to re-run itself in the case of conflict
+            @conflict_resolver.managed_transaction
+            def myfunc(session):
 
-            try:
-                my_code()
-            except DATABASE_COFLICT_ERRORS as conflict:
-                # We must always let conflict errors to fall through,
-                # so that the underlying ``managed_transaction`` can retry
-                raise
-            except Exception as e:
-                # Handle your exception
-                pass
+                try:
+                    my_code()
+                except Exception as e:
+                    if ConflictResolver.is_retryable_exception(e):
+                        # This must be passed to the function decorator, so it can attempt retry
+                        raise
+                    # Otherwise the exception is all yours
 
         - Use read-only database sessions if you know you do not need to modify the database and you need weaker transaction guarantees e.g. for displaying the total balance.
 
@@ -152,9 +142,9 @@ class ConflictResolver:
 
         This implementation heavily draws inspiration from the following sources
 
+        - http://stackoverflow.com/q/27351433/315168
+
         - https://gist.github.com/khayrov/6291557
-
-
         """
 
         def decorated_func():
@@ -167,7 +157,7 @@ class ConflictResolver:
                 session = self.session_factory()
                 try:
                     result = func(session)
-                    session.close()
+                    session.commit()
                     self.stats["success"] += 1
                     return result
 
