@@ -1,0 +1,11 @@
+---
+# Cryptoassets.core configuration for running bitcoind unit tests
+
+database:
+  url: sqlite:///:memory:?check_same_thread=false
+
+# Locally running bitcoind in testnet
+coins:
+    btc:
+        backend:
+            class: cryptoassets.core.backend.null.DummyCoinBackend

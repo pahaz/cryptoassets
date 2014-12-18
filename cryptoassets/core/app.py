@@ -4,7 +4,6 @@ from .models import DBSession
 from .models import Base
 
 from .utils.enum import AutoNumber
-from .utils.conflictresolved import managed_transaction
 
 
 class Subsystem(AutoNumber):
@@ -62,8 +61,9 @@ class CryptoAssetsApp:
         #: See notes in cryptoassets.core.service.main.Service
         self.status_server = None
 
-        #: How many times we'll try to resolve conflicted serialized SQL transaction
-        self.transaction_retries = 0
+        #: How many times we'll try to resolve conflicted serialized SQL transaction.
+        #: Must be set by the configuration.
+        self.transaction_retries = None
 
     def is_enabled(self, subsystem):
         """Are we running with a specific subsystem enabled."""
@@ -86,6 +86,10 @@ class CryptoAssetsApp:
             coin.transaction_model.backend = coin.backend
             coin.account_model.backend = coin.backend
 
+    def open_session(self):
+        """Get new read-write session for the database."""
+        return self.session
+
     def open_readonly_session(self):
         """Get new read-only access to database.
 
@@ -105,4 +109,4 @@ class CryptoAssetsApp:
 
         Base.metadata.create_all(self.engine)
 
-    managed_transaction =
+

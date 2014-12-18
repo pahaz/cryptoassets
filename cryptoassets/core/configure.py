@@ -72,6 +72,7 @@ class Configurator:
 
         data = data.copy()  # No mutate in place
         klass = data.pop("class")
+        transaction_retries = data.pop("transaction_retries", 3)
         data["coin"] = coin
         provider = resolve(klass)
         # Pass given configuration options to the backend as is
@@ -82,6 +83,8 @@ class Configurator:
             # back to the terminal
             # TypeError: __init__() got an unexpected keyword argument 'network'
             raise ConfigurationError("Could not initialize backend {} with options {}".format(klass, data)) from te
+
+        self.app.transaction_retries = transaction_retries
 
         assert isinstance(instance, CoinBackend)
         return instance

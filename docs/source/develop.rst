@@ -30,9 +30,15 @@ Example::
     export BLOCKCHAIN_IDENTIFIER="x"
     export BLOCKCHAIN_PASSWORD="y"
 
+Unit tests are `PyTest based <http://pytest.org/>`_.
+
 Running all tests::
 
     python setup.py test
+
+Running a test case:
+
+    py.test cryptoassets/core/tests/test_conflictresolver.py
 
 Running a single test::
 
@@ -41,6 +47,10 @@ Running a single test::
 Running a single test with more verbose logging output:
 
     VERBOSE_TEST=1 python -m unittest cryptoassets.core.tests.test_block_io.BlockIoBTCTestCase.test_charge_network_fee
+
+More info
+
+* http://pytest.org/latest/usage.html
 
 Bitcoind testnet
 ------------------
