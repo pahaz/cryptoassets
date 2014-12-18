@@ -2,6 +2,7 @@
 
 import warnings
 import logging
+from collections import Counter
 
 from sqlalchemy.orm.exc import ConcurrentModificationError
 from sqlalchemy.exc import OperationalError
@@ -47,11 +48,19 @@ class CannotResolveDatabaseConflict(Exception):
 
 class ConflictResolver:
 
-    def __init__(self, retries):
+    def __init__(self, session_factory, retries):
         """
+
+        :param session_factory: `callback()` which will give us a new SQLAlchemy session object for each transaction and retry
+
         :param retries: The number of attempst we try to re-run the transaction in the case of transaction conflict.
         """
         self.retries = retries
+
+        self.session_factory = session_factory
+
+        # Simple beancounting diagnostics how well we are doing
+        self.stats = Counter(success=0, retries=0, errors=0, unresolved=0)
 
     @classmethod
     def is_retryable_exception(self, e):
@@ -79,7 +88,7 @@ class ConflictResolver:
 
         return False
 
-    def managed_tranansaction(self, func):
+    def managed_transaction(self, func):
         """SQL Seralized transaction isolation-level conflict resolution.
 
         When SQL transaction isolation level is its highest level (Serializable), the SQL database itself cannot alone resolve conflicting concurrenct transactions. Thus, the SQL driver raises an exception to signal this condition.
@@ -150,33 +159,31 @@ class ConflictResolver:
 
         def decorated_func():
 
-            from cryptoassets.core.app import CryptoAssetsApp
-            assert isinstance(self, CryptoAssetsApp), "Please use CryptoAssetsApp.managed_transaction, not this decorator directly"
-
             # Read attemps from app configuration
             attempts = self.retries
 
             while attempts >= 0:
 
-                session = self.open_session()
+                session = self.session_factory()
                 try:
-                    return func(session)
-                except DATABASE_COFLICT_ERRORS as conflict:
-                    logger.warn("Got database confict error %s when running %s, retry attempts left %d", conflict, func, attempts)
-                    attempts -= 1
-                    continue
-                except Exception:
-                    # All other exceptions should fall through
-                    raise
-                finally:
+                    result = func(session)
                     session.close()
+                    self.stats["success"] += 1
+                    return result
 
-            raise CannotResolveDatabaseConflict("Could not replay the transaction %s even after %d attempts", func, self.transaction_retries)
+                except Exception as e:
+                    if self.is_retryable_exception(e):
+                        session.close()
+                        self.stats["retries"] += 1
+                        attempts -= 1
+                        if attempts < 0:
+                            self.stats["unresolved"] += 1
+                            raise CannotResolveDatabaseConflict("Could not replay the transaction {} even after {} attempts".format(func, self.retries)) from e
+                        continue
+                    else:
+                        session.rollback()
+                        self.stats["errors"] += 1
+                        # All other exceptions should fall through
+                        raise
 
         return decorated_func
-
-
-
-
-
-
