@@ -7,19 +7,16 @@ import time
 
 import pytest
 
-from cryptoassets.core.models import DBSession
-from cryptoassets.core.models import Base
-from cryptoassets.core.coin.bitcoin.models import BitcoinAccount
-from cryptoassets.core.coin.bitcoin.models import BitcoinAddress
-from cryptoassets.core.coin.bitcoin.models import BitcoinTransaction
-from cryptoassets.core.coin.bitcoin.models import BitcoinWallet
 from cryptoassets.core.utils.conflictresolver import ConflictResolver
 from cryptoassets.core.utils.conflictresolver import CannotResolveDatabaseConflict
 
 from sqlalchemy import create_engine
-from sqlalchemy import pool
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import scoped_session
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column
+from sqlalchemy import Numeric
+from sqlalchemy import Integer
 
 from . import warnhide
 
@@ -29,6 +26,23 @@ try:
     HAS_POSTGRESQL = True
 except:
     HAS_POSTGRESQL = False
+
+
+Base = declarative_base()
+
+
+class TestModel(Base):
+    """A sample SQLAlchemy model to demostrate db conflicts. """
+
+    __tablename__ = "test_model"
+
+    #: Running counter used in foreign key references
+    id = Column(Integer, primary_key=True)
+
+    #: The total balance of this wallet in the minimum unit of cryptocurrency
+    #: NOTE: accuracy checked for Bitcoin only
+    balance = Column(Numeric(21, 8))
+
 
 
 class ConflictThread(threading.Thread):
@@ -45,7 +59,7 @@ class ConflictThread(threading.Thread):
             session = self.session_factory()
 
             # Both threads modify the same wallet simultaneously
-            w = session.query(BitcoinWallet).get(1)
+            w = session.query(TestModel).get(1)
             w.balance += 1
 
             # Let the other session to start its own transaction
@@ -72,7 +86,7 @@ class ConflictResolverThread(threading.Thread):
         def myfunc(session):
 
             # Both threads modify the same wallet simultaneously
-            w = session.query(BitcoinWallet).get(1)
+            w = session.query(TestModel).get(1)
             w.balance += 1
 
             # Let the other session to start its own transaction
@@ -87,17 +101,14 @@ class ConflictResolverThread(threading.Thread):
 
 
 @pytest.mark.skipif(HAS_POSTGRESQL == False, reason="Running this test requires psycopg2 driver + PostgreSQL database unittest-conflict-resolution")
-class PostgrSQLConflictResolverTestCase(unittest.TestCase):
+class PostgreSQLConflictResolverTestCase(unittest.TestCase):
     """Check that we execute and retry transactions correctly on Serialiable SQL transaction isolation level.
 
 
     """
 
-    def create_session(self, engine):
-        # createdb unittest-conflict-resolution on homebrew based installations
-        Session = sessionmaker()
-        Session.configure(bind=engine)
-        return Session()
+    def open_session(self):
+        return self.Session()
 
     def setUp(self):
         """
@@ -105,26 +116,32 @@ class PostgrSQLConflictResolverTestCase(unittest.TestCase):
 
         warnhide.begone()
 
+        # createdb unittest-conflict-resolution on homebrew based installations
         self.engine = create_engine('postgresql:///unittest-conflict-resolution',  isolation_level='SERIALIZABLE')
-        self.session = self.create_session(self.engine)
+
+        # Create a threadh-local automatic session factory
+        self.Session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=self.engine))
+
+        session = self.open_session()
+
         # Load Bitcoin models to play around with
-        Base.metadata.create_all(self.engine, tables=[BitcoinAccount.__table__, BitcoinAddress.__table__, BitcoinTransaction.__table__, BitcoinWallet.__table__])
+        Base.metadata.create_all(self.engine, tables=[TestModel.__table__])
 
         # Create an wallet with balance of 10
-        w = self.session.query(BitcoinWallet).get(1)
+        w = session.query(TestModel).get(1)
         if not w:
-            w = BitcoinWallet()
+            w = TestModel()
             self.session.add(w)
 
         w.balance = 10
 
-        self.session.commit()
+        session.commit()
 
     def test_conflict(self):
         """Run database to a transaction conflict and see what it spits out."""
 
         def session_factory():
-            return self.create_session(self.engine)
+            return self.open_session()
 
         t1 = ConflictThread(session_factory)
         t2 = ConflictThread(session_factory)
@@ -146,7 +163,7 @@ class PostgrSQLConflictResolverTestCase(unittest.TestCase):
         """Use conflict resolver to resolve conflict between two transactions."""
 
         def session_factory():
-            return self.create_session(self.engine)
+            return self.open_session()
 
         t1 = ConflictResolverThread(session_factory)
         t2 = ConflictResolverThread(session_factory)
@@ -163,7 +180,7 @@ class PostgrSQLConflictResolverTestCase(unittest.TestCase):
         self.assertIsNone(failure)
 
         session = session_factory()
-        w = session.query(BitcoinWallet).get(1)
+        w = session.query(TestModel).get(1)
         self.assertEqual(w.balance, 12)  # two increments
         session.close()
 
@@ -179,7 +196,7 @@ class PostgrSQLConflictResolverTestCase(unittest.TestCase):
         """See that unknown exceptions are correctly reraised."""
 
         def session_factory():
-            return self.create_session(self.engine)
+            return self.open_session()
 
         c = ConflictResolver(session_factory, 1)
 
@@ -194,7 +211,7 @@ class PostgrSQLConflictResolverTestCase(unittest.TestCase):
         """See that the conflict resolver gives up after using all attempts."""
 
         def session_factory():
-            return self.create_session(self.engine)
+            return self.open_session()
 
         # The resolved has retry count of 1,
         # First t1 success, t2 and t3 clases

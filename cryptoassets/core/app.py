@@ -1,9 +1,12 @@
 """Cryptoassets application manager."""
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import scoped_session
 
 from .models import DBSession
 from .models import Base
 
 from .utils.enum import AutoNumber
+from .utils.conflictresolver import ConflictResolver
 
 
 class Subsystem(AutoNumber):
@@ -61,24 +64,28 @@ class CryptoAssetsApp:
         #: See notes in cryptoassets.core.service.main.Service
         self.status_server = None
 
-        #: How many times we'll try to resolve conflicted serialized SQL transaction.
-        #: Must be set by the configuration.
+        #: The number of attempts we try to replay conflicted transactions. Set by configuration.
         self.transaction_retries = None
+
+        #: cryptoassets.core.utils.conflictresolver.ConflictResolver instance we use to resolve database conflicts
+        self.conflict_resolved = None
 
     def is_enabled(self, subsystem):
         """Are we running with a specific subsystem enabled."""
         return subsystem in self.subsystems
 
-    def setup_session(self):
-        """Configure SQLAlchemy models.
+    def setup_session(self, transaction_retries=3):
+        """Configure SQLAlchemy models and transaction conflict resolutoin.
 
-        Also bind created cryptocurrency models to their backend.
+        Also, bind created cryptocurrency models to their configured backends.
         """
 
         if not self.is_enabled(Subsystem.database):
             raise RuntimeError("Database subsystem was not enabled")
 
-        self.session.configure(bind=self.engine)
+        self.Session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=self.engine))
+
+        self.conflict_resolver = ConflictResolver(self.open_session, self.transaction_retries)
 
         for name, coin in self.coins.all():
             coin.wallet_model.backend = coin.backend
@@ -88,7 +95,7 @@ class CryptoAssetsApp:
 
     def open_session(self):
         """Get new read-write session for the database."""
-        return self.session
+        return self.Session()
 
     def open_readonly_session(self):
         """Get new read-only access to database.
@@ -108,5 +115,3 @@ class CryptoAssetsApp:
             raise RuntimeError("Database subsystem was not enabled")
 
         Base.metadata.create_all(self.engine)
-
-

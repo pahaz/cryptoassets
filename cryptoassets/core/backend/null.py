@@ -10,6 +10,9 @@ class DummyCoinBackend(base.CoinBackend):
     def create_address(self, label):
         pass
 
+    def get_backend_balance(self):
+        return Decimal(999999)
+
     def get_balances(self, addresses):
         pass
 
@@ -18,6 +21,9 @@ class DummyCoinBackend(base.CoinBackend):
 
     def send(self, recipients):
         pass
+
+    def scan_addresses(addresses):
+        raise RuntimeError("Not supported")
 
     def setup_incoming_transactions(self, dbsession):
         pass

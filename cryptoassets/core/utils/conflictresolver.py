@@ -47,6 +47,10 @@ class CannotResolveDatabaseConflict(Exception):
 
 
 class ConflictResolver:
+    """
+
+    ConflictResolver can be shared across the threads.
+    """
 
     def __init__(self, session_factory, retries):
         """
@@ -152,9 +156,10 @@ class ConflictResolver:
             # Read attemps from app configuration
             attempts = self.retries
 
+            session = self.session_factory()
+
             while attempts >= 0:
 
-                session = self.session_factory()
                 try:
                     result = func(session)
                     session.commit()
@@ -162,8 +167,10 @@ class ConflictResolver:
                     return result
 
                 except Exception as e:
+
+                    session.rollback()
+
                     if self.is_retryable_exception(e):
-                        session.close()
                         self.stats["retries"] += 1
                         attempts -= 1
                         if attempts < 0:
@@ -171,9 +178,42 @@ class ConflictResolver:
                             raise CannotResolveDatabaseConflict("Could not replay the transaction {} even after {} attempts".format(func, self.retries)) from e
                         continue
                     else:
-                        session.rollback()
                         self.stats["errors"] += 1
                         # All other exceptions should fall through
                         raise
 
+        # Make tracebacks friendlier
+        decorated_func.__name__ = "{} wrapped by managed_transaction".format(func.__name__)
+
         return decorated_func
+
+    def contextmanager(self):
+        """Get a contextmanager instance using the session.
+
+        This approach DOES NOT support conflict resolution, because Python context managers don't support looping. This is mostly a convenience method to replace ``transaction.manager `` from Zope transaction package in the code with more explicit session handling.
+
+        It will still do transaction rollback properly on exception. However it will not try to replay the code section.
+
+        Example:
+
+            conflict_resolver = ConflictResolver(create_session, retries=3)
+            with conflict_resolver.contextmanager() as session:
+
+        """
+        return ContextManager(self)
+
+
+class ContextManager:
+
+    def __init__(self, conflict_resolver):
+        self.conflict_resolver = conflict_resolver
+
+    def __enter__(self):
+        self.session = self.conflict_resolver.session_factory()
+        return self.session
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type:
+            self.session.rollback()
+        else:
+            self.session.commit()

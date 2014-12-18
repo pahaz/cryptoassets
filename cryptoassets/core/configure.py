@@ -18,8 +18,6 @@ from .coin.defaults import COIN_MODEL_DEFAULTS
 from .coin.registry import Coin
 from .coin.registry import CoinRegistry
 
-from .models import DBSession
-from .models import Base
 from .models import GenericWallet
 
 from .backend.base import CoinBackend
