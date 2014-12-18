@@ -5,7 +5,7 @@ import transaction
 from ..app import CryptoAssetsApp
 from ..configure import Configurator
 
-from . import warnhide
+from . import testwarnings
 
 
 class GenericWalletTestCase(unittest.TestCase):
@@ -15,7 +15,7 @@ class GenericWalletTestCase(unittest.TestCase):
         """
         """
 
-        warnhide.begone()
+        testwarnings.begone()
 
         self.app = CryptoAssetsApp()
         self.configurator = Configurator(self.app)
@@ -30,13 +30,13 @@ class GenericWalletTestCase(unittest.TestCase):
     def test_create_wallet_by_name(self):
         """Test creating and retrieving wallet by name."""
 
-        with self.app.conflict_resolver.contextmanager() as session:
+        with self.app.conflict_resolver.transaction() as session:
             wallet_class = self.app.coins.get("btc").wallet_model
             wallet = wallet_class.get_or_create_by_name("foobar", session)
             session.flush()
             self.assertEqual(wallet.id, 1)
 
-        with self.app.conflict_resolver.contextmanager() as session:
+        with self.app.conflict_resolver.transaction() as session:
             wallet_class = self.app.coins.get("btc").wallet_model
             wallet = wallet_class.get_or_create_by_name("foobar", session)
             session.flush()

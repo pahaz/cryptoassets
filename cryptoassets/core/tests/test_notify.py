@@ -39,7 +39,7 @@ class ScriptNotificationTestCase(unittest.TestCase):
 
     def setUp(self):
 
-        self.app = CryptoAssetsApp([Subsystem.database, Subsystem.notifiers])
+        self.app = CryptoAssetsApp([Subsystem.notifiers])
         self.configurator = Configurator(self.app)
 
         # Create a test script
@@ -71,7 +71,7 @@ class ScriptNotificationTestCase(unittest.TestCase):
 _cb_data = None
 
 
-def test_callback(event_name, data):
+def global_recording_callback(event_name, data):
     global _cb_data
     _cb_data = data
 
@@ -81,7 +81,7 @@ class PythonNotificationTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        self.app = CryptoAssetsApp([Subsystem.database, Subsystem.notifiers])
+        self.app = CryptoAssetsApp([Subsystem.notifiers])
         self.configurator = Configurator(self.app)
 
     def test_notify(self):
@@ -90,7 +90,7 @@ class PythonNotificationTestCase(unittest.TestCase):
         config = {
             "test_python": {
                 "class": "cryptoassets.core.notify.python.InProcessNotifier",
-                "callback": "cryptoassets.core.tests.test_notify.test_callback",
+                "callback": "cryptoassets.core.tests.test_notify.global_recording_callback",
             }
         }
         notifiers = self.configurator.setup_notify(config)
@@ -135,7 +135,7 @@ class HTTPNotificationTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        self.app = CryptoAssetsApp([Subsystem.database, Subsystem.notifiers])
+        self.app = CryptoAssetsApp([Subsystem.notifiers])
         self.configurator = Configurator(self.app)
 
     def test_notify(self):

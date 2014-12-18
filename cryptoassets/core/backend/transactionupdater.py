@@ -6,6 +6,8 @@ from ..coin.registry import Coin
 from ..notify.registry import NotifierRegistry
 from ..notify import events
 
+from ..utils.conflictresolver import ConflictResolver
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +18,16 @@ class TransactionUpdater:
     The backend has hooked up some kind of wallet notify handler. The wallet notify handler uses TransactionUpdater to write updates of incoming transactoins to the database. TransactionUpdater is also responsible to fire any notification handlers to signal the cryptoassets client application to handle new transactions.
     """
 
-    def __init__(self, session, backend, coin, notifiers):
+    def __init__(self, conflict_resolver, backend, coin, notifiers):
         """
         :param session: SQLAlchemy database session
         """
         assert isinstance(coin, Coin)
+        assert isinstance(conflict_resolver, ConflictResolver)
 
         self.backend = backend
         self.coin = coin
-        self.session = session
+        self.conflict_resolver = conflict_resolver
 
         # Simple book-keeping of number of transactions we have handled
         self.count = 0
@@ -39,7 +42,7 @@ class TransactionUpdater:
         else:
             self.notifiers = None
 
-    def handle_address_receive(self, transaction_manager, txid, address, amount, confirmations):
+    def handle_address_receive(self, txid, address, amount, confirmations):
         """Handle an incoming transaction which adds balance on our address.
 
         :return: tuple (Transaction id, credited) for the Transaction object created/updated related to external txid
@@ -54,8 +57,10 @@ class TransactionUpdater:
 
         Address = self.coin.address_model
 
-        with transaction_manager:
-            address_obj = self.session.query(Address).filter(Address.address == address).first()  # noqa
+        @self.conflict_resolver.managed_transaction
+        def handle_account_update(session):
+
+            address_obj = session.query(Address).filter(Address.address == address).first()  # noqa
 
             if address_obj:
                 wallet = address_obj.account.wallet
@@ -63,16 +68,16 @@ class TransactionUpdater:
                 confirmations = transaction.confirmations
                 logger.info("Wallet notify account %d, address %s, amount %s, tx confirmations %d", account.id, address, amount, confirmations)
 
-                # This will cause Transaction instance to get its id
-                self.session.flush()
+                # This will cause transaction instance to get transaction.id
+                session.flush()
 
-                account_id = account.id
-                transaction_id = transaction.id
-
-                credited = transaction.credited_at is not None
+                return account.id, transaction.id, transaction.credited_at is not None
 
             else:
                 logger.info("Skipping transaction notify for unknown address %s, amount %s", address, amount)
+                return None, None, None
+
+        account_id, transaction_id, credited = handle_account_update()
 
         # Tranasactipn is committed in this point, notify the application about the new data in the database
         if transaction_id:
@@ -86,7 +91,7 @@ class TransactionUpdater:
             logger.info("No transaction object was created")
             return None, False
 
-    def handle_wallet_notify(self, txid, transaction_manager):
+    def handle_wallet_notify(self, txid):
         """Incoming walletnotify event from bitcoind.
 
         TODO: This is bitcoind specific code. Move to its own module?
@@ -116,7 +121,7 @@ class TransactionUpdater:
         confirmations = txdata["confirmations"]
 
         for address, amount in addresses.items():
-            self.handle_address_receive(transaction_manager, txid, address, amount, confirmations)
+            self.handle_address_receive(txid, address, amount, confirmations)
 
         self.count += 1
 
@@ -130,7 +135,7 @@ class TransactionUpdater:
             # need full rescan
             pass
 
-    def rescan_all(self, transaction_manager):
+    def rescan_all(self):
         """Rescan all transactions in a wallet to see if we have miss any.
 
         TODO: Currently this does not correctly subtract outgoing transactions
@@ -150,7 +155,7 @@ class TransactionUpdater:
 
             for tx in txs:
                 # TODO See if we can optimize this pulling all tx data from listransactions information without need to do one extra JSON-RPC per tx
-                self.handle_wallet_notify(tx["txid"], transaction_manager)
+                self.handle_wallet_notify(tx["txid"])
                 self.count += 1
                 found += 1
 

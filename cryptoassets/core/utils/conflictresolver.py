@@ -187,17 +187,25 @@ class ConflictResolver:
 
         return decorated_func
 
-    def contextmanager(self):
-        """Get a contextmanager instance using the session.
+    def transaction(self):
+        """Get a transaction contextmanager instance using the conflict resolver session.
 
-        This approach DOES NOT support conflict resolution, because Python context managers don't support looping. This is mostly a convenience method to replace ``transaction.manager `` from Zope transaction package in the code with more explicit session handling.
+        This approach DOES NOT support conflict resolution, because Python context managers don't support looping. Instead, it will raise exception if the transaction does not pass on the first attempt.
 
-        It will still do transaction rollback properly on exception. However it will not try to replay the code section.
+        Transaction handling
 
-        Example:
+        * Transaction is committed if the context manager exists succesfully
+
+        * Transaction is rolled back on an exception
+
+        This suits for tests (there should be no conflicts in tests, unless explicitly caused). This also suits as Zope `transaction` package replacement without two-phased commit support.
+
+        Example::
 
             conflict_resolver = ConflictResolver(create_session, retries=3)
-            with conflict_resolver.contextmanager() as session:
+            with conflict_resolver.transaction() as session:
+                account = session.query(Account).get(1)
+                account.balance += 1
 
         """
         return ContextManager(self)

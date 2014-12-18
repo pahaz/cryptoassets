@@ -217,8 +217,8 @@ class Bitcoind(BitcoindDerivate):
         """
         raise RuntimeError("bitcoind cannot list transactions per address")
 
-    def create_transaction_updater(self, session, notifiers):
-        tx_updater = TransactionUpdater(session, self, self.coin, notifiers)
+    def create_transaction_updater(self, conflict_resolver, notifiers):
+        tx_updater = TransactionUpdater(conflict_resolver, self, self.coin, notifiers)
         return tx_updater
 
 

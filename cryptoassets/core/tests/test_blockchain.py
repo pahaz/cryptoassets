@@ -6,11 +6,8 @@ from sqlalchemy import create_engine
 
 from ..models import DBSession
 from ..models import Base
-from ..backend import registry as backendregistry
 
 from ..backend.blockchain import BlockChain
-from ..backend import registry as backendregistry
-
 
 from .base import CoinTestCase
 

@@ -1,8 +1,5 @@
-import os
 import unittest
-import transaction
 import threading
-import sys
 import time
 
 import pytest
@@ -18,11 +15,10 @@ from sqlalchemy import Column
 from sqlalchemy import Numeric
 from sqlalchemy import Integer
 
-from . import warnhide
+from . import testwarnings
 
 try:
     import psycopg2  # noqa
-    from psycopg2.extensions import TransactionRollbackError
     HAS_POSTGRESQL = True
 except:
     HAS_POSTGRESQL = False
@@ -42,7 +38,6 @@ class TestModel(Base):
     #: The total balance of this wallet in the minimum unit of cryptocurrency
     #: NOTE: accuracy checked for Bitcoin only
     balance = Column(Numeric(21, 8))
-
 
 
 class ConflictThread(threading.Thread):
@@ -100,7 +95,7 @@ class ConflictResolverThread(threading.Thread):
             self.failure = e
 
 
-@pytest.mark.skipif(HAS_POSTGRESQL == False, reason="Running this test requires psycopg2 driver + PostgreSQL database unittest-conflict-resolution")
+@pytest.mark.skipif(not HAS_POSTGRESQL, reason="Running this test requires psycopg2 driver + PostgreSQL database unittest-conflict-resolution")
 class PostgreSQLConflictResolverTestCase(unittest.TestCase):
     """Check that we execute and retry transactions correctly on Serialiable SQL transaction isolation level.
 
@@ -114,7 +109,7 @@ class PostgreSQLConflictResolverTestCase(unittest.TestCase):
         """
         """
 
-        warnhide.begone()
+        testwarnings.begone()
 
         # createdb unittest-conflict-resolution on homebrew based installations
         self.engine = create_engine('postgresql:///unittest-conflict-resolution',  isolation_level='SERIALIZABLE')

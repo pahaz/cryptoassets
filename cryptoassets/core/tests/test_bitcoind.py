@@ -28,16 +28,17 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
     def refresh_account_balance(self, wallet, account):
         """ """
-        transaction_updater = self.backend.create_transaction_updater(self.session, self.app.notifiers)
+        transaction_updater = self.backend.create_transaction_updater(self.app.conflict_resolver, self.app.notifiers)
 
         # We should find at least one transaction topping up our testnet wallet
-        found = transaction_updater.rescan_all(transaction.manager)
+        found = transaction_updater.rescan_all()
         self.assertGreater(found, 0)
 
         # Because we have imported public address to database previously,
         # transaction_updater should have updated the balance on this address
-        account = self.session.query(self.Account).get(account.id)
-        self.assertGreater(account.balance, 0)
+        with self.app.conflict_resolver.transaction() as session:
+            account = session.query(self.Account).get(account.id)
+            self.assertGreater(account.balance, 0)
 
     def setup_test_fund_address(self, wallet, account):
         # Import some TESTNET coins
@@ -51,7 +52,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_receiving(self, wallet):
 
-        self.transaction_updater = self.backend.create_transaction_updater(self.session, self.app.notifiers)
+        self.transaction_updater = self.backend.create_transaction_updater(self.app.conflict_resolver, self.app.notifiers)
 
         self.walletnotify_pipe = PipedWalletNotifyHandler(self.transaction_updater, WALLETNOTIFY_PIPE)
 
@@ -106,15 +107,15 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         # Account balance should be updated
         """
 
-        with transaction.manager:
+        with self.app.conflict_resolver.transaction() as session:
             # Create a wallet
             wallet = self.Wallet()
-            self.session.add(wallet)
-            self.session.flush()
+            session.add(wallet)
+            session.flush()
 
             # Spoof a fake address on the wallet
             account = wallet.create_account("Test account")
-            self.session.flush()
+            session.flush()
 
             # Testnet transaction id we are spoofing
             # bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf-000
@@ -123,7 +124,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
             wallet.add_address(account, "Old known address with a transaction", "n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr")
 
             coin = self.app.coins.get("btc")
-            transaction_updater = TransactionUpdater(self.session, self.backend, coin, None)
+            transaction_updater = TransactionUpdater(self.app.conflict_resolver, self.backend, coin, None)
 
             account_id = account.id
 
@@ -148,9 +149,9 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         self.assertEqual(transaction_updater.count, 1)
         self.assertTrue(self.walletnotify_pipe.is_alive())
 
-        with transaction.manager:
+        with self.app.conflict_resolver.transaction() as session:
             # Reload account from the database
-            account = self.session.query(self.Account).get(account_id)
+            account = session.query(self.Account).get(account_id)
             self.assertEqual(account.balance, Decimal("1.2"))
 
         # Triggering the transaction update again should not change the balance
@@ -161,8 +162,8 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
             time.sleep(0.1)
             self.assertLess(time.time(), deadline, "Transaction updater never kicked in")
 
-        with transaction.manager:
-            account = self.session.query(self.Account).get(account_id)
+        with self.app.conflict_resolver.transaction() as session:
+            account = session.query(self.Account).get(account_id)
             self.assertEqual(account.balance, Decimal("1.2"))
 
         self.walletnotify_pipe.stop()
@@ -171,30 +172,30 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         """Rescan all wallet transactions and rebuild account balances."""
 
         # These objects must be committed before setup_test_fund_address() is called
-        with transaction.manager:
+        with self.app.conflict_resolver.transaction() as session:
             wallet = self.Wallet()
-            self.session.add(wallet)
-            self.session.flush()
+            session.add(wallet)
+            session.flush()
             account = wallet.create_account("Test account")
 
         # Import addresses we know having received balance
-        with transaction.manager:
-            account = self.session.query(self.Account).get(1)
-            wallet = self.session.query(self.Wallet).get(1)
+        with self.app.conflict_resolver.transaction() as session:
+            account = session.query(self.Account).get(1)
+            wallet = session.query(self.Wallet).get(1)
             self.setup_test_fund_address(wallet, account)
             self.assertGreater(wallet.get_receiving_addresses().count(), 0)
 
         # Refresh from API/bitcoind the balances of imported addresses
-        with transaction.manager:
-            account = self.session.query(self.Account).get(1)
-            wallet = self.session.query(self.Wallet).get(1)
+        with self.app.conflict_resolver.transaction() as session:
+            account = session.query(self.Account).get(1)
+            wallet = session.query(self.Wallet).get(1)
             self.assertGreater(wallet.get_receiving_addresses().count(), 0)
             self.refresh_account_balance(wallet, account)
 
         # Make sure we got balance after refresh
-        with transaction.manager:
-            account = self.session.query(self.Account).get(1)
-            wallet = self.session.query(self.Wallet).get(1)
+        with self.app.conflict_resolver.transaction() as session:
+            account = session.query(self.Account).get(1)
+            wallet = session.query(self.Wallet).get(1)
             self.assertGreater(wallet.get_receiving_addresses().count(), 0)
             self.assertGreater(account.balance, 0, "We need have some balance on the test account to proceed with the send test")
 

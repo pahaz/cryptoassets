@@ -34,19 +34,19 @@ Unit tests are `PyTest based <http://pytest.org/>`_.
 
 Running all tests::
 
-    python setup.py test
+    py.test cryptoassets
 
-Running a test case:
+Running a single test case:
 
     py.test cryptoassets/core/tests/test_conflictresolver.py
 
 Running a single test::
 
-    python -m unittest cryptoassets.core.tests.test_block_io.BlockIoBTCTestCase.test_send_receive_external
+    py.test -k "BitcoindTestCase.test_send_internal" cryptoassets
 
-Running a single test with more verbose logging output:
+Running a single test with Python logging output to stdout::
 
-    VERBOSE_TEST=1 python -m unittest cryptoassets.core.tests.test_block_io.BlockIoBTCTestCase.test_charge_network_fee
+    VERBOSE_TEST=1 py.test -k "BitcoindTestCase.test_send_internal" cryptoassets
 
 More info
 
