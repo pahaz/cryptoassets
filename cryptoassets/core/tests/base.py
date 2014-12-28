@@ -13,6 +13,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
 from sqlalchemy import pool
+from sqlalchemy.orm.session import Session
 
 from ..models import NotEnoughAccountBalance
 from ..models import SameAccount
@@ -20,11 +21,10 @@ from ..models import SameAccount
 from ..app import CryptoAssetsApp
 from ..app import Subsystem
 from ..configure import Configurator
+from .. import walletimport
 
 from . import testlogging
 from . import testwarnings
-
-testlogging.setup()
 
 
 logger = logging.getLogger(__name__)
@@ -57,6 +57,7 @@ class CoinTestCase:
     def setUp(self):
 
         testwarnings.begone()
+        testlogging.setup()
 
         self.app = CryptoAssetsApp([Subsystem.database, Subsystem.backend, Subsystem.notifiers, Subsystem.incoming_transactions])
         self.configurator = Configurator(self.app)
@@ -119,29 +120,15 @@ class CoinTestCase:
         with self.app.conflict_resolver.transaction() as session:
             wallet = self.Wallet()
             session.add(wallet)
-            session.flush()
             account = wallet.create_account("Test account")
-
-        # Import addresses we know having received balance
-        with self.app.conflict_resolver.transaction() as session:
-            account = session.query(self.Account).get(1)
-            wallet = session.query(self.Wallet).get(1)
-            self.setup_test_fund_address(wallet, account)
-            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
-
-        # Refresh from API/bitcoind the balances of imported addresses
-        with self.app.conflict_resolver.transaction() as session:
-            account = session.query(self.Account).get(1)
-            wallet = session.query(self.Wallet).get(1)
-            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
-            self.refresh_account_balance(wallet, account)
+            session.flush()
+            walletimport.import_unaccounted_balance(self.backend, wallet, account)
 
         # Make sure we got balance after refresh
         with self.app.conflict_resolver.transaction() as session:
             account = session.query(self.Account).get(1)
             wallet = session.query(self.Wallet).get(1)
-            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
-            self.assertGreater(account.balance, 0, "We need have some balance on the test account to proceed with the send test")
+            self.assertGreater(account.balance, 0, "We need have some balance on the unit test wallet to proceed with the send test")
 
     def tearDown(self):
         pass
@@ -456,6 +443,9 @@ class CoinTestCase:
                 self.assertGreater(wallet.get_receiving_addresses().count(), 0)
                 self.setup_receiving(wallet)
 
+            # Commit new receiveing address to the database
+
+            with self.app.conflict_resolver.transaction() as session:
                 self.wait_receiving_address_ready(wallet, receiving_address)
 
                 # Make sure we don't have any balance beforehand

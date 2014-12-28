@@ -225,7 +225,7 @@ class GenericTransaction(TableName, Base):
     #:
     #: **network_fee**: When the transaction has been broadcasted, we create an internal transaction to account the occured network fees
     #:
-    state = Column(Enum('pending', 'broadcasted', 'incoming', 'processed', 'internal', 'network_fee', name="transaction_state"))
+    state = Column(Enum('pending', 'broadcasted', 'incoming', 'processed', 'internal', 'network_fee', 'balance_import', name="transaction_state"))
 
     #: Human readable label what this transaction is all about.
     #: Must be unique for each account

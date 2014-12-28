@@ -39,10 +39,10 @@ class BlockIo(CoinBackend):
         self.walletnotify_config = walletnotify
 
     def to_internal_amount(self, amount):
-        return amount
+        return Decimal(amount)
 
     def to_external_amount(self, amount):
-        return amount
+        return Decimal(amount)
 
     def create_address(self, label):
 
@@ -93,14 +93,22 @@ class BlockIo(CoinBackend):
         """Get full available hot wallet balance on the backend.
         :return Decimal:
         """
-        return Decimal(0)
+
+        resp = self.block_io.get_balance()
+        # {'status': 'success', 'data': {'pending_received_balance': '0.00000000', 'available_balance': '0.13553300', 'network': 'BTCTEST'}}
+        if confirmations == 0:
+            return self.to_internal_amount(resp["data"]["pending_received_balance"])
+        else:
+            return self.to_internal_amount(resp["data"]["available_balance"])
 
     def get_lock(self, name):
         """ Create a named lock to protect the operation. """
         return self.lock_factory(name)
 
-    def send(self, recipients):
+    def send(self, recipients, label):
         """
+        BlockIo does not support labelling outgoing transactions.
+
         :param recipients: Dict of (address, satoshi amount)
         """
 

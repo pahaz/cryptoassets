@@ -16,7 +16,11 @@ def setup():
     handler.setFormatter(formatter)
     logger = logging.getLogger()
     logger.addHandler(handler)
-    logger.debug("debug msg")
+
+    if "VERBOSE_TEST" in os.environ:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.ERROR)
 
     logger = logging.getLogger("requests.packages.urllib3.connectionpool")
     logger.setLevel(logging.ERROR)
@@ -30,10 +34,3 @@ def setup():
     # SQL Alchemy transactions
     logger = logging.getLogger("txn")
     logger.setLevel(logging.ERROR)
-
-    logger = logging.getLogger(__name__)
-
-    logger = logging.getLogger()
-
-    if "VERBOSE_TEST" in os.environ:
-        logger.setLevel(logging.INFO)

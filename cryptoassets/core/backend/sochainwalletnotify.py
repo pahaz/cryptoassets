@@ -1,25 +1,21 @@
-"""Import incoming transaction notifications using chain.so service.
-
-"""
+"""Handle incoming transaction notifications using chain.so service."""
 
 import json
 import logging
 import threading
-import transaction
 import time
+from decimal import Decimal
 
 import pusherclient
 
 from .base import IncomingTransactionRunnable
 
-#: TODO: Get rid of the session global
-from ..models import DBSession
 
 logger = logging.getLogger(__name__)
 
 
 class SochainConnection(pusherclient.Connection):
-
+    """Bugfixed pusherclient"""
     def _connect_handler(self, data):
         # Some bug workdaround, tries to decode
         # JSON twices on initial on connected
@@ -49,7 +45,7 @@ class SochainPusher(pusherclient.Pusher):
 class SochainTransctionThread(threading.Thread):
     """A background thread getting updates on hot transactions.
 
-    Maintain a list of open transaction where confirmation threshold is less than our confirmation level. Then, in a poll loop check those transactions until we are done with them.
+    Maintain a list of open transaction where confirmation threshold is less than our confirmation level. Then, in a poll loop check those transactions until we are done with them. We need to do this unti Sochain gets an Pusher notifications for confirmation updates.
     """
 
     def __init__(self, monitor):
@@ -64,30 +60,45 @@ class SochainTransctionThread(threading.Thread):
             self.rescan_addresses(addresses)
             time.sleep(self.poll_period)
 
-    def rescan_address(self, transaction_manager, addresses):
-        """Scan all known receiving addresses in our system."""
-        for txid, address, amount, confirmations in self.monitor.backend.scan_addresses(addresses):
-            self.monitor.update_address_with_transaction(txid, address, amount, confirmations)
+    def rescan_addresses(self, addresses):
+        """Scan all addresses where we know we have pending incoming transactions."""
+
+        addresses = []
+        for txid, address, amount, confirmations in self.monitor.transaction_updater.backend.scan_addresses(addresses):
+            txid, credited = self.monitor.transaction_updater.handle_address_receive(txid, address, amount, confirmations)
+
+            # Don't poll transaction anymore if it's finished
+            if credited:
+                self.monitor.finish_transaction(txid)
 
     def stop(self):
         self.alive = False
 
 
-class SochainWalletNotifyHandler(IncomingTransactionRunnable, threading.Thread):
+class SochainWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
     """Detect and monitor incoming transactions using chain.so service.
 
     Open a websocket connection to read updates for transactions.
     """
 
-    def __init__(self, pusher_app_key, transaction_updater):
+    def __init__(self, pusher_app_key, transaction_updater, network, poll_period=0.2):
         """Configure a HTTP wallet notify handler server.
 
         :param transaction_updater: Instance of :py:class:`cryptoassets.core.backend.bitcoind.TransactionUpdater` or None
+
+        :param network: Sochain Network id as a string "btctest"
         """
         threading.Thread.__init__(self)
         self.transaction_updater = transaction_updater
         self.pusher_app_key = pusher_app_key
         self.running = False
+        self.network = network
+        self.transaction_thread = None
+        self.poll_period = float(poll_period)
+        #: Wallet id -> wallet data mapping
+        #: dict(last_id=-1, addresses=set(), klass=wallet.__class__)
+        self.wallets = {}
+        self.transactions = {}
 
     def init_monitoring(self, pusher_app_key, network):
         """Create and run threads we need to keep Sochain monitoring kicking.
@@ -101,22 +112,21 @@ class SochainWalletNotifyHandler(IncomingTransactionRunnable, threading.Thread):
         assert network in ("btc", "btctest", "doge", "dogetest")
 
         # Monitored wallets list
-        # wallet id -> {lastid, addresses}
+        # wallet wallet_id -> {lastid, addresses}
         self.wallets = {}
-        self.period_seconds = 0.2
 
         self.network = network
         self.connected = False
         self.init_pusher(self.pusher_app_key)
-        self.transaction_thread = SochainTransctionThread(self.transaction_updater, self)
+        self.transaction_thread = SochainTransctionThread(self)
 
     def init_wallets(self):
         """After we have a connection to the pusher server, include existing receiving addresses of wallets we have."""
 
-        Wallet = self.transaction_updater.coin.get_wallet_model()
+        Wallet = self.transaction_updater.coin.wallet_model
 
-        with transaction.manager:
-            for wallet in DBSession.query(Wallet).all():
+        with self.transaction_updater.conflict_resolver.transaction() as session:
+            for wallet in session.query(Wallet).all():
                 self.include_wallet(wallet)
 
     def init_pusher(self, pusher_app_key):
@@ -163,41 +173,50 @@ class SochainWalletNotifyHandler(IncomingTransactionRunnable, threading.Thread):
 
         """
 
-        session = self.transaction_updater.session
+        #: XXX: Optimize this to use batched transactions
+        with self.transaction_updater.conflict_resolver.transaction() as session:
 
-        assert wallet_id
-        assert type(wallet_id) == int
-        last_id = self.wallets[wallet_id]["last_id"]
-        Wallet = self.wallets[wallet_id]["klass"]
+            assert wallet_id
+            assert type(wallet_id) == int
+            last_id = self.wallets[wallet_id]["last_id"]
+            Wallet = self.wallets[wallet_id]["klass"]
 
-        assert session.query(Wallet).count() > 0, "No wallets visible in Sochain monitor. Multithreading issue?".format(wallet_id)
+            assert session.query(Wallet).count() > 0, "No wallets visible in Sochain monitor. Multithreading issue?".format(wallet_id)
 
-        wallet = session.query(Wallet).filter_by(id=wallet_id).first()
-        assert wallet is not None, "Could not load a specific wallet {}".format(wallet_id)
+            wallet = session.query(Wallet).filter_by(id=wallet_id).first()
+            assert wallet is not None, "Could not load a specific wallet {}".format(wallet_id)
 
-        addresses = wallet.get_receiving_addresses()
+            addresses = wallet.get_receiving_addresses()
 
-        for address in addresses.filter(wallet.Address.id > last_id, wallet.Address.archived_at is not None):  # noqa
-            assert address.address not in self.wallets[wallet.id]["addresses"], "Tried to double monitor address {}".format(address.address)
-            self.wallets[wallet.id]["addresses"].add(address.address)
-            self.wallets[wallet.id]["last_id"] = address.id
-            self.subscribe_to_address(address.address)
+            # logger.debug("Checking wallet %d for %d addresses", wallet_id, addresses.count())
+
+            for address in addresses.filter(wallet.Address.id > last_id, wallet.Address.archived_at is not None):  # noqa
+
+                assert address.address not in self.wallets[wallet.id]["addresses"], "Tried to double monitor address {}".format(address.address)
+
+                logger.info("Found address %d:%s to be monitored", address.id, address.address)
+
+                self.wallets[wallet.id]["addresses"].add(address.address)
+                self.wallets[wallet.id]["last_id"] = address.id
+                self.subscribe_to_address(address.address)
 
     def include_transactions(self, wallet_id):
         """ Include all the wallet unconfirmed transactions on the monitored list. """
-        session = DBSession
 
-        assert wallet_id
-        assert type(wallet_id) == int
-        Wallet = self.wallets[wallet_id]["klass"]
+        # XXX: Better session and tx batching here
+        with self.transaction_updater.conflict_resolver.transaction() as session:
 
-        wallet = session.query(Wallet).filter_by(id=wallet_id).first()
-        assert wallet is not None, "Could not load a specific wallet {}".format(wallet_id)
+            assert wallet_id
+            assert type(wallet_id) == int
+            Wallet = self.wallets[wallet_id]["klass"]
 
-        # Start subscribing to transactions still unfinished
-        unconfirmed_txs = wallet.get_active_external_received_transcations()
-        for tx in unconfirmed_txs:
-            self.subscribe_to_transaction(tx.address, tx.txid)
+            wallet = session.query(Wallet).filter_by(id=wallet_id).first()
+            assert wallet is not None, "Could not load a specific wallet {}".format(wallet_id)
+
+            # Start subscribing to transactions still unfinished
+            unconfirmed_txs = wallet.get_active_external_received_transcations()
+            for tx in unconfirmed_txs:
+                self.subscribe_to_transaction(tx.address, tx.txid)
 
     def finish_transaction(self, txid):
         """Stop watching the transaction.
@@ -223,7 +242,7 @@ class SochainWalletNotifyHandler(IncomingTransactionRunnable, threading.Thread):
         channel = self.pusher.subscribe(pusher_channel)
         channel.bind('balance_update', self.on_balance_updated)
 
-    def subscribe_to_transaction(self, wallet_id, address, txid):
+    def subscribe_to_transaction(self, address, txid):
         """ Subscribe to get updates of a transaction.
         """
         # logger.info("Subscribed to new transaction {}".format(txid))
@@ -236,8 +255,7 @@ class SochainWalletNotifyHandler(IncomingTransactionRunnable, threading.Thread):
         """SoChain notified that there is new balance on an address."""
 
         # TODO: Get rid of global sessions, transaction manager
-        transaction_manager = transaction.manager
-        tx_id, credited = self.transaction_updater.handle_address_receive(transaction_manager, txid, address, amount, confirmations)
+        tx_id, credited = self.transaction_updater.handle_address_receive(txid, address, amount, confirmations)
 
         # The transaction has become confirmed, no need to receive updates on it anymore
         if credited:
@@ -257,7 +275,9 @@ class SochainWalletNotifyHandler(IncomingTransactionRunnable, threading.Thread):
         data = json.loads(data)
         address = data["value"]["address"]
 
-        if data["value"]["balance_changed"] <= 0:
+        balance_changed = Decimal(data["value"]["balance_change"])
+
+        if balance_changed <= 0:
             # This was either send transactions (obviously initiated by us as we should control the private keys) or some other special transaction with no value. We are only interested in receiving transactions.
             return
 
@@ -266,7 +286,7 @@ class SochainWalletNotifyHandler(IncomingTransactionRunnable, threading.Thread):
         # We want notifications when the confirmation state changes
         self.subscribe_to_transaction(address, txid)
 
-        amount = data["value"]["value_received"]
+        amount = Decimal(data["value"]["value_received"])
         confirmations = 0  # SoChain fires on_balance_update on every noticed transaction broadcast. For actual incoming confirmations we need to listen to the transaction itself
 
         assert amount > 0
@@ -276,20 +296,24 @@ class SochainWalletNotifyHandler(IncomingTransactionRunnable, threading.Thread):
     def refresh_addresses(self):
         """See if any new addresses have appeared in the database and put them on the monitoring list.
         """
-        self.include_addresses(self.last_id)
+        for wallet_id in self.wallets.keys():
+            self.include_addresses(wallet_id)
 
     def run(self):
         """The main loop."""
 
-        self.init_monitoring()
+        self.init_monitoring(self.pusher_app_key, self.network)
         self.running = True
 
         while self.running:
             # TODO: Have an interprocess notifications here so we don't need to poll for new addresses
             self.refresh_addresses()
-            time.sleep(self.period_seconds)
+            time.sleep(self.poll_period)
 
         self.close()
 
-    def shutdown(self):
+    def stop(self):
         self.running = False
+
+        if self.transaction_thread:
+            self.transaction_thread.stop()

@@ -16,6 +16,10 @@ class TransactionUpdater:
     """Write transactions updates from API/backend to the database.
 
     The backend has hooked up some kind of wallet notify handler. The wallet notify handler uses TransactionUpdater to write updates of incoming transactoins to the database. TransactionUpdater is also responsible to fire any notification handlers to signal the cryptoassets client application to handle new transactions.
+
+    :param coin: :py:class:`cryptoasets.core.coin.registry.Coin` instance
+
+    :param notifiers: :py:class`cryptoassets.core.notify.registry.NotifierRegistry` instance
     """
 
     def __init__(self, conflict_resolver, backend, coin, notifiers):
@@ -129,6 +133,9 @@ class TransactionUpdater:
         """
         :param address: Address object
         """
+
+        raise NotImplementedError()
+
         balance = self.backend.to_internal_amount(self.backend.listreceivedbyaddress(address.address, confirmations, False))
         if balance != address.balance:
             # Uh oh, our internal bookkeeping is not up-to-date with address,

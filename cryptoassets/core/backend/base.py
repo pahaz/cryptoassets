@@ -8,6 +8,10 @@ import abc
 
 from zope.dottedname.resolve import resolve
 
+from ..utils.conflictresolver import ConflictResolver
+from ..notify.registry import NotifierRegistry
+from .transactionupdater import TransactionUpdater
+
 
 class CoinBackend(abc.ABC):
     """ Cryptocurrency management backend.
@@ -68,13 +72,26 @@ class CoinBackend(abc.ABC):
         # XXX: Remove
         pass
 
-    def setup_incoming_transactions(self, dbsession, notifiers):
-        """Create a named pipe walletnotify handler.
+    def create_transaction_updater(self, conflict_resolver, notifiers):
+        tx_updater = TransactionUpdater(conflict_resolver, self, self.coin, notifiers)
+        return tx_updater
 
-        TODO: I feel this base class should be kept fully abstract and this method moved to an adapter or such.
+    def setup_incoming_transactions(self, conflict_resolver, notifiers):
+        """Configure the incoming transaction notifies from backend.
+
+        The configuration for wallet notifies have been given to the backend earlier in the backend constructor. Now we read this configure, resolve the walletnotify handler class and instiate it.
+
+        We'll hook into backend by creating ``cryptoassets.core.backend.transactionupdater.TransactionUpdater`` instance, which gets the list of notifiers it needs to call on upcoming transaction.
+
+        :param conflict_resolver: cryptoassets.core.utils.conflictresolver.ConflictResolver instance which is used to manage transactions
+
+        :param notifiers: :param notifiers: :py:class`cryptoassets.core.notify.registry.NotifierRegistry` instance or None if we don't want to notify of new transactions and just update the database
+
+        :return: Instance of :py:class:`cryptoassets.core.backend.base.IncomingTransactionRunnable`
         """
 
-        from ..configure import ConfigurationError
+        assert isinstance(conflict_resolver, ConflictResolver)
+        assert isinstance(notifiers, NotifierRegistry) or notifiers is None
 
         config = self.walletnotify_config
 
@@ -83,7 +100,7 @@ class CoinBackend(abc.ABC):
 
         config = config.copy()
 
-        transaction_updater = self.create_transaction_updater(dbsession, notifiers)
+        transaction_updater = self.create_transaction_updater(conflict_resolver, notifiers)
 
         klass = config.pop("class")
         provider = resolve(klass)
@@ -95,7 +112,7 @@ class CoinBackend(abc.ABC):
             # TODO: Here we reflect potential passwords from the configuration file
             # back to the terminal
             # TypeError: __init__() got an unexpected keyword argument 'network'
-            raise RuntimeError("Could not initialize backend {} with options {}".format(klass, data)) from te
+            raise RuntimeError("Could not initialize backend {} with options {}".format(klass, config)) from te
 
         return handler
 

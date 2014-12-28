@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from . import base
 
 
@@ -11,6 +13,7 @@ class DummyCoinBackend(base.CoinBackend):
         pass
 
     def get_backend_balance(self):
+        """In the country of null, we always have balance!"""
         return Decimal(999999)
 
     def get_balances(self, addresses):

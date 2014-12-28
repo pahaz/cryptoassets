@@ -5,11 +5,12 @@ import logging
 from decimal import Decimal
 
 from mock import patch
-import transaction
+
+from sqlalchemy.orm.session import Session
+
 
 from ..models import _now
 from ..models import DBSession
-
 
 from .base import CoinTestCase
 
@@ -27,23 +28,21 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
     def setup_receiving(self, wallet):
 
         # Print out exceptions in Pusher messaging
-        from ..backend.blockio import logger
         from websocket._core import enableTrace
+
+        logger = logging.getLogger()
         if logger.level < logging.WARN:
             enableTrace(True)
 
-    def refresh_account_balance(self, wallet, account):
-        """Rescan the """
-        transaction_updater = self.backend.create_transaction_updater(self.session, None)
+        self.incoming_transactions_runnable = self.backend.setup_incoming_transactions(self.app.conflict_resolver, self.app.notifiers)
 
-        # Because we have imported public address to database previously,
-        # transaction_updater should have updated the balance on this address
-        account = self.session.query(self.Account).get(account.id)
-        self.assertGreater(account.balance, 0)
+        self.incoming_transactions_runnable.start()
 
     def teardown_receiving(self):
-        if self.backend.monitor:
-            self.backend.monitor.close()
+
+        incoming_transactions_runnable = getattr(self, "incoming_transactions_runnable", None)
+        if incoming_transactions_runnable:
+            incoming_transactions_runnable.stop()
 
     def setup_coin(self):
 
@@ -67,10 +66,6 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         # Wait 10 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 60 * 10
 
-    def setup_test_fund_address(self, wallet, account):
-        # Import some TESTNET coins
-        wallet.add_address(account, "Test import {}".format(time.time()), BLOCK_IO_TESTNET_TEST_FUND_ADDRESS)
-
     def is_address_monitored(self, wallet, address):
         """ Check if we can get notifications from an incoming transactions for a certain address.
 
@@ -78,10 +73,11 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
 
         :param address: Address object
         """
-        if len(wallet.backend.monitor.wallets) == 0:
+
+        if len(self.incoming_transactions_runnable.wallets) == 0:
             return False
 
-        return address.address in wallet.backend.monitor.wallets[wallet.id]["addresses"]
+        return address.address in self.incoming_transactions_runnable.wallets[wallet.id]["addresses"]
 
     def wait_receiving_address_ready(self, wallet, receiving_address):
 
@@ -104,9 +100,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         # - one external, unconfirmed
         #
 
-        session = self.app.session
-
-        with transaction.manager:
+        with self.app.conflict_resolver.transaction() as session:
             wallet = self.Wallet()
             session.add(wallet)
             session.flush()
@@ -171,9 +165,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
 
         try:
 
-            session = self.app.session
-
-            with transaction.manager:
+            with self.app.conflict_resolver.transaction() as session:
                 wallet = self.Wallet()
                 session.add(wallet)
                 session.flush()
@@ -190,9 +182,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
                 # the receiver thread sees the wallet
                 wallet_id = wallet.id
 
-            session = self.app.session
-
-            with transaction.manager:
+            with self.app.conflict_resolver.transaction() as session:
 
                 # Reload objects from db for this transaction
                 wallet = session.query(self.Wallet).get(wallet_id)
@@ -214,8 +204,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
                 self.assertTrue(self.is_address_monitored(wallet, receiving_address), "The receiving address didn't become monitored {}".format(receiving_address.address))
 
                 # Sync wallet with the external balance
-                self.setup_test_fund_address(wallet, account)
-                wallet.refresh_account_balance(account)
+                self.setup_balance()
 
                 tx = wallet.send(account, receiving_address.address, self.external_send_amount, "Test send", force_external=True)
                 self.assertEqual(tx.state, "pending")
@@ -257,7 +246,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
                     time.sleep(0.5)
 
                     # Don't hold db locked for an extended perior
-                    with transaction.manager:
+                    with self.app.conflict_resolver.transaction() as session:
                         wallet = DBSession.query(self.Wallet).get(wallet_id)
                         address = DBSession.query(wallet.Address).filter(self.Address.id == receiving_address_id)
                         self.assertEqual(address.count(), 1)
@@ -277,7 +266,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
             self.teardown_receiving()
 
         # Final checks
-        with transaction.manager:
+        with self.app.conflict_resolver.transaction() as session:
             account = DBSession.query(self.Account).filter(self.Account.wallet_id == wallet_id).first()
             wallet = DBSession.query(self.Wallet).get(wallet_id)
             self.assertGreater(account.balance, 0, "Timeouted receiving external transaction")
@@ -296,41 +285,21 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
             self.assertGreater(account.balance, 0, "Timeouted receiving external transaction")
 
 
-#: TODO: Disabled
-class XBlockIoDogeTestCase(object):
-
-    def setup_test_fund_address(self, wallet, account):
-        # Import some TESTNET coins
-        wallet.add_address(account, "Test import {}".format(time.time()), os.environ["BLOCK_IO_DOGE_TESTNET_TEST_FUND_ADDRESS"])
-
-    def setup_receiving(self, wallet):
-
-        # Print out exceptions in Pusher messaging
-        from ..backend.blockio import logger
-        from websocket._core import enableTrace
-        if logger.level < logging.WARN:
-            enableTrace(True)
-
-        self.backend.monitor = SochainMonitor(self.backend, [wallet], os.environ["PUSHER_API_KEY"], "dogetest")
+class BlockIoDogeTestCase(BlockIoBTCTestCase):
 
     def setup_coin(self):
 
-        self.backend = BlockIo("doge", os.environ["BLOCK_IO_API_KEY_DOGE"], os.environ["BLOCK_IO_PIN"])
-        backendregistry.register("doge", self.backend)
-        self.monitor = None
+        test_config = os.path.join(os.path.dirname(__file__), "blockio-dogecoin.config.yaml")
+        self.assertTrue(os.path.exists(test_config), "Did not found {}".format(test_config))
+        self.configurator.load_yaml_file(test_config)
 
-        engine = self.create_engine()
-        from ..coin.dogecoin.models import DogeWallet
-        from ..coin.dogecoin.models import DogeAddress
-        from ..coin.dogecoin.models import DogeTransaction
-        from ..coin.dogecoin.models import DogeAccount
-        DBSession.configure(bind=engine)
-        Base.metadata.create_all(engine)
+        coin = self.app.coins.get("btc")
+        self.backend = coin.backend
 
-        self.Address = DogeAddress
-        self.Wallet = DogeWallet
-        self.Transaction = DogeTransaction
-        self.Account = DogeAccount
+        self.Address = coin.address_model
+        self.Wallet = coin.wallet_model
+        self.Transaction = coin.transaction_model
+        self.Account = coin.account_model
 
         # Withdrawal amounts must be at least 0.00002000 BTCTEST, and at most 50.00000000 BTCTEST.
         self.external_send_amount = 100
@@ -342,3 +311,4 @@ class XBlockIoDogeTestCase(object):
 
         # Wait 3 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 60 * 5
+
