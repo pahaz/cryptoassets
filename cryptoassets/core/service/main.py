@@ -62,11 +62,18 @@ class Service:
         if Subsystem.broadcast in self.app.subsystems:
             self.setup_jobs()
 
+        if Subsystem.database in self.app.subsystems:
+            self.setup_session()
+
         if Subsystem.incoming_transactions in self.app.subsystems:
             self.setup_incoming_notifications()
 
         # XXX: We are aliasing here, because configurator can only touch app object. Need to figure out something cleaner.
         self.status_server = self.app.status_server
+
+    def setup_session(self):
+        """Setup database sessions and conflict resolution."""
+        self.app.setup_session()
 
     def initialize_db(self):
         """ """
@@ -94,11 +101,13 @@ class Service:
         """
 
         assert self.app.session
+        assert self.app.conflict_resolver
+
         for name, coin, in self.app.coins.all():
             assert type(name) == str
             assert isinstance(coin, Coin)
             backend = coin.backend
-            runnable = backend.setup_incoming_transactions(self.app.session, self.app.notifiers)
+            runnable = backend.setup_incoming_transactions(self.app.conflict_resolver, self.app.notifiers)
             if runnable:
                 logger.info("Setting up incoming transaction notifications for %s using %s", coin, runnable.__class__)
                 assert isinstance(runnable, IncomingTransactionRunnable)

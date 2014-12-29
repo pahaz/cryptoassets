@@ -9,18 +9,10 @@ with open(os.path.join(here, 'CHANGES.txt')) as f:
     CHANGES = f.read()
 
 requires = [
-    'pyramid',
-    'pyramid_chameleon',
-    'pyramid_debugtoolbar',
-    'pyramid_tm',
     'SQLAlchemy',
-    'transaction',
-    'zope.sqlalchemy',
-    'waitress',
     'python-slugify',
     'block-io',
     'rainbow_logging_handler',
-    'mock'
     ]
 
 setup(name='cryptoassets.core',

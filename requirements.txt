@@ -1,46 +1,21 @@
 apscheduler==3.0.1
-Chameleon==2.16
-Jinja2==2.7.3
-Mako==1.0.0
-MarkupSafe==0.23
-PasteDeploy==1.5.2
-Pygments==1.6
 SQLAlchemy==0.9.7
-Sphinx==1.2.3
 Unidecode==0.04.16
-WebOb==1.4
 -e git+https://github.com/BlockIo/block_io-python.git@1.1.0-dev#egg=block-io
 blockchain==1.0.1
 colorama==0.3.2
-#-e git+https://miohtama@bitbucket.org/miohtama/cryptoassets.git@master#egg=cryptoassets.core
 -e git+https://github.com/miohtama/python-bitcoinrpc.git@e43303bba7a671b383016d29f55fd03aa0df235b#egg=python-bitcoinrpc
-docutils==0.12
 ecdsa==0.11
-gnureadline==6.3.3
 logutils==0.3.3
-mock==1.0.1
-#pusherclient==0.2.0
--e git+https://github.com/ekulyk/PythonPusherClient.git@master#egg=pusherclient
+pusherclient==0.3.0
 pycrypto==2.6.1
-pyramid==1.5.1
-pyramid-chameleon==0.3
-pyramid-debugtoolbar==2.2
-pyramid-mako==1.0.2
-pyramid-tm==0.7
 python-slugify==0.0.7
 PyYAML==3.11
-rainbow-logging-handler==2.2.2
-repoze.lru==0.6
 requests==2.4.3
 six==1.8.0
 slugify==0.0.1
-transaction==1.4.3
-translationstring==1.1
-venusian==1.0
-waitress==0.8.9
 websocket-client==0.21.0
 zope.deprecation==4.1.1
-zope.interface==4.1.1
 zope.sqlalchemy==0.7.5
 zope.dottedname==4.0.1
 pytest==2.6.4

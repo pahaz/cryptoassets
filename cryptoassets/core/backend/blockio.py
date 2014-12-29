@@ -40,7 +40,7 @@ class BlockIo(CoinBackend):
         return Decimal(amount)
 
     def to_external_amount(self, amount):
-        return Decimal(amount)
+        return str(amount)
 
     def create_address(self, label):
 

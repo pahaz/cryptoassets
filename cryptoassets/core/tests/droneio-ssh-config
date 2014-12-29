@@ -1,0 +1,11 @@
+# SSH Configuration for tunneling bitcoind testnet server to the drone.io
+
+Host bitcoind-test-server
+Hostname 78.47.218.165
+Username tunnel
+
+# bitcoind to localhost
+LocalForward 8332 localhost:8332
+
+# HTTP test notification server to the remote
+RemoteForward 28882 localhost:28882

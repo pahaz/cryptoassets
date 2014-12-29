@@ -87,7 +87,7 @@ class WalletNotifyTestCase(unittest.TestCase):
     def test_redis_walletnotify(self):
         """Check that we receive txids through HTTP server."""
 
-        self.walletnotify_server = RedisWalletNotifyHandler("localhost")
+        self.walletnotify_server = RedisWalletNotifyHandler(None, "localhost")
 
         try:
 

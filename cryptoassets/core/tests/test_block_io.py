@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 BLOCK_IO_TESTNET_TEST_FUND_ADDRESS = "2MsgW3kCrRFtJuo9JNjkorWXaZSvLk4EWRr"
 
 
-@pytest.mark.skipif(not has_inet(), reason="Running this test requires Internet connection")
 class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
     """ Test that our BTC accounting works on top of block.io API. """
 
@@ -59,10 +58,10 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
 
         # Withdrawal amounts must be at least 0.00002000 BTCTEST, and at most 50.00000000 BTCTEST.
         self.external_send_amount = Decimal(2100) / Decimal(10**8)
-        self.network_fee = Decimal(10000) / Decimal(10**8)
+        self.network_fee = Decimal(1000) / Decimal(10**8)
 
         # Wait 15 minutes for 1 confimation from the BTC TESTNET
-        self.external_receiving_timeout = 60 * 15
+        self.external_receiving_timeout = 60 * 20
 
     def is_address_monitored(self, wallet, address):
         """ Check if we can get notifications from an incoming transactions for a certain address.
@@ -173,8 +172,8 @@ class BlockIoDogeTestCase(BlockIoBTCTestCase):
         self.Account = coin.account_model
 
         # Withdrawal amounts must be at least 0.00002000 BTCTEST, and at most 50.00000000 BTCTEST.
-        self.external_send_amount = 100
-        self.network_fee = 1
+        self.external_send_amount = Decimal("2")
+        self.network_fee = Decimal("1")
 
         # for test_send_receive_external() the confirmation
         # count before we let the test pass

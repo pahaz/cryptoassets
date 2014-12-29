@@ -21,7 +21,8 @@ from . import testlogging
 
 from ..service import status
 
-testlogging.setup()
+from . import testlogging
+from . import testwarnings
 
 
 _status_server_port = 18881
@@ -32,8 +33,8 @@ class ServiceTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        # /Users/mikko/code/cryptoassets/venv/lib/python3.4/site-packages/tzlocal/darwin.py:8: ResourceWarning: unclosed file <_io.TextIOWrapper name=4 encoding='US-ASCII'>
-        warnings.filterwarnings("ignore", category=ResourceWarning)  # noqa
+        testlogging.setup()
+        testwarnings.begone()
 
     def prepare_config(self):
         """ """
@@ -102,6 +103,7 @@ class ServiceTestCase(unittest.TestCase):
         config = self.prepare_config()
 
         self.service = service = Service(config, ALL_SUBSYSTEMS)
+        self.service.setup_session()
 
         status_http_server = self.service.status_server
         self.assertIsNotNone(status_http_server)

@@ -90,6 +90,7 @@ class CoinBackend(abc.ABC):
         :return: Instance of :py:class:`cryptoassets.core.backend.base.IncomingTransactionRunnable`
         """
 
+        assert conflict_resolver, "Cannot setup incoming transactions without transaction conflict resolver in place"
         assert isinstance(conflict_resolver, ConflictResolver)
         assert isinstance(notifiers, NotifierRegistry) or notifiers is None
 

@@ -68,7 +68,7 @@ class CryptoAssetsApp:
         self.transaction_retries = None
 
         #: cryptoassets.core.utils.conflictresolver.ConflictResolver instance we use to resolve database conflicts
-        self.conflict_resolved = None
+        self.conflict_resolver = None
 
     def is_enabled(self, subsystem):
         """Are we running with a specific subsystem enabled."""

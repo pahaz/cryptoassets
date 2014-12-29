@@ -34,7 +34,7 @@ class RedisWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
 
     """
 
-    def __init__(self, transaction_updater, host, port=6397, username=None, password=None, db=0, channel="bitcoind_walletnotify_pubsub"):
+    def __init__(self, transaction_updater, host, port=6379, password=None, db=0, channel="bitcoind_walletnotify_pubsub"):
         """Configure a HTTP wallet notify handler server.
 
         :param transaction_updater: Instance of :py:class:`cryptoassets.core.backend.bitcoind.TransactionUpdater` or None
@@ -54,7 +54,6 @@ class RedisWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
 
         self.host = host
         self.port = int(port)
-        self.username = username
         self.password = password
         self.db = int(db)
         self.channel = channel
@@ -70,7 +69,7 @@ class RedisWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
         # TODO: Add reconnecting on error
         self.running = True
 
-        client = redis.StrictRedis(host=self.host, port=self.port, db=self.db, username=self.username, password=self.password)
+        client = redis.StrictRedis(host=self.host, port=self.port, db=self.db, password=self.password)
         pubsub = client.pubsub()
         pubsub.subscribe(self.channel)
 

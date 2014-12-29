@@ -47,6 +47,11 @@ def has_inet():
     return _connected
 
 
+def is_slow_test_hostile():
+    """Use this to disable some tests in CI enviroment where 15 minute deadline applies."""
+    return "CI" in os.environ
+
+
 class CoinTestCase:
     """Abstract base class for all cryptocurrency backend tests.
 
@@ -411,7 +416,7 @@ class CoinTestCase:
             self.assertEqual(txs.count(), 1)
             self.assertIsNotNone(txs.first().processed_at)
 
-    @pytest.mark.skipif(has_inet, reason="Running this test requires internet connection")
+    @pytest.mark.skipif(is_slow_test_hostile(), reason="Running send + receive loop may take > 20 minutes")
     def test_send_receive_external(self):
         """ Test sending and receiving external transaction within the backend wallet.
 
