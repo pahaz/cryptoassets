@@ -28,6 +28,7 @@ for i in $(echo $SSH_PRIV_KEY | tr "," "\n")
 do
     echo $i >> /tmp/private-key
 done
+chmod o-wrx,g-rwx /tmp/private-key
 eval `ssh-agent`
 ssh-add /tmp/private-key
 ssh -f -F $CHECKOUT_HOME/cryptoassets/core/tests/droneio-ssh-config bitcoind-test-server
