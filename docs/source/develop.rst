@@ -8,33 +8,29 @@ Developing cryptoassets.core
 Running tests
 --------------
 
-Example::
-
-    # Testnet API keys
-    export BLOCK_IO_API_KEY="923f-e3e9-a580-dfb2"
-    export BLOCK_IO_API_KEY_DOGE="0266-c2b6-c2c8-ee07"
-    export BLOCK_IO_PIN="foobar123"
-
-    # block.io receiving transaction testing
-    export PUSHER_API_KEY="e9f5cc20074501ca7395"
-
-    # bitcoind TESTNET credenditals
-    export BITCOIND_URL="http://foo:bar@127.0.0.1:8332/"
-    # import this private address where we have some TESTNET balance
-    # this is private key:address tuple
-    export BITCOIND_TESTNET_FUND_ADDRESS="cRV3TMMPaeGomwwNt76i2Dz2DghAaVmjdRyeHDWcup71pKe2jpcF:mxd636hBuxiuJavfWjQ3Aw6EiZQr5MtFZi"
-
-    # A real wallet, not testnet!
-    export BLOCKCHAIN_IDENTIFIER="x"
-    export BLOCKCHAIN_PASSWORD="y"
-
 Unit tests are `PyTest based <http://pytest.org/>`_.
+
+Testing prerequisites
+++++++++++++++++++++++
+
+To run all tests several components must be in-place
+
+* block.io credentials in tests/config.yaml files (hardcoded accounts, testnet coins)
+
+* *bitcoind* running testnet on localhost, configured for HTTP walletnotifies (see config snipped below). bitcoind must have account *cryptoassets* with enough balance to do withdraw tests.
+
+* PostgreSQL database ``unittest-conflict-resolution`` where you can connect on localhost without username and password
+
+* Redis installed, with preferable empty database 0
+
+Test run examples
++++++++++++++++++++++
 
 Running all tests::
 
     py.test cryptoassets
 
-Running a single test case:
+Running a single test case::
 
     py.test cryptoassets/core/tests/test_conflictresolver.py
 
@@ -42,9 +38,13 @@ Running a single test::
 
     py.test -k "BitcoindTestCase.test_send_internal" cryptoassets
 
-Running a single test with Python logging output to stdout::
+Running a single test with verbose Python logging output to stdout (useful for network error tracing)::
 
     VERBOSE_TEST=1 py.test -k "BitcoindTestCase.test_send_internal" cryptoassets
+
+Running tests for continuous integration service (15 minute timeout) and skipping slow tests where transactions are routed through cryptocurrency network (full BTC send/receive test, etc.)::
+
+    CI=true py.test cryptoassets
 
 More info
 
@@ -66,6 +66,7 @@ Edit ``/Users/mikko/Library/Application Support/Bitcoin/bitcoin.conf``::
     rpcport=8332
     txindex=1
     rpcthreads=64
+    walletnotify=gtimeout --kill-after=10 5 /bin/bash -c "echo %s >> /tmp/cryptoassets-unittest-walletnotify-pipe
 
 Restart **Bitcoin-Qt**. Now it should give green icon instead of standard orange.
 
@@ -94,7 +95,6 @@ First create a receiving address under ``bitcoind`` accounting account ``cryptoa
 Then list ``bitcoind`` accounts and balances:
 
     curl --user foo:bar --data-binary '{"id":"t0", "method": "listaccounts", "params": [] }' http://127.0.0.1:8332/
-
 
 TESTNET faucet
 ++++++++++++++++
@@ -151,6 +151,6 @@ Continuous integration
 
 Continuous integration is running on drone.io <https://drone.io/bitbucket.org/miohtama/cryptoassets/>`_.
 
-The recipe to run the tests on Python 3.4::
+See ``tests/setup-testing-droneio.sh`` how tests are executed.
 
-    pass
+

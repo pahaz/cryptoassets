@@ -26,17 +26,17 @@ Why to build your application of the top of cryptocurrency.core
 
 * Customizable: you can override any part of the framework with a custom component if you need to scale up or specialize in the future.
 
-Getting started
----------------
-
-See Getting Started.
-
 Requirements
 ---------------
 
 * Python 3
 
-Depending on the cryptocurrency backend you wish to use you may need to install additional Python libraries.
+You need to install database support libraries separately, depending on which database you are using.
+
+Getting started
+---------------
+
+See `Getting started tutorial <http://cryptoassetscore.readthedocs.org/en/latest/gettingstarted.html>`_.
 
 Supported environments
 ------------------------
@@ -52,7 +52,7 @@ Cryptocurrencies
 
 * AppleByte
 
-It is easy to add support for other cryptocurrencies.
+It is easy to add support for any cryptocurrency.
 
 Databases
 ++++++++++++++++++++
@@ -70,85 +70,37 @@ Databases
 Protocols, daemons and API services
 ++++++++++++++++++++++++++++++++++++++
 
-``cryptocurrencies.core`` can operate on raw cryptocurrency server
-daemon. Alternative you can choose one of the API services in the
-case you do not have the server budget to run the full cryptocurrency node.
+``cryptoassets.core`` can operate with a cryptocurrency daemon or third party API service.
 
-* `block.io <https://block.io>`_
+Example daemons and service include:
 
-* `blockchain.info <http://blockchain.info>`_
+* *bitcoind* and bitcoind-compatible altcoins (Dogecoin, Litecoin, etc.)
 
-* *bitcoind* and its derivates
+* `block.io <https://block.io>`_ (Bitcoin, Dogecoin, Litecoin)
+
+* `blockchain.info <http://blockchain.info>`_ (Bitcoin)
 
 Python frameworks
 ++++++++++++++++++++
 
-You can run ``cryptoassets.core`` on
+You can integrate ``cryptoassets.core`` on
 
 * Pyramid
 
-* Django
+* Django (see `cryptoassets.django package for Django integration <https://bitbucket.org/miohtama/cryptoassets.django>`_)
 
 * Flask
 
-... and all others Python applications where `SQLAlchemy can be run <http://www.sqlalchemy.org/>`_.
+... and any other Python application where `SQLAlchemy can be run <http://www.sqlalchemy.org/>`_.
 
 Documentation
 ---------------
 
 `The documentation is on readthedocs.org <http://cryptoassetscore.readthedocs.org/en/latest/>`_.
 
-Quick code samples
--------------------
+Author
+---------
 
-An offchain transaction example::
-
-    from cryptoassets.core.coin.bitcoin.models import BitcoinWallet
-
-    wallet = BitcoinWallet()
-    DBSession.add(wallet)
-    # DBSession.flush() creates primary keys, so that
-    # accounts can refer to this wallet object.
-    DBSession.flush()
-
-    sending_account = wallet.create_account("Test account")
-    receiving_account = wallet.create_account("Test account 2")
-    DBSession.flush()
-
-    sending_account.balance = 100
-    tx = wallet.send_internal(sending_account, receiving_account, 100, "Test transaction")
-
-    print("Created internal transaction {}".format(tx))
-
-A full transaction example::
-
-    from cryptoassets.core.coin.bitcoin.models import BitcoinWallet
-    from cryptoassets.backend.blockio import BlockIo
-
-    # Construct a block.io API
-    self.backend = BlockIo("btc", "My block.io API key", "My Block.io pin")
-    backendregistry.register("btc", self.backend)
-
-    wallet = BitcoinWallet()
-    DBSession.add(wallet)
-    DBSession.flush()
-
-    # Create an account which cointains some balance for outgoing send
-    from_account = wallet.create_account("Test sending account")
-    DBSession.flush()
-
-    # We have previously send some BTC TESNET sample coins to the block.io
-    # wallet for the testing purposes
-    wallet.add_address(account, "Sample imported address", \
-        "2MsgW3kCrRFtJuo9JNjkorWXaZSvLk4EWRx")
-
-    # Syncs the account balance with the network
-    wallet.refresh_account_balance(from_account)
-
-    # Send Bitcoins through blockchain, amount as satoshis
-    wallet.send_external(from_account, "2MsgW3kCrRFtJuo9JNjkorWXaZSvLk4EWRx", 2200, \
-        "Test send"))
-
-
+Mikko Ohtamaa (`blog <https://opensourcehacker.com>`_, `Facebook <https://www.facebook.com/?q=#/pages/Open-Source-Hacker/181710458567630>`_, `Twitter <https://twitter.com/moo9000>`_, `Google+ <https://plus.google.com/u/0/103323677227728078543/>`_)
 
 
