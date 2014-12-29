@@ -43,9 +43,9 @@ class SochainPusher(pusherclient.Pusher):
 
 
 class SochainTransctionThread(threading.Thread):
-    """A background thread getting updates on hot transactions.
+    """A background thread which polls updates on hot transactions.
 
-    Maintain a list of open transaction where confirmation threshold is less than our confirmation level. Then, in a poll loop check those transactions until we are done with them. We need to do this unti Sochain gets an Pusher notifications for confirmation updates.
+    Maintain a list of open transaction where confirmation threshold is less than our confirmation level. Then, in a poll loop check addresses of those transactions until we are done with them. We need to do this unti Sochain gets an Pusher notifications for confirmation updates.
     """
 
     def __init__(self, monitor):
@@ -63,15 +63,17 @@ class SochainTransctionThread(threading.Thread):
     def rescan_addresses(self, addresses):
         """Scan all addresses where we know we have pending incoming transactions."""
 
-        addresses = []
         for txid, address, amount, confirmations in self.monitor.transaction_updater.backend.scan_addresses(addresses):
-            txid, credited = self.monitor.transaction_updater.handle_address_receive(txid, address, amount, confirmations)
+
+            # logger.info("Got txid %s addr %s confirmations %d", txid, address, confirmations)
+            txid, credited = self.monitor.transaction_updater.handle_address_receive(txid, address, amount, confirmations=confirmations)
 
             # Don't poll transaction anymore if it's finished
             if credited:
                 self.monitor.finish_transaction(txid)
 
     def stop(self):
+        logger.info("Stopping tranasction monitor for %s", self.monitor.transaction_updater.coin.name)
         self.alive = False
 
 
@@ -157,6 +159,7 @@ class SochainWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
         """
         assert wallet.id
 
+        logger.debug("Initial inclusing of wallet %d receiving addresses in the monitoring", wallet.id)
         # Put this wallet on the monitoring list
 
         # Assume we are in Pusher client thread,
@@ -188,11 +191,12 @@ class SochainWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
 
             addresses = wallet.get_receiving_addresses()
 
-            # logger.debug("Checking wallet %d for %d addresses", wallet_id, addresses.count())
+            # XXX: Too verbose and Python has no TRACE logging level
+            #logger.debug("Checking wallet %d for %d addresses, last monitored id %d", wallet_id, addresses.count(), last_id)
 
             for address in addresses.filter(wallet.Address.id > last_id, wallet.Address.archived_at is not None):  # noqa
 
-                assert address.address not in self.wallets[wallet.id]["addresses"], "Tried to double monitor address {}".format(address.address)
+                assert address.address not in self.wallets[wallet.id]["addresses"], "Tried to double monitor address {}, monitoring addresses since {}".format(address.address, last_id)
 
                 logger.info("Found address %d:%s to be monitored", address.id, address.address)
 
@@ -249,6 +253,7 @@ class SochainWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
         # pusher_channel = "confirm_tx_{}_{}".format(self.network, txid)
         # channel = self.pusher.subscribe(pusher_channel)
         # channel.bind('balance_update', self.on_confirm_transaction)
+        logger.debug("Subscribing to transaction %s on address %s", txid, address)
         self.transactions[txid] = address
 
     def update_address_with_transaction(self, txid, address, amount, confirmations):

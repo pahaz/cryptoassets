@@ -5,10 +5,15 @@ import subprocess
 
 from unittest.mock import patch
 
+import redis
+
 from ..backend.pipewalletnotify import PipedWalletNotifyHandler
 from ..backend.httpwalletnotify import HTTPWalletNotifyHandler
 from ..backend.httpwalletnotify import WalletNotifyRequestHandler
+from ..backend.rediswalletnotify import RedisWalletNotifyHandler
 
+from . import testlogging
+from . import testwarnings
 
 WALLETNOTIFY_PIPE = "/tmp/cryptoassets-unittest-walletnotify-pipe"
 
@@ -16,6 +21,10 @@ WALLETNOTIFY_PIPE = "/tmp/cryptoassets-unittest-walletnotify-pipe"
 class WalletNotifyTestCase(unittest.TestCase):
     """Test bitcoind walletnotify handlers..
     """
+
+    def setUp(self):
+        testlogging.setup()
+        testwarnings.begone()
 
     def test_piped_walletnotify(self):
         """Check that we receive txids through the named pipe."""
@@ -68,6 +77,36 @@ class WalletNotifyTestCase(unittest.TestCase):
 
                 subprocess.call("curl --data 'txid=faketransactionid' http://127.0.0.1:9991", shell=True)
                 time.sleep(0.1)  # Let walletnotify thread to pick it up
+
+                mock_method.assert_called_with("faketransactionid")
+
+        finally:
+
+            self.walletnotify_server.stop()
+
+    def test_redis_walletnotify(self):
+        """Check that we receive txids through HTTP server."""
+
+        self.walletnotify_server = RedisWalletNotifyHandler("localhost")
+
+        try:
+
+            # Generate unique walletnotify filenames for each test, so that when multiple tests are running, one thread stopping in teardown doesn't unlink the pipe of the previous test
+            # Patch handle_tx_update() to see it gets called when we write something to the pipe
+            with patch.object(RedisWalletNotifyHandler, 'handle_tx_update', return_value=None) as mock_method:
+
+                self.walletnotify_server.start()
+
+                # Wait until walletnotifier has set up the named pipe
+                deadline = time.time() + 3
+                while not self.walletnotify_server.running:
+                    time.sleep(0.1)
+                    self.assertLess(time.time(), deadline, "RedisWalletNotifyHandler never become ready")
+
+                client = redis.StrictRedis(host="localhost")
+                client.publish("bitcoind_walletnotify_pubsub", "faketransactionid")
+
+                time.sleep(0.5)  # Let walletnotify thread to pick it up
 
                 mock_method.assert_called_with("faketransactionid")
 

@@ -4,6 +4,8 @@ import time
 
 from sqlalchemy import create_engine
 
+import pytest
+
 from ..models import DBSession
 from ..models import Base
 
@@ -12,6 +14,7 @@ from ..backend.blockchain import BlockChain
 from .base import CoinTestCase
 
 
+@pytest.mark.skipif(True, reason="blockchain.info support currently disabled")
 class BlockChainBTCTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_coin(self):

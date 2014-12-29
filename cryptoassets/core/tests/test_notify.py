@@ -17,6 +17,7 @@ from ..app import Subsystem
 from ..configure import Configurator
 
 from . import testlogging
+from . import testwarnings
 
 testlogging.setup()
 

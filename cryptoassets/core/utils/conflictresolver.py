@@ -47,14 +47,11 @@ class CannotResolveDatabaseConflict(Exception):
 
 
 class ConflictResolver:
-    """
-
-    ConflictResolver can be shared across the threads.
+    """Helper class to resolve transaction conflicts in graceful manner.
     """
 
     def __init__(self, session_factory, retries):
         """
-
         :param session_factory: `callback()` which will give us a new SQLAlchemy session object for each transaction and retry
 
         :param retries: The number of attempst we try to re-run the transaction in the case of transaction conflict.
@@ -212,7 +209,10 @@ class ConflictResolver:
 
 
 class ContextManager:
+    """Use conflict resolver in Python with statement.
 
+    See ``ConflictResolver.transaction``.
+    """
     def __init__(self, conflict_resolver):
         self.conflict_resolver = conflict_resolver
 

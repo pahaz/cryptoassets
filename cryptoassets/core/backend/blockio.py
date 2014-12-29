@@ -7,19 +7,17 @@ For incoming transactions it uses `SoChain <https://chain.so>`_ service.
 For the usage instructions see :py:mod:`cryptoassets.tests.test_block_io`.
 """
 
-import json
-import threading
-import time
+
 import logging
 from collections import Counter
 from decimal import Decimal
 
-import transaction
 from slugify import slugify
 
 from block_io import BlockIo as _BlockIo
 
 from .base import CoinBackend
+
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +134,8 @@ class BlockIo(CoinBackend):
         assert hasattr(addresses, '__iter__'), "Take a list of addresses, not a single address"
 
         resp = self.block_io.get_transactions(type="received", addresses=",".join(addresses))
+
+        # logger.debug("Got addr %s resp: %s", addresses, resp)
 
         for txdata in resp["data"]["txs"]:
 

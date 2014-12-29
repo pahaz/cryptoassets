@@ -67,10 +67,22 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         if walletnotify_pipe:
             walletnotify_pipe.stop()
 
+    def setup_bitcoind_connection(self, config):
+        """Manipulate config data in-place and reset bitcoind connection details.
+
+        This allows us to have bitcoind connection details as env vars on CI server.
+        """
+        url = os.environ.get("BITCOIND_URL")
+        if url:
+            config["coins"]["btc"]["backend"]["url"] = url
+
     def setup_coin(self):
 
         test_config = os.path.join(os.path.dirname(__file__), "bitcoind.config.yaml")
         self.assertTrue(os.path.exists(test_config), "Did not found {}".format(test_config))
+
+        self.setup_bitcoind_connection(test_config)
+
         self.configurator.load_yaml_file(test_config)
 
         coin = self.app.coins.get("btc")

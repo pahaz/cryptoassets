@@ -298,6 +298,9 @@ class GenericTransaction(TableName, Base):
         """
         return True
 
+    def __str__(self):
+        return "TX id:%d state:%s txid:%s sending:%d receiving:%d".format(self.id, self.state, self.txid, self.sending_account, self.receiving_account)
+
 
 class GenericConfirmationTransaction(GenericTransaction):
     """ Mined transaction which receives "confirmations" from miners in blockchain.
@@ -583,7 +586,8 @@ class GenericWallet(TableName, Base, CoinBackend):
         session = Session.object_session(self)
 
         # Go through all accounts and all their addresses
-        return session.query(self.Transaction).filter(self.Transaction.sending_account == None, self.Transaction.txid != None)  # noqa
+        # XXX: Make state handling more robust
+        return session.query(self.Transaction).filter(self.Transaction.sending_account == None, self.Transaction.address != None, self.Transaction.txid != None)  # noqa
 
     def get_active_external_received_transcations(self):
         """Return all incoming transactions which are still pending.

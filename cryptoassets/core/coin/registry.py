@@ -17,6 +17,9 @@ class Coin:
         #: Set later to avoid circular referencies when constructing backend
         self.backend = None
 
+        #: Set by registry
+        self.name = None
+
     @property
     def address_model(self):
         return self.wallet_model.Address
