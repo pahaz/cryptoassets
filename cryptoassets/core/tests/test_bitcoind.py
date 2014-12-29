@@ -179,35 +179,3 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
             self.assertEqual(account.balance, Decimal("1.2"))
 
         self.walletnotify_pipe.stop()
-
-    def test_scan_wallet(self):
-        """Rescan all wallet transactions and rebuild account balances."""
-
-        # These objects must be committed before setup_test_fund_address() is called
-        with self.app.conflict_resolver.transaction() as session:
-            wallet = self.Wallet()
-            session.add(wallet)
-            session.flush()
-            account = wallet.create_account("Test account")
-
-        # Import addresses we know having received balance
-        with self.app.conflict_resolver.transaction() as session:
-            account = session.query(self.Account).get(1)
-            wallet = session.query(self.Wallet).get(1)
-            self.setup_test_fund_address(wallet, account)
-            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
-
-        # Refresh from API/bitcoind the balances of imported addresses
-        with self.app.conflict_resolver.transaction() as session:
-            account = session.query(self.Account).get(1)
-            wallet = session.query(self.Wallet).get(1)
-            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
-            self.refresh_account_balance(wallet, account)
-
-        # Make sure we got balance after refresh
-        with self.app.conflict_resolver.transaction() as session:
-            account = session.query(self.Account).get(1)
-            wallet = session.query(self.Wallet).get(1)
-            self.assertGreater(wallet.get_receiving_addresses().count(), 0)
-            self.assertGreater(account.balance, 0, "We need have some balance on the test account to proceed with the send test")
-

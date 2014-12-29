@@ -1,5 +1,6 @@
 import logging
 import threading
+import time
 
 import redis
 
@@ -76,14 +77,21 @@ class RedisWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
         while self.running:
 
             try:
-                for message in pubsub.listen():
+                message = pubsub.get_message()
+                if message and message["type"] == "message":
                     txid = message.get("data")
+                    txid = txid.decode("utf-8")
                     self.handle_tx_update(txid)
+                else:
+                    time.sleep(1.0)
 
             except Exception as e:
                 pubsub.close()
                 logger.error("Redis pubsub listening aborted")
                 logger.exception(e)
+                break
+
+        pubsub.close()
 
     def stop(self):
         self.running = False

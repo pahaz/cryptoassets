@@ -106,7 +106,7 @@ class WalletNotifyTestCase(unittest.TestCase):
                 client = redis.StrictRedis(host="localhost")
                 client.publish("bitcoind_walletnotify_pubsub", "faketransactionid")
 
-                time.sleep(0.5)  # Let walletnotify thread to pick it up
+                time.sleep(2.5)  # Let walletnotify thread to pick it up
 
                 mock_method.assert_called_with("faketransactionid")
 

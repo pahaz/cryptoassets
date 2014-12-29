@@ -46,6 +46,7 @@ class ImportBalanceTestCase(unittest.TestCase):
             self.assertTrue(walletimport.has_unaccounted_balance(backend, w))
 
             a = w.get_or_create_account_by_name("Imported balance")
+            session.flush()
 
             walletimport.import_unaccounted_balance(coin.backend, w, a)
             session.flush()
