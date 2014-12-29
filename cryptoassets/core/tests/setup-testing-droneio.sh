@@ -31,7 +31,7 @@ done
 chmod o-wrx,g-rwx /tmp/private-key
 eval `ssh-agent`
 ssh-add /tmp/private-key
-ssh -f -F $CHECKOUT_HOME/cryptoassets/core/tests/droneio-ssh-config bitcoind-test-server
+ssh -vvv -N -f -F $CHECKOUT_HOME/cryptoassets/core/tests/droneio-ssh-config bitcoind-test-server
 
 # Run tests using py.test test runner
 venv/bin/py.test-3.4 cryptoassets
