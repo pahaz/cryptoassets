@@ -3,7 +3,7 @@
 # Setup test running for Ubuntu 12.02 / Drone IO
 #
 
-CHECKOUT_HOME=/home/ubuntu/src
+CHECKOUT_HOME=/home/ubuntu/src/bitbucket.org/miohtama/cryptoassets
 
 # Need to upgrade to Python 3.4
 sudo add-apt-repository ppa:fkrull/deadsnakes 2>&1 > /dev/null
@@ -23,7 +23,6 @@ psql -c 'create database unittest-conflict-resolution;' -U postgres
 
 # Build SSH tunnelling to the bitcoind server
 eval `ssh-agent`
-echo $SSH_PRIV_KEY > /tmp/private-key
 ssh-add -i /tmp/private-key
 ssh -f -C $CHECKOUT_HOME/cryptoassets/core/tests/droneio-ssh-config bitcoind-test-server
 
