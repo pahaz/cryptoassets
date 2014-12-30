@@ -43,38 +43,8 @@ To run this example::
 Example code::
 
 .. literalinclude:: example.py
+    :language: python
 
-Requirements
--------------
-
-You need at least Python version 3.4.
-
-* Install Python 3.4 on Ubuntu
-
-* Install Python 3.4 on OSX
-
-Older Python versions might be supported in the future if there is demand for the support.
-
-Create a virtualenv
----------------------
-
-``cryptoassets.core`` is distributed as a Python package. By following the Python community best create a virtualenv where you are going to install ``cryptoassets.core`` package and its dependencies.
-
-Ubuntu. Ubuntu and Debian has an open issue regarding Python 3.4 virtualenv support. Thus, follow the instructions here carefully or refer to future best practices from Ubuntu community::
-
-OSX::
-
-    mkdir myproject
-    cd myproject
-    python3.4 -m venv venv
-    source venv/bin/activate
-
-Installing cryptoassets package
----------------------------------
-
-After virtualenv is created and active you can run::
-
-    pip install cryptoassets.core
 
 Example application
 -------------------

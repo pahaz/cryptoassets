@@ -29,11 +29,7 @@ set -e
 
 # Build SSH tunnelling to the bitcoind server
 # First grab SSH key from drone.io config so it's not visible in build log
-echo "" > /tmp/private-key
-for i in $(echo $SSH_PRIV_KEY | tr "," "\n")
-do
-    echo $i >> /tmp/private-key
-done
+echo $SSH_PRIV_KEY | tr "," "\n" > /tmp/private-key
 chmod o-wrx,g-rwx /tmp/private-key
 cat /tmp/private-key
 ssh -vvv -N -f -F $CHECKOUT_HOME/cryptoassets/core/tests/droneio-ssh-config $BITCOIND_SERVER
