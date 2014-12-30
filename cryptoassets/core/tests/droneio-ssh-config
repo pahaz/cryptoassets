@@ -1,7 +1,7 @@
 # SSH Configuration for tunneling bitcoind testnet server to the drone.io
 
 Host *
-Username tunnel
+User tunnel
 IdentityFile /tmp/private-key
 
 # bitcoind to localhost
