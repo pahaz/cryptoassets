@@ -14,6 +14,7 @@ import logging
 import transaction
 import time
 
+import pkg_resources
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from ..app import CryptoAssetsApp
@@ -22,9 +23,15 @@ from ..configure import Configurator
 from ..backend.base import IncomingTransactionRunnable
 from ..coin.registry import Coin
 from . import status
+from . import defaultlogging
 
 
 logger = logging.getLogger(__name__)
+
+
+def splash_version():
+    version = pkg_resources.require("cryptoassets.core")[0].version
+    logger.info("cryptoassets.core version %s", version)
 
 
 class Service:
@@ -38,8 +45,6 @@ class Service:
 
         :param subsystems: List of subsystems needed to initialize for this process
         """
-        logger.info("Setting up cryptoassets service")
-
         self.app = CryptoAssetsApp(subsystems)
 
         #: Status server instance
@@ -77,9 +82,9 @@ class Service:
 
     def initialize_db(self):
         """ """
+        logger.info("Creating database tables for %s", self.app.engine.url)
         self.app.setup_session()
         self.app.create_tables()
-        print("All database tables created for SQLAlchemy")
 
     def setup_jobs(self):
         logger.info("Setting up broadcast scheduled job")
@@ -175,7 +180,7 @@ class Service:
 
 def parse_config_argv():
     if len(sys.argv) < 2:
-        sys.exit("Usage: {} <configfile.config.yaml".format(sys.argv[0]))
+        sys.exit("Usage: {} <configfile.config.yaml>".format(sys.argv[0]))
 
     config = Configurator.prepare_yaml_file(sys.argv[1])
 
@@ -183,10 +188,11 @@ def parse_config_argv():
 
 
 def initializedb():
+    defaultlogging.setup_stdout_logging()
+    splash_version()
     config = parse_config_argv()
-    Configurator.load_standalone_from_dict(config)
     service = Service(config, (Subsystem.database,))
-    service.initializedb()
+    service.initialize_db()
 
 
 def helper():

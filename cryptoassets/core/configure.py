@@ -53,7 +53,7 @@ class Configurator:
         if not self.app.is_enabled(Subsystem.database):
             return
 
-        transaction_retries = data.pop("transaction_retries", 3)
+        transaction_retries = configuration.pop("transaction_retries", 3)
         self.app.transaction_retries = transaction_retries
 
         echo = configuration.get("echo") in (True, "true")
@@ -212,6 +212,8 @@ class Configurator:
     def setup_logging(self, config):
         """Setup Python loggers.
 
+        XXX: We need ways to handle service loggers and stdout loggers separately.
+
         Note: This is not called by default, as your parent application might want to do its own Python logging setup.
         """
         if not config:
@@ -219,7 +221,8 @@ class Configurator:
 
     @staticmethod
     def load_standalone_from_dict(config):
-        setup_logging(config.get("logging"))
+        """"""
+
 
     @staticmethod
     def prepare_yaml_file(fname):

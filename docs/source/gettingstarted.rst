@@ -68,7 +68,7 @@ Install Python SQLite driver (in the virtual environment)::
 
     pip install sqlite3
 
-Initialize the database structure::
+Create the database tables::
 
     cryptoassets-initializedb
 
@@ -84,12 +84,12 @@ Running the example application::
 You can receive and send testnet coins, but the actual sending and receiving is handled by the :doc:`helper service <./service>`. Thus, nothing comes in or goes out before you start the helper process::
 
     # Run this command in another terminal
-    cryptoassetshelper
+    cryptoassets-helper
 
 Django integration
 =======================
 
-See ``cryptoassets.django package <https://bitbucket.org/miohtama/cryptoassets.django>``_.
+If you are using `Django <http://djangoproject.com/>`_ see ``cryptoassets.django package <https://bitbucket.org/miohtama/cryptoassets.django>``_.
 
 More about SQLAlchemy
 =======================
