@@ -72,40 +72,41 @@ def send():
         return
 
     send_to(address, amount)
-    with assets_app.transaction_manager:
 
 
-def print_status():
-    with assets_app.transaction_manager:
-        wallet, account = get_wallet_and_account()
-        print("Welcome to cryptoassets example app")
-        print("")
-        print("You have the following addresses receiving addresses:")
-        for address in assets_app.session.query(wallet.Address).filter_by(account == account):
-            print("{}: total received {} BTC", address.address, address.balance)
-        print("")
-        print("We know about the following transactions:")
-        for tx in assets_app.session.query(wallet.Transaction):
-            if tx.state in ("pending", "broadcasted"):
-                print("Outgoing tx #{} {} to {} network txid {} amount {} BTC".format(
-                    tx.id, tx.state, tx.txid, tx.address, tx.amount))
-            elif tx.state in ("incoming", "processed"):
-                print("Incoming tx #{} {} to {} network txid {} amount {} BTC".format(
-                    tx.id, tx.state, tx.txid, tx.address, tx.amount))
-            else:
-                print("Internal/other tx #{} {} amount {} BTC".format(
-                    tx.id, tx.state, tx.txid, tx.address, tx.amount))
+@assets_app.managed_transaction
+def print_status(session):
 
-        print("")
-        print("Give a command")
-        print("1) Create new receiving address")
-        print("2) Send bitcoins to other address")
-        print("3) Quit")
+    wallet, account = get_wallet_and_account(session)
+    print("Welcome to cryptoassets example app")
+    print("")
+    print("You have the following addresses receiving addresses:")
+    for address in assets_app.session.query(wallet.Address).filter_by(account == account):
+        print("{}: total received {} BTC", address.address, address.balance)
+    print("")
+    print("We know about the following transactions:")
+    for tx in assets_app.session.query(wallet.Transaction):
+        if tx.state in ("pending", "broadcasted"):
+            print("Outgoing tx #{} {} to {} network txid {} amount {} BTC".format(
+                tx.id, tx.state, tx.txid, tx.address, tx.amount))
+        elif tx.state in ("incoming", "processed"):
+            print("Incoming tx #{} {} to {} network txid {} amount {} BTC".format(
+                tx.id, tx.state, tx.txid, tx.address, tx.amount))
+        else:
+            print("Internal/other tx #{} {} amount {} BTC".format(
+                tx.id, tx.state, tx.txid, tx.address, tx.amount))
+
+    print("")
+    print("Give a command")
+    print("1) Create new receiving address")
+    print("2) Send bitcoins to other address")
+    print("3) Quit")
 
 
 running = True
 while running:
 
+    print_status()
     command = readline("Give your command [1-3]")
     if command == 1:
         create_address()

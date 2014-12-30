@@ -8,9 +8,9 @@ set -e
 CHECKOUT_HOME=/home/ubuntu/src/bitbucket.org/miohtama/cryptoassets
 
 # Need to upgrade to Python 3.4
-sudo add-apt-repository ppa:fkrull/deadsnakes 2>&1 > /dev/null
-sudo apt-get -qq update 2>&1 > /dev/null
-sudo apt-get -qq install python3.4-dev 2>&1 > /dev/null
+sudo add-apt-repository ppa:fkrull/deadsnakes > /dev/null 2>&1
+sudo apt-get -qq update > /dev/null 2>&1
+sudo apt-get -qq install python3.4-dev > /dev/null 2>&1
 
 python3.4 -m venv venv
 . venv/bin/activate
