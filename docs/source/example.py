@@ -19,10 +19,13 @@ configurer.load_yaml_file("cryptoassets-settings.yaml")
 @cryptoservice_http_event_listener(configurer.config)
 def handle_cryptoassets_event(event_name, data):
     if event_name == "txupdate":
-        print("Got new transaction to address {}, address has now value {}")
+        address = data["address"]
+        confirmations = data["confirmations"]
+        txid = data["txid"]
+        print("Got incoming transaction {} to address {}, {} confirmations".format(txid, address, confirmations))
 
 
-def get_wallet_and_account():
+def get_wallet_and_account(session):
     """Return or create instances of the default wallet and accout.
 
     :return: Tuple (BitcoinWallet instance, BitcoinAccount instance)
@@ -37,18 +40,25 @@ def get_wallet_and_account():
     # One application can have several wallets.
     # Within a wallet there are several accounts, which can be
     # user accounts or automated accounts (like escrow).
-    wallet = WalletClass.get_or_create_by_name("default wallet", assets_app.session)
+    wallet = WalletClass.get_or_create_by_name("default wallet", session)
 
     account = wallet.get_or_create_account_by_name("my account")
 
     return wallet, account
 
 
-def create_new_address():
-    with assets_app.transaction_manager:
-        wallet, my_account = get_wallet_and_account()
-        #: All addresses must have unique label (makes accounting easier)
-        wallet.create_receiving_address(my_account, label="")
+@assets_app.managed_transaction
+def create_new_address(session):
+    wallet, my_account = get_wallet_and_account(session)
+    #: All addresses must have unique label (makes accounting easier)
+    wallet.create_receiving_address(my_account, label="")
+
+
+@assets_app.managed_transaction
+def send_to(session, address, amount):
+    wallet, my_account = get_wallet_and_account()
+    transaction = wallet.send(my_account, address, amount)
+    print("Created new transaction #{}".format(transaction.id))
 
 
 def send():
@@ -61,10 +71,8 @@ def send():
         print("Please enter a dot separated decimal number as amount.")
         return
 
+    send_to(address, amount)
     with assets_app.transaction_manager:
-        wallet, my_account = get_wallet_and_account()
-        transaction = wallet.send(my_account, address, amount)
-        print("Created new transaction #{}".format(transaction.id))
 
 
 def print_status():

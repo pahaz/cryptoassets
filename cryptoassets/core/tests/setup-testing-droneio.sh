@@ -22,7 +22,10 @@ pip install --quiet -r test-extra-requirements.txt --use-mirrors
 
 # Make sure we have PSQL test database for conflict resolver test case
 # http://docs.drone.io/databases.html
-psql -c 'CREATE DATABASE IF NOT EXISTS "unittest-conflict-resolution";' -U postgres
+# no IF NOT EXISTS for psql
+set +e
+psql -c 'CREATE DATABASE "unittest-conflict-resolution";' -U postgres
+set -e
 
 # Build SSH tunnelling to the bitcoind server
 # First grab SSH key from drone.io config so it's not visible in build log
