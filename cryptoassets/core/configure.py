@@ -10,8 +10,6 @@ import yaml
 
 from zope.dottedname.resolve import resolve
 
-from pyramid.path import DottedNameResolver
-
 from sqlalchemy import engine_from_config
 
 from .coin.defaults import COIN_MODEL_DEFAULTS
@@ -55,6 +53,9 @@ class Configurator:
         if not self.app.is_enabled(Subsystem.database):
             return
 
+        transaction_retries = data.pop("transaction_retries", 3)
+        self.app.transaction_retries = transaction_retries
+
         echo = configuration.get("echo") in (True, "true")
         return engine_from_config(configuration, prefix="", echo=echo)
 
@@ -73,7 +74,6 @@ class Configurator:
 
         data = data.copy()  # No mutate in place
         klass = data.pop("class")
-        transaction_retries = data.pop("transaction_retries", 3)
         data["coin"] = coin
         provider = resolve(klass)
         # Pass given configuration options to the backend as is
@@ -84,8 +84,6 @@ class Configurator:
             # back to the terminal
             # TypeError: __init__() got an unexpected keyword argument 'network'
             raise ConfigurationError("Could not initialize backend {} with options {}".format(klass, data)) from te
-
-        self.app.transaction_retries = transaction_retries
 
         assert isinstance(instance, CoinBackend)
         return instance
@@ -99,9 +97,7 @@ class Configurator:
         """
         _engine = None
 
-        resolver = DottedNameResolver()
-
-        result = resolver.resolve(module)  # Imports module, making SQLAlchemy aware of it
+        result = resolve(module)  # Imports module, making SQLAlchemy aware of it
         if not result:
             raise ConfigurationError("Could not resolve {}".format(module))
 
