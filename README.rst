@@ -11,7 +11,7 @@ cryptoassets.core
 
 A Python library for building Bitcoin and cryptocurrency service. Provide Bitcoin, cryptocurrency and cryptoassets APIs, database models and accounting.
 
-Why to build your application of the top of cryptocurrency.core
+Why to build your application of the top of cryptoassets.core
 ----------------------------------------------------------------------
 
 * Easy, user-friendly, APIs.
@@ -41,8 +41,8 @@ See `Getting started tutorial <http://cryptoassetscore.readthedocs.org/en/latest
 Supported environments
 ------------------------
 
-Cryptocurrencies
-++++++++++++++++++++
+Cryptocurrencies and assets
+++++++++++++++++++++++++++++++
 
 * Bitcoin
 

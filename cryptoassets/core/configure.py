@@ -40,6 +40,9 @@ class Configurator:
     def __init__(self, app):
         self.app = app
 
+        #: Store full parsed configuration as Python dict for later consumption
+        self.config = None
+
     def setup_engine(self, configuration):
         """Setup database engine.
 
@@ -206,6 +209,8 @@ class Configurator:
         self.app.coins = self.setup_coins(config.get("coins"))
         self.app.status_server = self.setup_status_server(config.get("status-server"))
         self.app.notifiers = self.setup_notify(config.get("notify"))
+
+        self.config = config
 
     @staticmethod
     def setup_logging(self, config):

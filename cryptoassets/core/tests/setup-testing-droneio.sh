@@ -34,6 +34,7 @@ ssh-add /tmp/private-key
 ssh -vvv -N -f -F $CHECKOUT_HOME/cryptoassets/core/tests/droneio-ssh-config bitcoind-test-server
 
 # Run tests using py.test test runner
+ls venv/bin  # debug
 venv/bin/py.test-3.4 cryptoassets
 
 

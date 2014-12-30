@@ -7,14 +7,16 @@ import stat
 import unittest
 import json
 import threading
-import warnings
+import requests
+import time
+
 from http.server import HTTPServer
 from http.server import BaseHTTPRequestHandler
 
-from .. import configure
 from ..app import CryptoAssetsApp
 from ..app import Subsystem
 from ..configure import Configurator
+from ..utils.httpeventlistener import cryptoservice_http_event_listener
 
 from . import testlogging
 from . import testwarnings
@@ -160,3 +162,4 @@ class HTTPNotificationTestCase(unittest.TestCase):
 
         # We did 1 succesful HTTP request
         self.assertEqual(DummyHandler.counter, 1)
+

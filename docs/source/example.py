@@ -7,15 +7,19 @@ from cryptoassets.core.app import CryptoAssetsApp
 from cryptoassets.core.app import Subsystem
 from cryptoassets.core.configuration import Configurator
 
+from cryptoassets.core.utils.httpeventlistener import cryptoservice_http_event_listener
+
 assets_app = CryptoAssetsApp(Subsystem.database)
 
 # This will load the configuration file for the cryptoassets framework
-configuerer = Configurator(assets_app)
-configuerer.load_yaml_file("cryptoassets-settings.yaml")
+configurer = Configurator(assets_app)
+configurer.load_yaml_file("cryptoassets-settings.yaml")
 
 
-def new_transaction():
-    print("Got new transaction to address {}, address has now value {}")
+@cryptoservice_http_event_listener(configurer.config)
+def handle_cryptoassets_event(event_name, data):
+    if event_name == "txupdate":
+        print("Got new transaction to address {}, address has now value {}")
 
 
 def get_wallet_and_account():
