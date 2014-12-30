@@ -26,10 +26,14 @@ Basics
 
 * *cryptoassets.core* is initialized from its own :doc:`configuration <./config>`, which can be passed in as Python dictionary or YAML configuration file.
 
-Walkthrough
-============
+Example command-line application
+========================================
 
-Example application
+Below is a simple terminal application which allows you to store,
+
+It uses pre-created account on `block.io <https://en.bitcoin.it/wiki/Testnet>`_ Bitcoin API service. The coins stored on the API service account are not use real Bitcoins, but `Testnet <https://en.bitcoin.it/wiki/Testnet>`_ Bitcoins which are worthless and thus very useful for testing.
+
+Application code
 -------------------
 
 Here is an example walkthrough how to set up a command line application.
@@ -42,7 +46,7 @@ To run this example::
     # Run the application
     python example.py
 
-Example code
+Save this as ``example.py`` file.
 
 .. literalinclude:: example.py
     :language: python
@@ -50,10 +54,23 @@ Example code
 Example configuration
 ----------------------
 
-Below is a ``example.config.yaml`` file. It uses pre-created account on `block.io <https://en.bitcoin.it/wiki/Testnet>`_ Bitcoin API service. The  coins stored on the API service account are not use real Bitcoins, but `Testnet <https://en.bitcoin.it/wiki/Testnet>`_ Bitcoins which are worthless and thus very useful for testing.
+Save this as ``example.config.yaml`` file.
 
 .. literalinclude:: example.config.yaml
     :language: yaml
+
+Creating the database structure
+---------------------------------
+
+The example application uses `SQLite <http://www.sqlite.org/>`_ database. SQLite is a simple SQL database in a self contained file.
+
+Install Python SQLite driver (in the virtual environment)::
+
+    pip install sqlite3
+
+Initialize the database structure::
+
+    cryptoassets-initializedb
 
 Running the example
 ---------------------
@@ -69,8 +86,13 @@ You can receive and send testnet coins, but the actual sending and receiving is 
     # Run this command in another terminal
     cryptoassetshelper
 
+Django integration
+=======================
+
+See ``cryptoassets.django package <https://bitbucket.org/miohtama/cryptoassets.django>``_.
+
 More about SQLAlchemy
-----------------------
+=======================
 
 Please see these tutorils
 

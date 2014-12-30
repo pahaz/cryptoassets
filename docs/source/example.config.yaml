@@ -2,8 +2,6 @@
 
 # Cryptoassets.core configuration for example application
 
-# We use a SQLite database which lives in /tmp folder.
-# This file is automatically created on startup.
 database:
   url: sqlite:////tmp/cryptoassets.test.sqlite
 

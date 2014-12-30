@@ -31,7 +31,6 @@ set -e
 # First grab SSH key from drone.io config so it's not visible in build log
 echo $SSH_PRIV_KEY | tr "," "\n" > /tmp/private-key
 chmod o-wrx,g-rwx /tmp/private-key
-cat /tmp/private-key
 ssh -vvv -N -f -F $CHECKOUT_HOME/cryptoassets/core/tests/droneio-ssh-config $BITCOIND_SERVER
 
 # Run tests using py.test test runner
