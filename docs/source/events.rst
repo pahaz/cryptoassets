@@ -1,5 +1,5 @@
 ================================
-Notifications
+Events
 ================================
 
 .. contents:: :local:
@@ -23,10 +23,10 @@ E.g. your application may receive notifications over
 
 * Redis queues
 
-Event chain
-=============
+Incoming transaction event chain
+==================================
 
-The events are processed as following::
+The events are processed as following.
 
 # Receive raw cryptocurrency protocol packet
     * Read transaction from the network

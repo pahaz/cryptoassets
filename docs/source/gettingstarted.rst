@@ -7,28 +7,30 @@ Getting started
 Introduction
 ==============
 
-``cryptoassets.core`` provides safe, scalable and future-proof cryptocurrency and cryptoassets management for your Python application. It is built on the top of *SQLAlchemy* technology.
+*cryptoassets.core* provides safe, scalable and future-proof cryptocurrency and cryptoassets management for your Python application. It is built on the top of *SQLAlchemy* technology.
 
 Basics
 ======
 
-* You can use ``cryptoassets.core`` library in any Python application, including Django applications.
+* You can use *cryptoassets.core* library in any Python application, including Django applications.
 
-* ``cryptoassets.core`` support various cryptocurrencies and assets and is designed to be extended to support
-everything
+* *cryptoassets.core* support various cryptocurrencies and assets and is easily to extend support your favorite altcoint
 
-* ``cryptoassets.core`` works with various cryptocurrency API services (block.io, blockchain.info) or with protocl daemons (``bitcoind``, ``dogecoind``). You need to choose either to register account on any of API services or run the daemon on your own server. Please note that running ``bitcoind`` requires at least 2 GB of RAM and 20 GB of disk space.
+* *cryptoassets.core* works with various API services (block.io, blockchain.info) and daemons (*bitcoind*, *dogecoind*). You either to sign up for an account on any the API services or run the daemon on your own server. Please note that running *bitcoind* requires at least 2 GB of RAM and 20 GB of disk space.
 
-* Some basic SQLAlchemy knowledge might be required. It is mostly covered in this documentation.
+* :doc`For data integrity reasons <./integrity>`, *cryptoassets.core* uses its own database or database connection.
 
-* ``cryptoassets.core`` uses its own database or database connections to store cryptoasset transaction and accounting information. For the safety reasons used database connections has very high transaction isolation level, which your normal web application might not do.
+* Some basic `SQLAlchemy <http://www.sqlalchemy.org/>`_ knowledge might be required.
 
-* ``cryptoassetes.core`` requires running a separate :doc:`helper service process <./service>` which takes are of communicating with various Python network.
+* *cryptoassets.core* runs a separate :doc:`helper service process <./service>` which multiplexes communication between your application and different crypto networks
 
-* ``cryptoassets.core`` is initialized from its own configuration which can be passed in as Python dictionary or YAML configuration file.
+* *cryptoassets.core* is initialized from its own :doc:`configuration <./config>`, which can be passed in as Python dictionary or YAML configuration file.
 
 Walkthrough
 ============
+
+Example application
+-------------------
 
 Here is an example walkthrough how to set up a command line application.
 
@@ -40,38 +42,32 @@ To run this example::
     # Run the application
     python example.py
 
-Example code::
+Example code
 
 .. literalinclude:: example.py
     :language: python
 
-
-Example application
--------------------
-
-Running the example application::
-
-xx
-
 Example configuration
 ----------------------
 
-xxx
+Below is a ``example.config.yaml`` file. It uses pre-created account on `block.io <https://en.bitcoin.it/wiki/Testnet>`_ Bitcoin API service. The  coins stored on the API service account are not use real Bitcoins, but `Testnet <https://en.bitcoin.it/wiki/Testnet>`_ Bitcoins which are worthless and thus very useful for testing.
 
-Creating database
-------------------
+.. literalinclude:: example.config.yaml
+    :language: yaml
 
-xx
+Running the example
+---------------------
 
-Running the application
-------------------------
+:doc:`First make sure you have created a virtualenv, installed cryptoassets.core and its dependencies <./install>`.
 
-xxx
+Running the example application::
 
-Running the helper service
-----------------------------
+    python example.py
 
-xxx
+You can receive and send testnet coins, but the actual sending and receiving is handled by the :doc:`helper service <./service>`. Thus, nothing comes in or goes out before you start the helper process::
+
+    # Run this command in another terminal
+    cryptoassetshelper
 
 More about SQLAlchemy
 ----------------------

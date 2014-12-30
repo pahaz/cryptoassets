@@ -6,7 +6,7 @@
 cryptoassets.core
 =============================================
 
-``cryptoassets.core`` is Bitcoin, cryptocurrency and cryptoassets API, database models and accounting library for Python.
+*cryptoassets.core* is Bitcoin, cryptocurrency and cryptoassets database and accounting library for Python.
 
 `Project homepage <https://bitbucket.org/miohtama/cryptoassets>`_.
 
@@ -18,10 +18,12 @@ Contents:
    install
    gettingstarted
    service
+   config
    models
    backends
    coins
-   notifications
+   events
+   integrity
    develop
 
 
