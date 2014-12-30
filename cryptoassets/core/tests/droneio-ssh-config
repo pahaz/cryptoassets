@@ -3,7 +3,7 @@
 Host *
 User tunnel
 IdentityFile /tmp/private-key
-StrictHostKeyCheckin no
+StrictHostKeyChecking no
 
 # bitcoind to localhost
 LocalForward 8332 localhost:8332

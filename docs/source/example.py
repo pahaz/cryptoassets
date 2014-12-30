@@ -22,7 +22,8 @@ def handle_cryptoassets_event(event_name, data):
         address = data["address"]
         confirmations = data["confirmations"]
         txid = data["txid"]
-        print("Got incoming transaction {} to address {}, {} confirmations".format(txid, address, confirmations))
+        print("Got incoming transaction {} to address {}, {} confirmations".
+            format(txid, address, confirmations))
 
 
 def get_wallet_and_account(session):
@@ -47,21 +48,35 @@ def get_wallet_and_account(session):
     return wallet, account
 
 
-@assets_app.managed_transaction
-def create_new_address(session):
+# Every time you access cryptoassets database it must happen
+# in sidea managed transaction function.
+#
+# Use ConflictResolevr.managed_transaction decoreator your function gets an extra
+# session argument as the first argument. This is the SQLAlchemy
+# database session you should use to
+# manipulate the database. In the case of a database
+# transaction conflict, ConflictResolver
+# will rollback and try again.
+#
+# For more information see
+@assets_app.conflict_resolver.managed_transaction
+def create_receiving_address(session):
+    """Create new receiving address on the default wallet and account."""
     wallet, my_account = get_wallet_and_account(session)
     #: All addresses must have unique label (makes accounting easier)
     wallet.create_receiving_address(my_account, label="")
 
 
-@assets_app.managed_transaction
+@assets_app.conflict_resolver.managed_transaction
 def send_to(session, address, amount):
+    """Perform the actual send operation within managed transaction."""
     wallet, my_account = get_wallet_and_account()
     transaction = wallet.send(my_account, address, amount)
     print("Created new transaction #{}".format(transaction.id))
 
 
 def send():
+    """Ask how many BTCTEST bitcoins to send and to which address."""
     address = input("Give the bitcoin TESTNET address where you wish to send the bitcoins:")
     amount = input("Give the amount in BTC to send:")
 
@@ -107,9 +122,9 @@ running = True
 while running:
 
     print_status()
-    command = readline("Give your command [1-3]")
+    command = raw_input("Give your command [1-3]")
     if command == 1:
-        create_address()
+        create_receiving_address()
     elif command == 2:
         send()
     elif command == 3:

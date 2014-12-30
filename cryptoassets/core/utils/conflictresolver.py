@@ -148,7 +148,7 @@ class ConflictResolver:
         - https://gist.github.com/khayrov/6291557
         """
 
-        def decorated_func():
+        def decorated_func(*args, **kwargs):
 
             # Read attemps from app configuration
             attempts = self.retries
@@ -158,7 +158,7 @@ class ConflictResolver:
             while attempts >= 0:
 
                 try:
-                    result = func(session)
+                    result = func(session, *args, **kwargs)
                     session.commit()
                     self.stats["success"] += 1
                     return result
