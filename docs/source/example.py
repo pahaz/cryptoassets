@@ -7,7 +7,7 @@ from cryptoassets.core.app import CryptoAssetsApp
 from cryptoassets.core.app import Subsystem
 from cryptoassets.core.configuration import Configurator
 
-from cryptoassets.core.utils.httpeventlistener import cryptoservice_http_event_listener
+from cryptoassets.core.utils.httpeventlistener import simple_http_event_listener
 
 assets_app = CryptoAssetsApp(Subsystem.database)
 
@@ -16,7 +16,11 @@ configurer = Configurator(assets_app)
 configurer.load_yaml_file("cryptoassets-settings.yaml")
 
 
-@cryptoservice_http_event_listener(configurer.config)
+# This function will be run in its own background thread,
+# where it runs mini HTTP server to receive and process
+# any events which cryptoassets service sends to our
+# process
+@simple_http_event_listener(configurer.config)
 def handle_cryptoassets_event(event_name, data):
     if event_name == "txupdate":
         address = data["address"]

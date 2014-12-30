@@ -92,7 +92,7 @@ class SimpleHTTPEventListenerThread(threading.Thread):
             self.httpd.shutdown()
 
 
-def cryptoservice_http_event_listener(config, daemon=True):
+def simple_http_event_listener(config, daemon=True):
     """Convenience decorator to open HTTP event listever for configured cryptoassets service.
 
     Opens a new HTTP server running a background thread. Whenever cryptoassets helper service posts a new event, it will be received by this HTTP server which then executes the event in your application context.

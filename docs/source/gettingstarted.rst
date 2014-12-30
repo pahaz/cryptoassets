@@ -32,7 +32,17 @@ Walkthrough
 
 Here is an example walkthrough how to set up a command line application.
 
-For Django users there is a separate, Django specific package and README you should follow.
+To run this example::
+
+    # Activate the virtualenv where cryptoassets is installed
+    source venv/bin/activate
+
+    # Run the application
+    python example.py
+
+Example code::
+
+.. literalinclude:: example.py
 
 Requirements
 -------------
