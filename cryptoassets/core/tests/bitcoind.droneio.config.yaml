@@ -1,10 +1,9 @@
 ---
-# Cryptoassets.core configuration for running bitcoind unit tests
+# Cryptoassets.core configuration for running bitcoind tests on DroneIO service with SSH-port forwarded testnet bitcoind
 
 database:
   url: sqlite:////tmp/cryptoassts-unittest-bitcoind.sqlite
 
-# Locally running bitcoind in testnet
 coins:
     btc:
         backend:

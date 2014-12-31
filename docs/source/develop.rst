@@ -15,16 +15,18 @@ Testing prerequisites
 
 To run all tests several components must be in-place
 
-* block.io credentials in tests/config.yaml files (hardcoded accounts, testnet coins)
+* `pip install test-extra-requirements.txt``
 
-* *bitcoind* running testnet on localhost, configured for HTTP walletnotifies (see config snipped below). bitcoind must have account *cryptoassets* with enough balance to do withdraw tests.
+* Check block.io credentials in tests/config.yaml files (hardcoded accounts, testnet coins)
+
+* *bitcoind* running testnet on localhost, configured for named UNIX pipe wallet notifications (see config snipped below). bitcoind must have account *cryptoassets* with enough balance to do withdraw tests.
 
 * PostgreSQL database ``unittest-conflict-resolution`` where you can connect on localhost without username and password
 
 * Redis installed, with preferable empty database 0
 
-Test run examples
-+++++++++++++++++++++
+Examples for running tests
++++++++++++++++++++++++++++
 
 Running all tests::
 
@@ -92,9 +94,8 @@ First create a receiving address under ``bitcoind`` accounting account ``cryptoa
 
     curl --user foo:bar --data-binary '{"id":"t0", "method": "getnewaddress", "params": ["cryptoassets"] }' http://127.0.0.1:8332/
 
-Then list ``bitcoind`` accounts and balances:
+Write down the *result*.
 
-    curl --user foo:bar --data-binary '{"id":"t0", "method": "listaccounts", "params": [] }' http://127.0.0.1:8332/
 
 TESTNET faucet
 ++++++++++++++++
@@ -103,7 +104,11 @@ Get TESTNET coins from here:
 
 http://tpfaucet.appspot.com/
 
-Send them to the address you created.
+Send them to the receiving address you created.
+
+Then list ``bitcoind`` accounts and balances, to see you have the new receiving address and the balance arrives there:
+
+    curl --user foo:bar --data-binary '{"id":"t0", "method": "listaccounts", "params": [] }' http://127.0.0.1:8332/
 
 Dumping your TESTNET private address for importing in tests
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
