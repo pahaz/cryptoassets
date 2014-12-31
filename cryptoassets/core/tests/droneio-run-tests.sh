@@ -2,6 +2,12 @@
 #
 # Setup test running for Ubuntu 12.02 / Drone IO
 #
+#
+# To create authorized key on the server:
+# sudo -i -u tunnel
+# ssh-keygen
+# echo -n 'command="echo port forwarding only",no-pty,permitopen="localhost:8332" '> .ssh/authorized_keys
+# cat .ssh/id_rsa.pub >> .ssh/authorized_keys
 
 set -e
 
