@@ -89,7 +89,7 @@ You can receive and send testnet coins, but the actual sending and receiving is 
 Django integration
 =======================
 
-If you are using `Django <http://djangoproject.com/>`_ see ``cryptoassets.django package <https://bitbucket.org/miohtama/cryptoassets.django>``_.
+If you are using `Django <http://djangoproject.com/>`_ see `cryptoassets.django package <https://bitbucket.org/miohtama/cryptoassets.django>`_.
 
 More about SQLAlchemy
 =======================

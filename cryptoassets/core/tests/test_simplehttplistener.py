@@ -2,7 +2,7 @@ import unittest
 import requests
 import time
 
-from ..utils.httpeventlistener import cryptoservice_http_event_listener
+from ..utils.httpeventlistener import simple_http_event_listener
 
 from . import testlogging
 from . import testwarnings
@@ -32,7 +32,7 @@ class SimpleHTTPEventListenerTestCase(unittest.TestCase):
             }
         }
 
-        @cryptoservice_http_event_listener(config, daemon=False)
+        @simple_http_event_listener(config, daemon=False)
         def myfunc(event, data):
             global _got_data
             _got_data = data

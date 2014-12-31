@@ -1,4 +1,25 @@
-"""Create ad-hoc HTTP server to listen to incoming cryptoassets.core events in your application"""
+"""Convenience decorator to open HTTP event listever for configured cryptoassets service.
+
+Opens a new HTTP server running a background thread. Whenever cryptoassets helper service posts a new event, it will be received by this HTTP server which then executes the event in your application context.
+
+This can be used only once per application, so you need to dispatch listened events to your own event handling funcions in one singleton handler.
+
+The callback receives two arguments, ``event_name`` (string) and ``data`` (dict). Data payload depends on the event type.
+
+Example::
+
+    app = CryptoAssetsApp()
+
+    # This will load the configuration file for the cryptoassets framework
+    configurer = Configurator(app)
+    configurer.load_yaml_file("cryptoassets-settings.yaml")
+
+    @simple_http_event_listener(configurer.config)
+    def my_event_callback(event_name, data):
+        if event_name == "txupdate":
+            print("Got transaction update {}".format(data))
+
+"""
 
 import json
 import threading
@@ -93,15 +114,11 @@ class SimpleHTTPEventListenerThread(threading.Thread):
 
 
 def simple_http_event_listener(config, daemon=True):
-    """Convenience decorator to open HTTP event listever for configured cryptoassets service.
+    """Function decorator to make the target function to retrieve events from cryptoassets helper service over HTTP event callback.
 
-    Opens a new HTTP server running a background thread. Whenever cryptoassets helper service posts a new event, it will be received by this HTTP server which then executes the event in your application context.
+    :param config: *cryptoassets.core* app configuration as Python dict. We'll extract the information which port and IP to listen to on HTTP server from there.
 
-    This can be used only once per application, so you need to dispatch listened events to your own event handling funcions in one singleton handler.
-
-    :param config: Full cryptoassets configuration as Python dict
-
-    :param func:  The event handling callback function, ``callback(event_name, data_dict)`.
+    :param func:  The event handling callback function, ``callback(event_name, data_dict)``.
 
     :param daemon: Should the server be started as a daemon thread (does not prevent Python application quitting unless explictly stopped)
     """
@@ -143,3 +160,5 @@ def simple_http_event_listener(config, daemon=True):
         return func
 
     return actual_decorator
+
+__all__ = [simple_http_event_listener]

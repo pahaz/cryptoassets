@@ -19,10 +19,9 @@ Contents:
    gettingstarted
    service
    config
-   models
    backends
    coins
-   events
+   api/index
    integrity
    develop
 
