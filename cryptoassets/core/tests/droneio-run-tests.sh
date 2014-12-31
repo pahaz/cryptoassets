@@ -41,6 +41,10 @@ set +e
 psql -c 'CREATE DATABASE "unittest-conflict-resolution";' -U postgres
 set -e
 
+# http://docs.drone.io/databases.html#redis
+sudo start redis
+sleep 2
+
 # Run tests using py.test test runner
 venv/bin/py.test-3.4 cryptoassets
 

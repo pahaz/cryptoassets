@@ -1,4 +1,9 @@
-"""Import existing wallets to the accounting."""
+"""Import existing wallet balance to the accounting.
+
+If you have a wallet in some service and you wish to use it with *cryptoassets.core*, you need to tell *cryptoassets.core* what to do with the existing balance in the wallet, from the time before the wallet was managed by *cryptoassets.core*.
+
+This is especially useful for testing. To run unit tests you need to have some cryptocurrency balance somewhere. You have known backends which you configure the unit tests to connect to. These backends have default wallets and there is some balance on these wallets, so unit tests can perform withdraw tests.
+"""
 import datetime
 import logging
 

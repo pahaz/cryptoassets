@@ -14,4 +14,5 @@ Contents:
    models
    config
    events
+   functionality
    utils
