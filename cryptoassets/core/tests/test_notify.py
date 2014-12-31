@@ -16,7 +16,6 @@ from http.server import BaseHTTPRequestHandler
 from ..app import CryptoAssetsApp
 from ..app import Subsystem
 from ..configure import Configurator
-from ..utils.httpeventlistener import cryptoservice_http_event_listener
 
 from . import testlogging
 from . import testwarnings

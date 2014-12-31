@@ -5,8 +5,8 @@ User tunnel
 IdentityFile /tmp/private-key
 StrictHostKeyChecking no
 
-# bitcoind to localhost
+# bitcoind JSON-RPC from the bitcoind server to the test server
 LocalForward 8332 localhost:8332
 
-# HTTP test notification server to the remote
+# HTTP events from bitcoind server to the test runner
 RemoteForward 28882 localhost:28882
