@@ -78,8 +78,6 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         self.assertTrue(os.path.exists(test_config), "Did not found {}".format(test_config))
 
-        self.setup_bitcoind_connection(test_config)
-
         self.configurator.load_yaml_file(test_config)
 
         coin = self.app.coins.get("btc")
