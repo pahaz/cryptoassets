@@ -9,4 +9,4 @@ StrictHostKeyChecking no
 LocalForward 8332 localhost:8332
 
 # HTTP events from bitcoind server to the test runner
-RemoteForward 28882 localhost:28882
+RemoteForward 30000 localhost:30000
