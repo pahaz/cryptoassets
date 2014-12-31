@@ -11,8 +11,7 @@ CHECKOUT_HOME=/home/ubuntu/src/bitbucket.org/miohtama/cryptoassets
 # First grab SSH key from drone.io config so it's not visible in build log
 echo $SSH_PRIV_KEY | tr "," "\n" > /tmp/private-key
 chmod o-wrx,g-rwx /tmp/private-key
-cat /tmp/private-key
-ssh -vvv -N -f -F $CHECKOUT_HOME/cryptoassets/core/tests/droneio-ssh-config $BITCOIND_SERVER
+ssh -vvv -N -f -F $CHECKOUT_HOME/cryptoassets/core/tests/droneio-ssh-config tunnel@$BITCOIND_SERVER
 SSH_PID=$!
 
 # Need to upgrade to Python 3.4
