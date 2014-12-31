@@ -126,7 +126,7 @@ class PostgreSQLConflictResolverTestCase(unittest.TestCase):
         w = session.query(TestModel).get(1)
         if not w:
             w = TestModel()
-            self.session.add(w)
+            session.add(w)
 
         w.balance = 10
 

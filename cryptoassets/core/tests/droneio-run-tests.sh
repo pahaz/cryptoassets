@@ -25,6 +25,7 @@ sudo add-apt-repository ppa:fkrull/deadsnakes > /dev/null 2>&1
 sudo apt-get -qq update > /dev/null 2>&1
 sudo apt-get -qq install python3.4-dev > /dev/null 2>&1
 
+# Creteat test virtualenv
 python3.4 -m venv venv
 . venv/bin/activate
 
