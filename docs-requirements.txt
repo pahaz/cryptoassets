@@ -1,4 +1,3 @@
-# Packages needed on rtd.org
 apscheduler==3.0.1
 SQLAlchemy==0.9.7
 Unidecode==0.04.16
@@ -20,4 +19,3 @@ zope.deprecation==4.1.1
 zope.sqlalchemy==0.7.5
 zope.dottedname==4.0.1
 rainbow-logging-handler==2.2.2
-+e git+https://bitbucket.org/miohtama/cryptoassets.git

@@ -7,7 +7,7 @@ Security and data integrity
 Introduction
 -------------
 
-When dealing with financial transactions, `especially ones which cannot be reversed <http://chemistry.about.com/od/geochemistry/a/mohsscale.htm>`_, it is imperative that one gets its transaction handling correctly. *cryptoassets.core* provides tools and methods, so that even inexperienced developers do not shoot themselves into a foot when writing cryptoassets code.
+When dealing with financial transactions, `especially ones which cannot be reversed <http://blog.stakeventures.com/articles/2012/03/07/the-may-scale-of-money-hardness-and-bitcoin>`_, it is imperative that one gets its transaction handling correctly. *cryptoassets.core* provides tools and methods, so that even inexperienced developers do not shoot themselves into a foot when writing cryptoassets code.
 
 This includes mitigation against
 
