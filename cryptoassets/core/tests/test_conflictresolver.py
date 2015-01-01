@@ -1,7 +1,7 @@
 import unittest
 import threading
 import time
-
+import os
 import pytest
 
 from cryptoassets.core.utils.conflictresolver import ConflictResolver
