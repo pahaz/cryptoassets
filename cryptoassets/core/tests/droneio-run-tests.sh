@@ -42,6 +42,7 @@ psql -c 'CREATE DATABASE "unittest-conflict-resolution";' -U postgres
 set -e
 
 # Run tests using py.test test runner
+echo "Running tests"
 venv/bin/py.test-3.4 cryptoassets
 
 # Shutdown SSH tunnel
