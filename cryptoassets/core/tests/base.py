@@ -47,6 +47,11 @@ def has_inet():
     return _connected
 
 
+def has_local_bitcoind():
+    """Use this to disable some tests in CI enviroment where 15 minute deadline applies."""
+    return not "CI" in os.environ
+
+
 def is_slow_test_hostile():
     """Use this to disable some tests in CI enviroment where 15 minute deadline applies."""
     return "CI" in os.environ

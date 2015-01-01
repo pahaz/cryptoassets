@@ -112,7 +112,10 @@ class PostgreSQLConflictResolverTestCase(unittest.TestCase):
         testwarnings.begone()
 
         # createdb unittest-conflict-resolution on homebrew based installations
-        self.engine = create_engine('postgresql:///unittest-conflict-resolution',  isolation_level='SERIALIZABLE')
+        if "CI" in os.environ:
+            self.engine = create_engine('postgresql://postgres@localhost/unittest-conflict-resolution',  isolation_level='SERIALIZABLE')
+        else:
+            self.engine = create_engine('postgresql:///unittest-conflict-resolution',  isolation_level='SERIALIZABLE')
 
         # Create a threadh-local automatic session factory
         self.Session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=self.engine))

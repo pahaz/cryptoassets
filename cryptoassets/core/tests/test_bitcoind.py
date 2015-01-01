@@ -13,6 +13,7 @@ from ..backend.bitcoind import TransactionUpdater
 
 from ..backend.pipewalletnotify import PipedWalletNotifyHandler
 from .base import CoinTestCase
+from .base import has_local_bitcoind
 
 
 WALLETNOTIFY_PIPE = "/tmp/cryptoassets-unittest-walletnotify-pipe"
@@ -113,6 +114,11 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         # Account balance should be updated
         """
+
+        # XXX: Move this to py.test skip condition after Python 3.4.2 release
+        # https://bitbucket.org/hpk42/pytest/issue/528/test-causes-segfault
+        if not has_local_bitcoind():
+            return
 
         with self.app.conflict_resolver.transaction() as session:
             # Create a wallet
