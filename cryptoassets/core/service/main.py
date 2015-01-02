@@ -126,19 +126,26 @@ class Service:
         """
         self.last_broadcast = datetime.datetime.utcnow()
 
-        session = self.app.session
-
         for name, coin in self.app.coins.all():
             wallet_class = coin.wallet_model
-            with transaction.manager:
-                wallet_ids = [wallet.id for wallet in session.query(wallet_class).all()]
+
+            @self.app.conflict_resolver.managed_transaction
+            def get_wallet_ids(session):
+                return [wallet.id for wallet in session.query(wallet_class).all()]
+
+            wallet_ids = get_wallet_ids()
 
             for wallet_id in wallet_ids:
-                with transaction.manager:
+
+                # XXX: Rewrite this
+                @self.app.conflict_resolver.managed_transaction
+                def broadcast_tx(session, wallet_id):
                     wallet = session.query(wallet_class).get(wallet_id)
                     logger.info("Broadcasting transactions for wallet class %s wallet %d:%s", wallet_class, wallet.id, wallet.name)
                     outgoing = wallet.broadcast()
                     logger.info("%d transactionsn send", outgoing)
+
+                broadcast_tx(wallet_id)
 
     def rescan(self):
         """Scan through all bitcoind transactions, see if we missed some through walletnotify."""

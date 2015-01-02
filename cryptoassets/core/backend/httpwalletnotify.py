@@ -36,7 +36,6 @@ import os
 import logging
 import fcntl
 import time
-import transaction
 import threading
 import datetime
 import cgi
@@ -83,7 +82,7 @@ class WalletNotifyRequestHandler(BaseHTTPRequestHandler):
         # thus we need to pass the db transaction manager to the transaction updater
         transaction_updater = self.server.transaction_updater
         if transaction_updater is not None:
-            transaction_updater.handle_wallet_notify(txid, transaction_manager=transaction.manager)
+            transaction_updater.handle_wallet_notify(txid)
         else:
             logger.warn("Got txupdate, but no transaction_updater instance available, %s", txid)
 
