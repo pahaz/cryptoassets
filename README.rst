@@ -11,7 +11,7 @@ cryptoassets.core
 
 A Python library for building Bitcoin and cryptocurrency service. Provide Bitcoin, cryptocurrency and cryptoassets APIs, database models and accounting.
 
-Befefits
+Benefits
 ----------------------------------------------------------------------
 
 * Easy: Documented user-friendly APIs
@@ -31,12 +31,17 @@ Requirements and installation
 
 You need to install database support libraries separately, depending on which database you are using.
 
-See `Installation <http://cryptoassetscore.readthedocs.org/en/latest/>`_.
+See `Installation <http://cryptoassetscore.readthedocs.org/en/latest/>_.
 
 Getting started
 ---------------
 
 See `Getting started tutorial <http://cryptoassetscore.readthedocs.org/en/latest/gettingstarted.html>`_.
+
+Documentation
+---------------
+
+`The documentation is on readthedocs.org <http://cryptoassetscore.readthedocs.org/en/latest/>`_.
 
 Supported environments
 ------------------------
@@ -67,7 +72,7 @@ Databases
 
 `For the full list see SQLAlchemy dialects documentation <http://docs.sqlalchemy.org/en/rel_0_9/dialects/index.html>`_.
 
-Daemons and wallet service support
+Daemons and wallet services
 ++++++++++++++++++++++++++++++++++++++
 
 *cryptoassets.core* can operate with a cryptocurrency daemon or third party API service.
@@ -80,7 +85,7 @@ Example daemons and services include:
 
 * `blockchain.info <http://blockchain.info>`_ (Bitcoin)
 
-Python frameworks support
+Python frameworks
 +++++++++++++++++++++++++++
 
 You can integrate *cryptoassets.core* on
@@ -103,11 +108,6 @@ License
 ----------
 
 `MIT <http://opensource.org/licenses/MIT>`_
-
-Documentation
----------------
-
-`The documentation is on readthedocs.org <http://cryptoassetscore.readthedocs.org/en/latest/>`_.
 
 Author
 ---------
