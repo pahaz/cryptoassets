@@ -58,22 +58,29 @@ class WalletNotifyRequestHandler(BaseHTTPRequestHandler):
     """
     def do_POST(self):
 
-        ctype, pdict = parse_header(self.headers['content-type'])
-        if ctype == 'multipart/form-data':
-            postvars = parse_multipart(self.rfile, pdict)
-        elif ctype == 'application/x-www-form-urlencoded':
-            length = int(self.headers['content-length'])
-            postvars = parse_qs(self.rfile.read(length), keep_blank_values=1)
-        else:
-            postvars = {}
+        try:
+            ctype, pdict = parse_header(self.headers['content-type'])
+            if ctype == 'multipart/form-data':
+                postvars = parse_multipart(self.rfile, pdict)
+            elif ctype == 'application/x-www-form-urlencoded':
+                length = int(self.headers['content-length'])
+                postvars = parse_qs(self.rfile.read(length), keep_blank_values=1)
+            else:
+                postvars = {}
 
-        txid = postvars[b"txid"][0].decode("utf-8")
+            txid = postvars[b"txid"][0].decode("utf-8")
 
-        self.handle_tx_update(txid)
+            self.handle_tx_update(txid)
 
-        self.send_response(200, "OK")
-        self.end_headers()
-        return ""
+            self.send_response(200, "OK")
+            self.end_headers()
+            return ""
+        except Exception as e:
+            logger.error("Error handling incoming walletnotify %s", postvars)
+            logger.exception(e)
+            self.send_response(500, "Internal server error")
+            self.end_headers()
+            raise e
 
     def handle_tx_update(self, txid):
         """Handle each transaction notify as its own db commit."""
