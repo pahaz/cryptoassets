@@ -38,7 +38,7 @@ Options
 
 :param password: optional password
 
-:param channel: Name of Redis pubsub channel where we write transaction txids, default ``bitcoind_walletnotify_pubsub``
+:param channel: Name of Redis pubsub channel where we write transaction txids, default ``bitcoind_walletnotify_pubsub`
 """
 
 import logging
@@ -67,6 +67,8 @@ class RedisWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
         self.channel = channel
         self.running = False
         self.transaction_updater = transaction_updater
+        # Diagnostics
+        self.message_count = 0
         threading.Thread.__init__(self)
 
     def handle_tx_update(self, txid):
@@ -87,6 +89,7 @@ class RedisWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
                 try:
                     message = pubsub.get_message()
                     if message and message["type"] == "message":
+                        self.message_count += 1
                         txid = message.get("data")
                         txid = txid.decode("utf-8")
                         self.handle_tx_update(txid)
