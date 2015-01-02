@@ -85,7 +85,7 @@ class TransactionUpdater:
 
         # Tranasactipn is committed in this point, notify the application about the new data in the database
         if transaction_id:
-            notifier_count = len(self.notifiers) if self.notifiers else 0
+            notifier_count = len(self.notifiers.get_all()) if self.notifiers else 0
             logger.info("Posting txupdate notify for %d notifiers", notifier_count)
             if self.notifiers:
                 event_name, data = events.create_txupdate(txid=txid, transaction=transaction_id, account=account_id, address=address, amount=amount, confirmations=confirmations)
