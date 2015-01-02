@@ -77,12 +77,13 @@ class RedisWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
     def run(self):
 
         try:
-            # TODO: Add reconnecting on error
-            self.running = True
 
             client = redis.StrictRedis(host=self.host, port=self.port, db=self.db, password=self.password)
             pubsub = client.pubsub()
             pubsub.subscribe(self.channel)
+
+            # TODO: Add reconnecting on error
+            self.running = True
 
             while self.running:
 
