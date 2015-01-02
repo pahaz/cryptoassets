@@ -1,6 +1,35 @@
-"""HTTP request incoming transaction notification handler.
+"""Handle walletnofify notificatians from bitcoind through curl / wget HTTP request.
 
-Handle incoming tx status as receiving HTTP POST request.
+This is useful in cases where *bitcoind* or alike is running on a remote server and you wish to receive walletnotifications from there. In this case, you can set up SSH tunnel and forward the locally started HTTP wallet notify listener to the bitcoind server.
+
+Creates a HTTP server running in port 28882 (default). To receive a new transaction notification do a HTTP POST to this server::
+
+    curl --data "txid=%s" http://localhost:28882
+
+E.g. in ``bitcoind.conf``::
+
+    walletnotify=curl --data "txid=%s" http://localhost:28882
+
+Options
+---------
+
+:param class: Always ``cryptoassets.core.backend.httpwalletnotify.HTTPWalletNotifyHandler``
+
+:param ip: Bound IP address. Default 127.0.0.1 (localhost).
+
+:parma port: Bound port. Default 28882.
+
+Testing
+--------
+
+To test that the wallet notifications are coming through
+
+1. Make sure ``cryptoassetshelper`` service is running
+
+2. Do ``curl --data "txid=foobar" http://localhost:28882`` on the server where *bitcoind* is running
+
+3. You should see in the logs of ``cryptoassetshelper``: *Error communicating with bitcoind API call gettransaction: Invalid or non-wallet transaction id*
+
 """
 
 import os
@@ -89,20 +118,7 @@ class HTTPWalletNotifyHandlerBase:
 
 
 class HTTPWalletNotifyHandler(HTTPWalletNotifyHandlerBase, threading.Thread, IncomingTransactionRunnable):
-    """Handle walletnofify notificatians from bitcoind through curl / wget HTTP request.
-
-    Creates a HTTP server running in port 28882. To receive a new transaction notification do a HTTP POST to this server:
-
-        curl --data "txid=%s" http://localhost:28882
-
-    To test that the server correctly handles wallet notify
-
-    1. Make sure ``cryptoassetshelper`` service is running
-
-    2. Do curl --data "txid=foobar" http://localhost:28882
-
-    3. You should see in the logs of ``cryptoassetshelper``: *Error communicating with bitcoind API call gettransaction: Invalid or non-wallet transaction id*
-    """
+    """Handle walletnofify notificatians from bitcoind through curl / wget HTTP request."""
 
     def __init__(self, transaction_updater, ip, port):
         """Configure a HTTP wallet notify handler server.

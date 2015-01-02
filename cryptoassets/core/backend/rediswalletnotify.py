@@ -1,3 +1,46 @@
+"""Use Redis pubsub for walletnotify notifications.
+
+`Redis <http://redis.io>`_ offers mechanism called `pubsub <http://redis.io/topics/pubsub>`_ for channeled communication which can be used e.g. for interprocess communications.
+
+
+1. Connects to a Redis database over authenticated conneciton
+
+2. Opens a pubsub connection to a specific channel
+
+3. bitcoind walletnofify writes notifies to this channel using ``redis-cli`` command line tool
+
+4. This thread reads pubsub channel, triggers the service logic on upcoming notify
+
+Example `walletnotify` line::
+
+    walletnotify=redis-cli publish bitcoind_walletnotify_pubsub %self
+
+To install Redis on bitcoind server::
+
+    apt-get install redis-server redis-tools
+
+.. warning::
+
+    The Redis authenticated connection is not encrypted. Use VPN or SSH tunnel to connect Redis over Internet.
+
+Options
+-------
+
+:param class: Always ``cryptoassets.core.backend.rediswalletnotify.RedisWalletNotifyHandler``
+
+:param host: IP/domain where Redis is running, default is ``localhost``.
+
+:param port: TCP/IP port Redis is listetning to
+
+:param db: Redis database number
+
+:param username: optional username
+
+:param password: optional password
+
+:param channel: Name of Redis pubsub channel where we write transaction txids, default ``bitcoind_walletnotify_pubsub``
+"""
+
 import logging
 import threading
 import time
@@ -11,46 +54,10 @@ logger = logging.getLogger(__name__)
 
 
 class RedisWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
-    """Post Bitcoind walletnotifys over authenticated Redis connection.
+    """Post Bitcoind walletnotifys over authenticated Redis connection."""
 
-    1. Connects to a Redis database over authenticated conneciton
-
-    2. Opens a pubsub connection to a specific channel
-
-    3. bitcoind walletnofify writes notifies to this channel using ``redis-cli`` command line tool
-
-    4. This thread reads pubsub channel, triggers the service logic on upcoming notify
-
-    .. warning::
-
-        The Redis connection is not encrypted
-
-    Example `walletnotify` line::
-
-        walletnotify=redis-cli publish bitcoind_walletnotify_pubsub %self
-
-    To install Redis on bitcoind server::
-
-        apt-get install redis-server redis-tools
-
-    """
-
-    def __init__(self, transaction_updater, host, port=6379, password=None, db=0, channel="bitcoind_walletnotify_pubsub"):
+    def __init__(self, transaction_updater, host="localhost", port=6379, password=None, db=0, channel="bitcoind_walletnotify_pubsub"):
         """Configure a HTTP wallet notify handler server.
-
-        :param transaction_updater: Instance of :py:class:`cryptoassets.core.backend.bitcoind.TransactionUpdater` or None
-
-        :param host: IP/domain to connect
-
-        :param port: TCP/IP port Redis is listetning to
-
-        :param db: Redis database number
-
-        :param username: optional username
-
-        :param password: optional password
-
-        :param channel: Name of Redis pubsub channel where we write transaction txids
         """
 
         self.host = host

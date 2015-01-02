@@ -1,17 +1,46 @@
-"""Named pipe incoming transaction notification handler.
+"""Named pipes can be used to send incoming transactions notifications from locally installed cryptoassets daemons, namely *bitcoind* likes.
 
-Handle incoming tx status as reading from named UNIX pipes.
+Cryptoassets helper service creates `a name unix pipe <https://en.wikipedia.org/wiki/Named_pipe>`_.
 
-This is more flexible than running a shell command, as you can do in-process handling of incoming transactions, making it suitable for unit testing and such.
+Bitcoind or similar writes the transaction id to this pipe when updates are available for the transaction.
+
+Named pipes are little bit more flexible than running a shell command, as you can do in-process handling of incoming transactions in a background thread, making it suitable for unit testing and such.
+
+Example configuration::
+
+    # Locally running bitcoind in testnet
+    coins:
+        btc:
+            backend:
+                class: cryptoassets.core.backend.bitcoind.Bitcoind
+                url: http://foo:bar@127.0.0.1:8332/
+                walletnotify:
+                    class: cryptoassets.core.backend.pipewalletnotify.PipedWalletNotifyHandler
+                    fname: /tmp/cryptoassets-walletnotify-pipe
+
+And corresponding ``bitcoind.conf``::
+
+    walletnotify=echo $1 >> /tmp/cryptoassets--walletnotify-pipe
+
+Please note that you might want to use ``timeout`` (``gtimeout`` on OSX) to prevent bad behavior in the case cryptoassets helper service is unable to read from the time. Thus, incoming transaction notifications are discarded after certain timeout::
+
+    walletnotify=gtimeout --kill-after=10 5 /bin/bash -c "echo $1 >> /tmp/cryptoassets-unittest-walletnotify-pipe"
+
+Options
+---------
+
+:param class: Always ``cryptoassets.core.backend.pipewalletnotify.PipedWalletNotifyHandler``
+
+:param fname: Filename where the pipe is opened. Please note that any existing filename which same name is removed.
+
+:param mode: Unix file mode for the created pipe.
 """
 
 import os
 import logging
 import fcntl
 import time
-import transaction
 import threading
-import datetime
 
 from .base import IncomingTransactionRunnable
 

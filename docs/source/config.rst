@@ -12,7 +12,9 @@ Introduction
 Creating application object and configuring it
 ================================================
 
-Most of interaction with *cryptoassets.core* is done through :py:class`cryptoassets.core.app.CryptoAssetsApp` application object. Create one singleton instance within your application::
+Most of interaction with *cryptoassets.core* is done through :py:class:`cryptoassets.core.app.CryptoAssetsApp` application object. Create one singleton instance within your application:
+
+.. highlight:: python
 
     from cryptoassets.core.app import CryptoAssetsApp
 
@@ -21,7 +23,9 @@ Most of interaction with *cryptoassets.core* is done through :py:class`cryptoass
 Configuring using YAML configuration file
 --------------------------------------------------------
 
-Use :py:method:`cryptoassets.configuration.Configuraror.load_yaml_file` to load `YAML syntax <http://en.wikipedia.org/wiki/YAML>`_ config file::
+Use :py:method:`cryptoassets.configuration.Configuraror.load_yaml_file` to load `YAML syntax <http://en.wikipedia.org/wiki/YAML>`_ config file:
+
+.. highlight:: python
 
     from cryptoassets.core.app import CryptoAssetsApp
     from cryptoassets.core.configuration import Configurator
@@ -32,11 +36,17 @@ Use :py:method:`cryptoassets.configuration.Configuraror.load_yaml_file` to load 
     configurer = Configurator(assets_app)
     configurer.load_yaml_file("my-cryptoassets-settings.yaml")
 
+Example YAML configuration file:
+
+.. literalinclude:: example.config.yaml
+    :language: yaml
+
 Configuring using Python dict
 ------------------------------------------
 
-You can give your settings as Python dictionary::
+You can give your settings as Python dictionary:
 
+.. highlight:: python
 
     CRYPTOASSETS_SETTINGS = {
 
@@ -141,13 +151,34 @@ Available backends.
 walletnotify
 ++++++++++++++
 
-Wallet notify configuration tells how *cryptoassets helper service* should receive wallet updates from the cryptoassets backend (*bitcoind*, API service).
+Wallet notify configuration tells how :doc:`cryptoassets helper service <:/service> receives cryptoasset transaction updates from the cryptoassets backend (bitcoind, API service). Unless this is configured, cryptoassets service or your application won't know about incoming transactions.
+
+Usually you must configure your backend to send notifications to cryptoassets helper service e.g. by editing ``bitcoin.conf`` and entering ``walletnotify`` configure setting.
+
+Example configuration for receiving walletnotify notifications over a named UNIX pipe::
+
+    backend:
+        class: cryptoassets.core.backend.bitcoind.Bitcoind
+        url: http://foo:bar@127.0.0.1:8332/
+        walletnotify:
+            class: cryptoassets.core.backend.pipewalletnotify.PipedWalletNotifyHandler
+            fname: /tmp/cryptoassets-unittest-walletnotify
+
 
 Named UNIX pipe
-++++++++++++++++
+~~~~~~~~~~~~~~~~~
+
+.. automodule:: cryptoassets.core.backend.pipewalletnotify
 
 HTTP webhook
-++++++++++++++++
+~~~~~~~~~~~~~~~~~
+
+.. automodule:: cryptoassets.core.backend.httpwalletnotify
+
+Redis pubsub
+~~~~~~~~~~~~~~~~~
+
+.. automodule:: cryptoassets.core.backend.rediswalletnotify
 
 Event handling
 ---------------
