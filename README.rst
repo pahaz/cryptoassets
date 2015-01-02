@@ -31,7 +31,7 @@ Requirements and installation
 
 You need to install database support libraries separately, depending on which database you are using.
 
-See `Installation <>_.
+See `Installation <http://cryptoassetscore.readthedocs.org/en/latest/>`_.
 
 Getting started
 ---------------
@@ -92,6 +92,12 @@ You can integrate *cryptoassets.core* on
 * Flask
 
 ... and any other Python application where `SQLAlchemy can be run <http://www.sqlalchemy.org/>`_.
+
+
+Source
+--------
+
+The source can be browsed at `Bitbucket <https://bitbucket.org/miohtama/cryptoassets/src>`_.
 
 License
 ----------
