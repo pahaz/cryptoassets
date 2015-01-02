@@ -6,7 +6,7 @@ from collections import Counter
 
 from sqlalchemy.orm.exc import ConcurrentModificationError
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import DBAPIError
 
 
 UNSUPPORTED_DATABASE = "Seems like we might know how to support serializable transactions for this database. We don't know or it is untested. Thus, the reliability of the service may suffer. See transaction documentation for the details."
