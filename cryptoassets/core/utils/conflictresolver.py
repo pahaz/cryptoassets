@@ -6,6 +6,7 @@ from collections import Counter
 
 from sqlalchemy.orm.exc import ConcurrentModificationError
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError
 
 
 UNSUPPORTED_DATABASE = "Seems like we might know how to support serializable transactions for this database. We don't know or it is untested. Thus, the reliability of the service may suffer. See transaction documentation for the details."
@@ -72,7 +73,9 @@ class ConflictResolver:
         :param e: Python Exception instance
         """
 
-        if not isinstance(e, OperationalError):
+        # TODO: OpertionalError raised locally, DBAPIError on Drone.IO
+        # What's difference between these two SQL set ups?
+        if not isinstance(e, (OperationalError, DBAPIError)):
             # Not an SQLAlchemy exception
             return False
 

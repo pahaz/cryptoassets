@@ -67,31 +67,35 @@ class RedisWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
 
     def run(self):
 
-        # TODO: Add reconnecting on error
-        self.running = True
+        try:
+            # TODO: Add reconnecting on error
+            self.running = True
 
-        client = redis.StrictRedis(host=self.host, port=self.port, db=self.db, password=self.password)
-        pubsub = client.pubsub()
-        pubsub.subscribe(self.channel)
+            client = redis.StrictRedis(host=self.host, port=self.port, db=self.db, password=self.password)
+            pubsub = client.pubsub()
+            pubsub.subscribe(self.channel)
 
-        while self.running:
+            while self.running:
 
-            try:
-                message = pubsub.get_message()
-                if message and message["type"] == "message":
-                    txid = message.get("data")
-                    txid = txid.decode("utf-8")
-                    self.handle_tx_update(txid)
-                else:
-                    time.sleep(1.0)
+                try:
+                    message = pubsub.get_message()
+                    if message and message["type"] == "message":
+                        txid = message.get("data")
+                        txid = txid.decode("utf-8")
+                        self.handle_tx_update(txid)
+                    else:
+                        time.sleep(1.0)
 
-            except Exception as e:
-                pubsub.close()
-                logger.error("Redis pubsub listening aborted")
-                logger.exception(e)
-                break
+                except Exception as e:
+                    pubsub.close()
+                    logger.error("Redis pubsub listening aborted")
+                    logger.exception(e)
+                    break
 
-        pubsub.close()
+            pubsub.close()
+        except Exception as e:
+            logger.error("Redis could not connect/close")
+            logger.exception(e)
 
     def stop(self):
         self.running = False

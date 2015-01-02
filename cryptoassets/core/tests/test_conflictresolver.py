@@ -50,8 +50,8 @@ class ConflictThread(threading.Thread):
 
     def run(self):
 
+        session = self.session_factory()
         try:
-            session = self.session_factory()
 
             # Both threads modify the same wallet simultaneously
             w = session.query(TestModel).get(1)
@@ -63,6 +63,7 @@ class ConflictThread(threading.Thread):
             session.commit()
         except Exception as e:
             self.failure = e
+            session.rollback()
 
 
 class ConflictResolverThread(threading.Thread):
@@ -155,7 +156,7 @@ class PostgreSQLConflictResolverTestCase(unittest.TestCase):
         #  'UPDATE btc_wallet SET updated_at=%(updated_at)s, balance=%(balance)s WHERE btc_wallet.id = %(btc_wallet_id)s' {'btc_wallet_id': 1, 'balance': Decimal('11.00000000'), 'updated_at': datetime.datetime(2014, 12, 18, 1, 53, 58, 583219)}
         failure = t1.failure or t2.failure or None
         self.assertIsNotNone(failure)
-        self.assertTrue(ConflictResolver.is_retryable_exception(failure))
+        self.assertTrue(ConflictResolver.is_retryable_exception(failure), "Got exception {}".format(failure))
 
     def test_conflict_resolved(self):
         """Use conflict resolver to resolve conflict between two transactions."""
