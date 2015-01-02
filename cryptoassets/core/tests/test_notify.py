@@ -160,7 +160,7 @@ class HTTPNotificationTestCase(unittest.TestCase):
 
             # Wait until walletnotifier has set up the named pipe
             deadline = time.time() + 3
-            while not self.server.running:
+            while not server.running:
                 time.sleep(0.1)
                 self.assertLess(time.time(), deadline, "TestServer never become ready")
 

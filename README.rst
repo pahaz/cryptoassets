@@ -93,6 +93,11 @@ You can integrate *cryptoassets.core* on
 
 ... and any other Python application where `SQLAlchemy can be run <http://www.sqlalchemy.org/>`_.
 
+License
+----------
+
+`MIT <http://opensource.org/licenses/MIT>`_
+
 Documentation
 ---------------
 

@@ -4,4 +4,5 @@ Sphinx==1.2.3
 docutils==0.12
 mock==1.0.1
 pytest==2.6.4
-rainbow-logging-handler==2.2.2
+pytest-cov==1.8.1
+
