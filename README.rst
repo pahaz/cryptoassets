@@ -31,6 +31,8 @@ Requirements and installation
 
 You need to install database support libraries separately, depending on which database you are using.
 
+See `Installation <>_.
+
 Getting started
 ---------------
 
@@ -65,12 +67,12 @@ Databases
 
 `For the full list see SQLAlchemy dialects documentation <http://docs.sqlalchemy.org/en/rel_0_9/dialects/index.html>`_.
 
-Protocols, daemons and API services
+Daemons and wallet service support
 ++++++++++++++++++++++++++++++++++++++
 
-``cryptoassets.core`` can operate with a cryptocurrency daemon or third party API service.
+*cryptoassets.core* can operate with a cryptocurrency daemon or third party API service.
 
-Example daemons and service include:
+Example daemons and services include:
 
 * *bitcoind* and bitcoind-compatible altcoins (Dogecoin, Litecoin, etc.)
 
@@ -78,10 +80,10 @@ Example daemons and service include:
 
 * `blockchain.info <http://blockchain.info>`_ (Bitcoin)
 
-Python frameworks
-++++++++++++++++++++
+Python frameworks support
++++++++++++++++++++++++++++
 
-You can integrate ``cryptoassets.core`` on
+You can integrate *cryptoassets.core* on
 
 * Pyramid
 

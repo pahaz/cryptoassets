@@ -121,10 +121,12 @@ class TestServer(threading.Thread):
         threading.Thread.__init__(self)
         self.daemon = True
         self.httpd = None
+        self.running = False
 
     def run(self):
         server_address = ('127.0.0.1', 10000)
         self.httpd = HTTPServer(server_address, DummyHandler)
+        self.running = True
         self.httpd.serve_forever()
 
     def stop(self):
@@ -155,10 +157,16 @@ class HTTPNotificationTestCase(unittest.TestCase):
         server = TestServer()
         try:
             server.start()
+
+            # Wait until walletnotifier has set up the named pipe
+            deadline = time.time() + 3
+            while not self.server.running:
+                time.sleep(0.1)
+                self.assertLess(time.time(), deadline, "TestServer never become ready")
+
             notifiers.notify("foobar", {"test": "abc"})
         finally:
             server.stop()
 
         # We did 1 succesful HTTP request
         self.assertEqual(DummyHandler.counter, 1)
-
