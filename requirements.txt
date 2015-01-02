@@ -20,3 +20,6 @@ zope.deprecation==4.1.1
 zope.sqlalchemy==0.7.5
 zope.dottedname==4.0.1
 rainbow-logging-handler==2.2.2
+
+# pytz==2014.10
+# tzlocal==1.1.2

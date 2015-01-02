@@ -47,16 +47,17 @@ class StatusReportGenerator:
     Output some useful status information when called from command line with ``curl``.
     """
 
-    def __init__(self, service):
+    def __init__(self, service, conflict_resolver):
         self.service = service
+        self.conflict_resolver = conflict_resolver
 
     def accounts(self, output):
         """Dump all account data. """
+
         t = TableCreator(output)
 
-        session = self.service.app.open_readonly_session()
-
-        try:
+        @self.conflict_resolver.managed_transaction
+        def tx(session):
             t.open("Currency", "id", "name", "balance", "address count", "received tx count", "sent tx count")
             for coin_name, coin in self.service.app.coins.all():
                 Account = coin.account_model
@@ -67,15 +68,13 @@ class StatusReportGenerator:
                     output.flush()
             t.close()
 
-        finally:
-            session.close()
+        tx()
 
     def transactions(self, output):
         c = TableCreator(output)
 
-        session = self.service.app.open_readonly_session()
-
-        try:
+        @self.conflict_resolver.managed_transaction
+        def tx(session):
             c.open("Currency", "id", "txid", "state", "amount", "label", "confirmations", "created_at", "credited_at", "processed_at", "wallet", "sending account", "receiving account")
             for coin_name, coin in self.service.app.coins.all():
                 Transaction = coin.transaction_model
@@ -87,15 +86,13 @@ class StatusReportGenerator:
                     output.flush()
             c.close()
 
-        finally:
-            session.close()
+        tx()
 
     def addresses(self, output):
         t = TableCreator(output)
 
-        session = self.service.app.open_readonly_session()
-
-        try:
+        @self.conflict_resolver.managed_transaction
+        def tx(session):
             t.open("Currency", "id", "address", "account_id", "name", "balance")
             for coin_name, coin in self.service.app.coins.all():
                 Address = coin.address_model
@@ -106,15 +103,14 @@ class StatusReportGenerator:
                     output.flush()
             t.close()
 
-        finally:
-            session.close()
+        tx()
 
     def wallets(self, output):
         t = TableCreator(output)
 
-        session = self.service.app.open_readonly_session()
+        @self.conflict_resolver.managed_transaction
+        def tx(session):
 
-        try:
             t.open("Currency", "id", "accounts", "balance")
             for coin_name, coin in self.service.app.coins.all():
                 Wallet = coin.wallet_model
@@ -125,8 +121,7 @@ class StatusReportGenerator:
                     output.flush()
             t.close()
 
-        finally:
-            session.close()
+        tx()
 
     def index(self, output):
         """Return plaintext status output."""
@@ -134,17 +129,26 @@ class StatusReportGenerator:
 
         t = TableCreator(output)
 
-        t.open("coin", "alive", "hot wallet", "last incoming tx notification", "last broadcast", "backend last success", "backend error count")
-        for coin, runnable in service.incoming_transaction_runnables.items():
-            backend = self.service.app.coins.get(coin).backend
-            hot_wallet_balance = backend.get_backend_balance()
-            alive = runnable.is_alive()
-            last_notification = runnable.transaction_updater.last_wallet_notify
-            t.row(coin, alive, hot_wallet_balance, last_notification, "TODO", "TODO", "TODO")
+        @self.conflict_resolver.managed_transaction
+        def tx(session):
 
-        t.close()
+            t.open("coin", "alive", "hot wallet", "last incoming tx notification", "last broadcast", "backend last success", "backend error count")
+            for coin, runnable in service.incoming_transaction_runnables.items():
+                backend = self.service.app.coins.get(coin).backend
+                try:
+                    hot_wallet_balance = backend.get_backend_balance()
+                except Exception as e:
+                    hot_wallet_balance = "Error: {}".format(e)
 
-        print("<p>Last transaction broadcast (UTC): {}</p>".format(service.last_broadcast), file=output)
+                alive = runnable.is_alive()
+                last_notification = runnable.transaction_updater.last_wallet_notify
+                t.row(coin, alive, hot_wallet_balance, last_notification, "TODO", "TODO", "TODO")
+
+            t.close()
+
+            print("<p>Last transaction broadcast (UTC): {}</p>".format(service.last_broadcast), file=output)
+
+        tx()
 
 
 class StatusHTTPServer(threading.Thread):

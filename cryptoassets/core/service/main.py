@@ -97,7 +97,7 @@ class Service:
         The server is previously set up by ``configure`` module.We need just to pass the status report generator of this service to it before starting it up.
         """
         if self.status_server:
-            report_generator = status.StatusReportGenerator(self)
+            report_generator = status.StatusReportGenerator(self, self.app.conflict_resolver)
             logger.info("Starting status server %s with report generators %s", self.status_server, report_generator)
             self.status_server.start(report_generator)
 

@@ -104,7 +104,7 @@ class CryptoAssetsApp:
 
         TODO
         """
-        return self.session
+        raise NotImplementedError()
 
     def create_tables(self):
         """Create database tables.

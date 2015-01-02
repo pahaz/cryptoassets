@@ -97,12 +97,14 @@ First create a receiving address under ``bitcoind`` accounting account ``cryptoa
 Write down the *result*.
 
 
-TESTNET faucet
+Testnet faucet
 ++++++++++++++++
 
-Get TESTNET coins from here:
+Get Testnet coins from here:
 
 http://tpfaucet.appspot.com/
+
+(`Alternative testnet faucets <http://bitcoin.stackexchange.com/questions/17690/is-there-any-where-to-get-free-testnet-bitcoins>`_.)
 
 Send them to the receiving address you created.
 
