@@ -97,7 +97,7 @@ class SimpleHTTPEventListenerThread(threading.Thread):
             # XXX: More explicitly pass this around?
             self.httpd.func = func
         except OSError as e:
-            raise RuntimeError("Could not start cryptoassets server HTTP event listener at {}:{}".format(self.ip, self.port)) from e
+            raise RuntimeError("Could not start cryptoassets server HTTP event listener at {}:{}".format(ip, port)) from e
 
         self.running = False
 

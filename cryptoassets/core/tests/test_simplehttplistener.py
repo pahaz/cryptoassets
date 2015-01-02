@@ -27,7 +27,7 @@ class SimpleHTTPEventListenerTestCase(unittest.TestCase):
             "notify": {
                 "test_script": {
                     "class": "cryptoassets.core.notify.http.HTTPNotifier",
-                    "url": "http://localhost:10000"
+                    "url": "http://localhost:10001"
                 }
             }
         }
@@ -46,7 +46,7 @@ class SimpleHTTPEventListenerTestCase(unittest.TestCase):
                 time.sleep(0.1)
                 self.assertLess(time.time(), deadline, "Event capture HTTP server never woke up")
 
-            requests.post("http://localhost:10000", {
+            requests.post("http://localhost:10001", {
                 "event_name": "myfoobar",
                 "data": '{"foo":"bar"}',
                 })

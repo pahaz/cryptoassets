@@ -22,7 +22,7 @@ Contents:
    backends
    coins
    api/index
-   extending
+   extend
    integrity
    develop
 
