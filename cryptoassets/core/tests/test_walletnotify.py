@@ -14,6 +14,7 @@ from ..backend.rediswalletnotify import RedisWalletNotifyHandler
 
 from . import testlogging
 from . import testwarnings
+from . import danglingthreads
 
 WALLETNOTIFY_PIPE = "/tmp/cryptoassets-unittest-walletnotify-pipe"
 
@@ -25,6 +26,9 @@ class WalletNotifyTestCase(unittest.TestCase):
     def setUp(self):
         testlogging.setup()
         testwarnings.begone()
+
+    def tearDown(self):
+        danglingthreads.check_dangling_threads()
 
     def test_piped_walletnotify(self):
         """Check that we receive txids through the named pipe."""

@@ -19,6 +19,8 @@ from ..configure import Configurator
 
 from . import testlogging
 from . import testwarnings
+from . import danglingthreads
+
 
 testlogging.setup()
 
@@ -50,6 +52,9 @@ class ScriptNotificationTestCase(unittest.TestCase):
 
         st = os.stat(SAMPLE_SCRIPT_PATH)
         os.chmod(SAMPLE_SCRIPT_PATH, st.st_mode | stat.S_IEXEC)
+
+    def tearDown(self):
+        danglingthreads.check_dangling_threads()
 
     def test_notify(self):
         """ Do a succesful notification test.
@@ -85,6 +90,9 @@ class PythonNotificationTestCase(unittest.TestCase):
     def setUp(self):
         self.app = CryptoAssetsApp([Subsystem.notifiers])
         self.configurator = Configurator(self.app)
+
+    def tearDown(self):
+        danglingthreads.check_dangling_threads()
 
     def test_notify(self):
         """ Do a succesful notification test.
@@ -141,6 +149,9 @@ class HTTPNotificationTestCase(unittest.TestCase):
     def setUp(self):
         self.app = CryptoAssetsApp([Subsystem.notifiers])
         self.configurator = Configurator(self.app)
+
+    def tearDown(self):
+        danglingthreads.check_dangling_threads()
 
     def test_notify(self):
         """ Do a succesful notification test.

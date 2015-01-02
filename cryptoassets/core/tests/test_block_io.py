@@ -10,6 +10,7 @@ from ..models import _now
 
 from .base import CoinTestCase
 from .base import has_inet
+from . import danglingthreads
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,8 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         incoming_transactions_runnable = getattr(self, "incoming_transactions_runnable", None)
         if incoming_transactions_runnable:
             incoming_transactions_runnable.stop()
+
+        danglingthreads.check_dangling_threads()
 
     def setup_coin(self):
 
