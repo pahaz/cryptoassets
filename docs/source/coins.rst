@@ -1,5 +1,5 @@
 ================================
-Coin support
+Cryptocurrency and asset support
 ================================
 
 .. contents:: :local:

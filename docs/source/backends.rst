@@ -1,5 +1,5 @@
 ==========================================
-Protocol and API backends
+Daemons and API services support
 ==========================================
 
 .. contents:: :local:
