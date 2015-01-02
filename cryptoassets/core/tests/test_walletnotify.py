@@ -110,6 +110,7 @@ class WalletNotifyTestCase(unittest.TestCase):
                 while self.walletnotify_server.message_count == 0:
                     time.sleep(0.1)
                     self.assertTrue(self.walletnotify_server.running)
+                    self.assertTrue(self.walletnotify_server.is_alive())
                     self.assertLess(time.time(), deadline, "RedisWalletNotifyHandler did not get any messages")
 
                 mock_method.assert_called_with("faketransactionid")

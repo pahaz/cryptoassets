@@ -102,6 +102,8 @@ class RedisWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
                     logger.exception(e)
                     break
 
+            self.running = False
+
             pubsub.close()
         except Exception as e:
             logger.error("Redis could not connect/close")
