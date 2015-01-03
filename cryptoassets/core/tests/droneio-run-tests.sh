@@ -43,7 +43,7 @@ set -e
 
 # Run tests using py.test test runner
 echo "Running tests"
-venv/bin/py.test-3.4 cryptoassets
+venv/bin/py.test-3.4 --timeout=300 cryptoassets
 echo "Done with tests"
 
 # Shutdown SSH tunnel
