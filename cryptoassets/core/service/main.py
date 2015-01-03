@@ -160,7 +160,7 @@ class Service:
         """Scan through all bitcoind transactions, see if we missed some through walletnotify."""
         for name, coin in self.app.coins.all():
             logger.info("Scanning through all transactions for %s", name)
-            tx_updater = coin.backend.create_transaction_updater(self.app.session, self.app.notifiers)
+            tx_updater = coin.backend.create_transaction_updater(self.app.conflict_resolver, self.app.notifiers)
             transaction_manager = transaction.manager
             tx_updater.rescan_all(transaction_manager)
 
