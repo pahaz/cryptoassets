@@ -33,9 +33,6 @@ from ..notify.registry import NotifierRegistry
 logger = logging.getLogger(__name__)
 
 
-TIMEOUT = 10
-
-
 class BitcoindJSONError(Exception):
     pass
 
@@ -47,17 +44,18 @@ class BitcoindDerivate(CoinBackend):
 class Bitcoind(BitcoindDerivate):
     """Backend for the original bitcoind (BTC) itself."""
 
-    def __init__(self, coin, url, walletnotify=None):
+    def __init__(self, coin, url, walletnotify=None, timeout=15):
         """
         :param coin: cryptoassets.core.coin.registry.Coin instacne
         :param url: bitcoind connection url
         :param wallet_notify: Wallet notify configuration
+        :param timeout: How many seconds wait for the daemon to reply
         """
 
         assert isinstance(coin, Coin)
 
         self.url = url
-        self.bitcoind = AuthServiceProxy(url, timeout=TIMEOUT)
+        self.bitcoind = AuthServiceProxy(url, timeout=int(timeout))
         self.coin = coin
         self.default_confirmations = 3
 
