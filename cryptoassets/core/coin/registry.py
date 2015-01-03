@@ -49,7 +49,7 @@ class Coin:
 
         Subclass of :py:class:`cryptoassets.core.models.GenericWallet`.
         """
-        return self._wallet_model.Account
+        return self._wallet_model
 
 
 class CoinRegistry:

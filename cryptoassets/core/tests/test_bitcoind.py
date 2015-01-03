@@ -195,9 +195,13 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
     def test_open_transactions(self):
         """Test that we get confirmation count increase.
 
+        We stress out ``tools.opentransactions`` functionality. See CoinBackend base class for comments.
+
         This test will take > 15 minutes to run.
 
-        We stress out ``tools.opentransactions`` functionality. See CoinBackend base class for comments.
+        Bitcoin testnet block rate is SLOW and we need to wait at least 2 blocks.
+
+        http://blockexplorer.com/testnet
         """
 
         self.Transaction.confirmation_count = 3
@@ -238,7 +242,8 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
             # Wait until backend notifies us the transaction has been received
             logger.info("Monitoring receiving address {} on wallet {}".format(receiving_address.address, wallet.id))
 
-        deadline = time.time() + self.external_receiving_timeout
+        # Testnet seem to take confirmations up to 60 minutes... le fuu the shitcoin
+        deadline = time.time() + 60 * 60
 
         while time.time() < deadline:
 

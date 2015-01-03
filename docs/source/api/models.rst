@@ -44,6 +44,13 @@ Cryptoasset registry
 .. automodule:: cryptoassets.core.coin.registry
  :members:
 
+Default models
+----------------
+
+.. automodule:: cryptoassets.core.coin.defaults
+ :members:
+
+
 Model classes
 ---------------
 

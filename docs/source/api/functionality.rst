@@ -7,7 +7,7 @@ Tools and asset management
 Importing existing wallet
 --------------------------
 
-.. automodule:: cryptoassets.core.walletimport
+.. automodule:: cryptoassets.core.tools.walletimport
  :members:
 
 Incoming transaction confirmation count updates

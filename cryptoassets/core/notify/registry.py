@@ -28,7 +28,7 @@ class NotifierRegistry:
         self.registry.clear()
 
     def notify(self, event_name, data):
-        """
+        """Post an event to all listeners.
         """
         handlers = self.get_all()
         for instance in handlers:

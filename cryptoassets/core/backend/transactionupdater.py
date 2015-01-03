@@ -13,18 +13,26 @@ logger = logging.getLogger(__name__)
 
 
 class TransactionUpdater:
-    """Write transactions updates from API/backend to the database.
+    """TransactionUpdater write transactions updates from API/backend to the database.
 
-    The backend has hooked up some kind of wallet notify handler. The wallet notify handler uses TransactionUpdater to write updates of incoming transactoins to the database. TransactionUpdater is also responsible to fire any notification handlers to signal the cryptoassets client application to handle new transactions.
+    TransactionUpdater uses :py:class:`cryptoassets.core.utils.conflictresolver.ConflictResolver` database transaction helper when updating transactions. This gives us guarantees that updates having possible db transaction conflicts are gracefully handled.
 
-    :param coin: :py:class:`cryptoasets.core.coin.registry.Coin` instance
+    The backend has hooked up some kind of wallet notify handler. The wallet notify handler uses TransactionUpdater to write updates of incoming transactoins to the database.
 
-    :param notifiers: :py:class`cryptoassets.core.notify.registry.NotifierRegistry` instance
+    TransactionUpdater is also responsible to fire any notification handlers to signal the cryptoassets client application to handle new transactions.
+
+    TransactionUpdater is generally run inside :py:class:`cryptoassets.core.service.main.Server` process, as this process is responsible for all incoming transaction updates. No web or other front end should try to make their own updates.
     """
 
     def __init__(self, conflict_resolver, backend, coin, notifiers):
         """
-        :param session: SQLAlchemy database session
+        :param conflict_resolver: :py:class:`cryptoassets.core.utils.conflictresolver.ConflictResolver`
+
+        :param backend: :py:class:`cryptoasets.core.backend.base.CoinBackend` instance
+
+        :param coin: :py:class:`cryptoasets.core.coin.registry.Coin` instance
+
+        :param notifiers: :py:class`cryptoassets.core.notify.registry.NotifierRegistry` instance
         """
         assert isinstance(coin, Coin)
         assert isinstance(conflict_resolver, ConflictResolver)
@@ -47,14 +55,24 @@ class TransactionUpdater:
             self.notifiers = None
 
     def handle_address_receive(self, txid, address, amount, confirmations):
-        """Handle an incoming transaction which adds balance on our address.
+        """Handle an incoming transaction update to a single address.
 
-        :return: tuple (Transaction id, credited) for the Transaction object created/updated related to external txid
+        TODO: confirmations is relevant for mined coins only. Abstract it away here.
+
+        We received an update regarding cryptocurrency transaction ``txid``. This may be a new transaction we have not seen before or an existing transaction. If the transaction confirmation count is exceeded, the transaction is also marked as credited and account who this address belongs balance is topped up.
+
+        ``handle_address_receive`` will write the updated data to the database. Relevant event handlers are fired (self.notifiers).
+
+        Note that a single cryptocurrency transaction may contain updates to several addresses or several received sections to a single address.
+
+        :return: tuple (Transaction id, boolean credited) for the Transaction object created/updated related to external txid
         """
 
         transaction_id = None
         account_id = None
         credited = False
+
+        assert amount > 0
 
         # Pass confirmations in the extra transaction details
         extra = dict(confirmations=confirmations)
@@ -68,19 +86,24 @@ class TransactionUpdater:
 
             if address_obj:
                 wallet = address_obj.account.wallet
+
+                # Credit the account
                 account, transaction = wallet.receive(txid, address, amount, extra)
+
                 confirmations = transaction.confirmations
+
                 logger.info("Wallet notify account %d, address %s, amount %s, tx confirmations %d", account.id, address, amount, confirmations)
 
-                # This will cause transaction instance to get transaction.id
+                # This will cause Transaction instance to get transaction.id
                 session.flush()
 
-                return account.id, transaction.id, transaction.credited_at is not None
+                return account.id, transaction.id, (transaction.credited_at is not None)
 
             else:
                 logger.info("Skipping transaction notify for unknown address %s, amount %s", address, amount)
                 return None, None, None
 
+        # Write db entry
         account_id, transaction_id, credited = handle_account_update()
 
         # Tranasactipn is committed in this point, notify the application about the new data in the database
@@ -96,10 +119,11 @@ class TransactionUpdater:
             return None, False
 
     def handle_wallet_notify(self, txid):
-        """Incoming walletnotify event from bitcoind.
-        :param txid: Bitcoin network transaction hash
+        """Handle incoming wallet notifications.
 
-        :param transaction_manager: Transaction manager instance which will be used to isolate each transaction update commit
+        Fetch transaction info from the backend and update all receiving addresses we are managing within that transaction.
+
+        :param txid: Network transaction hash
         """
         self.last_wallet_notify = datetime.datetime.utcnow()
 
@@ -113,12 +137,9 @@ class TransactionUpdater:
         for detail in txdata["details"]:
             if detail["category"] == "receive":
                 addresses[detail["address"]] += self.backend.to_internal_amount(detail["amount"])
-        # See which address our wallet knows about
-        # wallet = self.session.query(self.wallet_class).get(self.wallet_id)
-        # if not wallet:
-        #     raise RuntimeError("Transaction updater could not find wallet with wallet id {}".format(self.wallet_id))
-        #
-        #
+
+        # TODO: Filter out address updates which are not managed by our database
+
         confirmations = txdata["confirmations"]
 
         for address, amount in addresses.items():

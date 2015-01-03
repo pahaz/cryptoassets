@@ -19,9 +19,15 @@ logger = logging.getLogger(__name__)
 
 def get_open_incoming_txs(session, Transaction, confirmation_threshold):
     """Get list of ids of transactions we need to check."""
+
+    txdata = {}
+
     txs = session.query(Transaction).filter(Transaction.confirmations < confirmation_threshold)
     for tx in txs:
-        yield tx.id, tx.txid, tx.confirmations
+        # We need to key by transaction id + address because one transaction can send to several addresses
+        txdata[(tx.txid, tx.address.address)] = dict(id=tx.id, txid=tx.txid, address=tx.address, amount=tx.amount, confirmations=tx.confirmations)
+
+    return txdata
 
 
 def rescan(transaction_updater, confirmation_threshold):
@@ -45,7 +51,7 @@ def rescan(transaction_updater, confirmation_threshold):
 
     @transaction_updater.conflict_resolver.managed_transaction
     def get_open_txs(session):
-        return list(get_open_incoming_txs(session, Transaction, confirmation_threshold))
+        return get_open_incoming_txs(session, Transaction, confirmation_threshold)
 
     tx_ids = get_open_txs()
 
@@ -54,16 +60,22 @@ def rescan(transaction_updater, confirmation_threshold):
 
     logger.info("Starting open transaction scan, coin:%s open transactions: %d", coin.name, len(tx_ids))
 
-    for id, txid, confirmations in tx_ids:
-        logger.debug("Polling updates for txid %s", txid)
+    for txid_address, tx_existing_data in tx_ids.items():
+
+        txid, address = txid_address
+
         txdata = backend.get_incoming_transaction_info(txid)
 
-        if txdata["confirmations"] != confirmations:
-            tx_updates += 1
+        logger.debug("Polling updates for txid + address pair %s, confirmations now %d", txid_address, tx_existing_data["confirmations"])
+
+        if txdata["confirmations"] != tx_existing_data["confirmations"]:
 
             logger.debug("Tx confirmation update details %s", txdata)
 
-            assert txdata["confirmations"] > confirmations, "We cannot go backwards in confirmations. Had {}, got {} confirmations".format(confirmations, txdata["confirmations"])
+            assert txdata["confirmations"] > tx_existing_data["confirmations"], "We cannot go backwards in confirmations. Had {}, got {} confirmations".format(tx_existing_data["confirmations"], txdata["confirmations"])
+
+            # Count how many total bitcoins this transaction contains to this specific address. By the protocol you might have several receive entries for the same address in the same transaction
+            total = 0
 
             # This transaction has new confirmations
             for detail in txdata["details"]:
@@ -72,9 +84,24 @@ def rescan(transaction_updater, confirmation_threshold):
                     # Don't crash when we are self-sending into back to our wallet
                     continue
 
-                # XXX: Assume backend converted this for us
-                amount = detail["amount"]
-                address = detail["address"]
-                transaction_updater.handle_address_receive(txid, address, amount, confirmations)
+                if detail["address"] == address:
+                    # This transaction contained sends to some other addresses too, not just us
+                    assert detail["amount"] > 0
+                    total += detail["amount"]
+
+            if total == 0:
+                # Txid data from the backend did not contain address we had recorded in the database.
+                # "Never should happen" - probably somebody playing tricks with no confirmation transactions
+                logger.error("We had recorded that txid %s has transfer to address %s, but backend transaction tells otherwise. Txdata: %s", txid, address, txdata)
+                continue
+
+            # XXX: Assume backend converted this for us
+            # and amount should never change
+            assert total == tx_existing_data["amount"]
+
+            transaction_updater.handle_address_receive(txid, address, total, txdata["confirmations"])
+
+            # We have matched the txid + address part and updated the transaction correctly
+            tx_updates += 1
 
     return tx_updates

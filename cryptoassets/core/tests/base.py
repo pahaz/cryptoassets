@@ -21,7 +21,7 @@ from ..models import SameAccount
 from ..app import CryptoAssetsApp
 from ..app import Subsystem
 from ..configure import Configurator
-from .. import walletimport
+from ..tools import walletimport
 
 from . import testlogging
 from . import testwarnings

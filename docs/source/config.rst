@@ -150,10 +150,20 @@ backend
 
 Installed backends.
 
-For the available options see :doc:`backends list <./backends>`_.
+For the available backends see :doc:`backends list <./backends>`_.
+
+Each backend contains the following options
+
+:param class: tells which backend we are going to use
+
+:param walletnofiy: tells what kind of incoming transaction notifications we have from the backend
+
+:param max_tracked_incoming_confirmations: This applications for mined coins and backends which do not actively post confirmations updates. It tells up to how many confirmations we poll the backend for confirmation updates. For details see :py:mod:`cryptoassets.core.tools.opentransactions`.
+
+:param other: All backends take connection details (url, IPs) and credentials (passwords, API keys, etc.) These options are backend specific, so see the details from the backend documentation.
 
 walletnotify
-++++++++++++++
+~~~~~~~~~~~~~~~~~
 
 Wallet notify configuration tells how :doc:`cryptoassets helper service <./service> receives cryptoasset transaction updates from the cryptoassets backend (bitcoind, API service). Unless this is configured, cryptoassets service or your application won't know about incoming transactions.
 
@@ -172,17 +182,17 @@ Example configuration for receiving walletnotify notifications over a named UNIX
 
 
 Named UNIX pipe
-~~~~~~~~~~~~~~~~~
+++++++++++++++++++
 
 .. automodule:: cryptoassets.core.backend.pipewalletnotify
 
 HTTP webhook
-~~~~~~~~~~~~~~~~~
+++++++++++++++++++
 
 .. automodule:: cryptoassets.core.backend.httpwalletnotify
 
 Redis pubsub
-~~~~~~~~~~~~~~~~~
+++++++++++++++++++
 
 .. automodule:: cryptoassets.core.backend.rediswalletnotify
 

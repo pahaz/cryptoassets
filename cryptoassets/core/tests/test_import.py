@@ -6,7 +6,7 @@ from ..app import CryptoAssetsApp
 from ..configure import Configurator
 
 from . import testwarnings
-from .. import walletimport
+from ..tools import walletimport
 
 
 class ImportBalanceTestCase(unittest.TestCase):

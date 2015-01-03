@@ -31,4 +31,8 @@ blockchain.info
 
 .. automodule:: cryptoassets.core.backend.blockchain
 
+null
+-----------------
+
+.. automodule:: cryptoassets.core.backend.null
 

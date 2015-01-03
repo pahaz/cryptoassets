@@ -14,3 +14,9 @@ Backend base class
 
 .. automodule:: cryptoassets.core.backend.base
  :members:
+
+Transaction updater
+------------------------------
+
+.. automodule:: cryptoassets.core.backend.transactionpudater
+ :members:

@@ -30,3 +30,6 @@ class DummyCoinBackend(base.CoinBackend):
 
     def setup_incoming_transactions(self, dbsession):
         pass
+
+    def require_tracking_incoming_confirmations(self):
+        return False
