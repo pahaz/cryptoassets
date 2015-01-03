@@ -126,6 +126,12 @@ class GenericAccount(TableName, Base, CoinBackend):
 class GenericAddress(TableName, Base):
     """ The base class for cryptocurrency addresses.
 
+    The address can represent a
+
+    * Receiving address in our system. In this case we have **account** set to non-NULL.
+
+    * External address outside our system. In this **account** is set to NULL. This address has been referred in outgoing broadcast (XXX: subject to change)
+
     We can know about receiving addresses which are addresses without our system where somebody can deposit cryptocurrency. We also know about outgoing addresses where somebody has sent cryptocurrency from our system. For outgoing addresses ``wallet`` reference is null.
 
     """
@@ -157,6 +163,9 @@ class GenericAddress(TableName, Base):
     @declared_attr
     def account_id(cls):
         return Column(Integer, ForeignKey('{}_account.id'.format(cls.coin)))
+
+    def is_internal(self):
+        return self.account is not None
 
     #: If account is set to nul then this is an external address
     @declared_attr
@@ -497,7 +506,10 @@ class GenericWallet(TableName, Base, CoinBackend):
         assert type(receiving_address) == str
         assert isinstance(amount, Decimal)
 
-        internal_receiving_address = session.query(self.Address).filter(self.Address.address == receiving_address).first()
+        Address = self.Address
+
+        internal_receiving_address = session.query(Address).filter(Address.address == receiving_address, Address.account != None).first()  # noqa
+
         if internal_receiving_address and not force_external:
             to_account = internal_receiving_address.account
             return self.send_internal(from_account, to_account, amount, label)
@@ -628,6 +640,9 @@ class GenericWallet(TableName, Base, CoinBackend):
         :param amount: The amount to transfer in wallet book keeping unit
         """
         session = Session.object_session(self)
+
+        assert from_account
+        assert to_account
 
         assert from_account.wallet == self
         assert to_account.wallet == self
