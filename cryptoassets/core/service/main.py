@@ -147,13 +147,20 @@ class Service:
                 broadcast_tx(wallet_id)
 
     def scan_open_transactions(self):
-        """Scan incoming open transactions."""
+        """Scan incoming open transactions.
 
+        :return: Number of rescans attempted
+        """
+
+        rescans = 0
         for name, coin in self.app.coins.all():
             if coin.backend.require_tracking_incoming_confirmations():
                 max_tracked_incoming_confirmations = coin.backend.max_tracked_incoming_confirmations
-                tx_updater = coin.backend.create_transaction_updater(self.app.session, self.app.notifiers)
+                tx_updater = coin.backend.create_transaction_updater(self.app.conflict_resolver, self.app.notifiers)
                 opentransactions.rescan(tx_updater, max_tracked_incoming_confirmations)
+                rescans += 1
+
+        return rescans
 
     def rescan(self):
         """Scan through all bitcoind transactions, see if we missed some through walletnotify."""

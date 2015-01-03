@@ -124,3 +124,18 @@ class ServiceTestCase(unittest.TestCase):
         finally:
 
             service.shutdown()
+
+    def test_scan_open_transactions(self):
+        """See that the service broadcasts transactions when created."""
+
+        config = self.prepare_config()
+
+        self.service = service = Service(config, ALL_SUBSYSTEMS)
+        self.service.setup_session()
+
+        try:
+            service.start()
+            count = service.scan_open_transactions()
+            self.assertEqual(count, 1)
+        finally:
+            service.shutdown()
