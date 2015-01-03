@@ -101,7 +101,12 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         # Withdrawal amounts must be at least 0.00002000 BTCTEST, and at most 50.00000000 BTCTEST.
         self.external_send_amount = Decimal("21000") / Decimal(10**8)
-        self.network_fee = Decimal("10000") / Decimal(10**8)
+
+        if "CI" in os.environ:
+            # TODO: Figure out why test bitcoind server doubled its network fees
+            self.network_fee = Decimal("20000") / Decimal(10**8)
+        else:
+            self.network_fee = Decimal("10000") / Decimal(10**8)
         # Wait 10 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 80 * 10
 
