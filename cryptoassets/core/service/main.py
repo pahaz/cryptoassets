@@ -1,7 +1,6 @@
-"""A cryptoassets helper service.
+"""Cryptoassets helper service is a standalone process managing cryptoasset backend connections and transaction updates.
 
-Manages asynchronous tasks for sending and receiving cryptocurrency
-over various APIs. This includes
+Manages asynchronous tasks for sending and receiving cryptocurrency over various APIs. This includes
 
 * Broadcasting transactions to the cryptocurrency network asynchronously
 
@@ -22,6 +21,9 @@ from ..app import Subsystem
 from ..configure import Configurator
 from ..backend.base import IncomingTransactionRunnable
 from ..coin.registry import Coin
+
+from ..tools import opentransactions
+
 from . import status
 from . import defaultlogging
 
@@ -35,10 +37,7 @@ def splash_version():
 
 
 class Service:
-    """Main cryptoassets helper service.
-
-    You can launch this as a command line job, or wrap this to be started through your Python framework (e.g. Django)
-    """
+    """Main cryptoassets helper service. """
     def __init__(self, config, subsystems=[Subsystem.database, Subsystem.backend]):
         """
         :param config: cryptoassets configuration dictionary
@@ -90,6 +89,7 @@ class Service:
         logger.info("Setting up broadcast scheduled job")
         self.scheduler = BackgroundScheduler()
         self.broadcast_job = self.scheduler.add_job(self.broadcast, 'interval', minutes=2)
+        self.open_transaction_job = self.scheduler.add_job(self.rescan, 'interval', minutes=1)
 
     def start_status_server(self):
         """Start the status server on HTTP.
@@ -146,6 +146,15 @@ class Service:
                     logger.info("%d transactionsn send", outgoing)
 
                 broadcast_tx(wallet_id)
+
+    def scan_open_transactions(self):
+        """Scan incoming open transactions."""
+
+        for name, coin in self.app.coins.all():
+            if coin.backend.require_tracking_incoming_confirmations():
+                max_tracked_incoming_confirmations = coin.backend.max_tracked_incoming_confirmations
+                tx_updater = coin.backend.create_transaction_updater(self.app.session, self.app.notifiers)
+                opentransactions.rescan(tx_updater, max_tracked_incoming_confirmations)
 
     def rescan(self):
         """Scan through all bitcoind transactions, see if we missed some through walletnotify."""

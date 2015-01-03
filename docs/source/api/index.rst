@@ -15,4 +15,6 @@ Contents:
    config
    events
    functionality
+   service
+   backend
    utils

@@ -97,9 +97,6 @@ class TransactionUpdater:
 
     def handle_wallet_notify(self, txid):
         """Incoming walletnotify event from bitcoind.
-
-        TODO: This is bitcoind specific code. Move to its own module?
-
         :param txid: Bitcoin network transaction hash
 
         :param transaction_manager: Transaction manager instance which will be used to isolate each transaction update commit

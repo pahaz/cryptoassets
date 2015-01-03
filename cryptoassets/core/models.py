@@ -299,7 +299,7 @@ class GenericTransaction(TableName, Base):
         return True
 
     def __str__(self):
-        return "TX id:%d state:%s txid:%s sending:%d receiving:%d".format(self.id, self.state, self.txid, self.sending_account, self.receiving_account)
+        return "TX id:{} state:{} txid:{} sending acco:{} receiving acco:{}".format(self.id, self.state, self.txid, self.sending_account and self.sending_account.id, self.receiving_account and self.receiving_account.id)
 
 
 class GenericConfirmationTransaction(GenericTransaction):
@@ -310,6 +310,8 @@ class GenericConfirmationTransaction(GenericTransaction):
     #: How many miner confirmations this tx has received
     confirmations = Column(Integer)
 
+    #: How many confirmations to wait until the transaction is set as confirmed.
+    #: TODO: Make this configurable.
     confirmation_count = 3
 
     def can_be_confirmed(self):

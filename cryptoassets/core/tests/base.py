@@ -54,7 +54,7 @@ def has_local_bitcoind():
 
 def is_slow_test_hostile():
     """Use this to disable some tests in CI enviroment where 15 minute deadline applies."""
-    return "CI" in os.environ
+    return "CI" in os.environ or "SKIP_SLOW_TEST" in os.environ
 
 
 class CoinTestCase:

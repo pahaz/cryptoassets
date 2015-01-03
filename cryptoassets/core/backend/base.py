@@ -23,6 +23,22 @@ class CoinBackend(abc.ABC):
     The accounting amounts are in the integer amounts defined  by the datbase models, e.g. satoshis for Bitcoin. If the backend supplies amounts in different unit, they most be converted  forth and back by the backend. For the example, see :py:class:`cryptoassets.core.backend.blockio`.
     """
 
+    def __init__(self):
+        #: If ``track_incoming_confirmations`` is set to true, this is how many confirmations we track for each incoming transactions until we consider it "closed". Please note that this is API will most likely be changed in the future and this variable move to somewhere else.
+        #: The variable is set by ``Configurator.setup_backend``.
+        max_tracked_incoming_confirmations = None
+
+    @abc.abstractmethod
+    def require_tracking_incoming_confirmations(self):
+        """Does this backend need to have some help to get incoming transaction confirmations tracked.
+
+        Some daemons and walletnotify methods, namely bitcoind, only notify us back the first occurence of an incoming transactions. If we want to receive further confirmations from the transaction, we need to manually poll the transactions where our confirmation threshold is not yet met.
+
+        Set this to true and the cryptoassets helper service will start a background job (:py:mod:`cryptoassets.core.tools.opentransactions` to keep receiving updates about the confirmations).
+
+        :return: True or False
+        """
+
     @abc.abstractmethod
     def create_address(self, label):
         """ Create a new receiving address.

@@ -1,5 +1,5 @@
 ================================
-Configuration
+Configuration and setup
 ================================
 
 .. contents:: :local:

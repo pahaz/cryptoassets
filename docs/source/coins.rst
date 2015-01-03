@@ -50,5 +50,5 @@ Supported backends:
 
 * applebyted (bitcoind-like)
 
-.. automodule:: cryptoassets.core.coin.dogecoin.models
+.. automodule:: cryptoassets.core.coin.applebyte.models
     :members:

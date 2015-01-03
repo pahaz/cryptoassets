@@ -9,7 +9,7 @@ Base models describe how ``cryptoassets.core`` handles any cryptocurrency on the
 
 Models are abstract and when you instiate a new cryptocurrency,
 you inherit from the base classes and set the cryptocurrency specific properties.
-For details, see :doc:`coin documentation <./coins>`.
+For details, see :doc:`coin documentation <../coins>`.
 
 Example from `cryptoassets.core.coin.bitcoin``::
 
@@ -38,6 +38,11 @@ Example from `cryptoassets.core.coin.bitcoin``::
         Account = BitcoinAccount
         Transaction = BitcoinTransaction
 
+Cryptoasset registry
+----------------------
+
+.. automodule:: cryptoassets.core.coin.registry
+ :members:
 
 Model classes
 ---------------

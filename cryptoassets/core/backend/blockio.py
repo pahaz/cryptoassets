@@ -29,12 +29,18 @@ class BlockIo(CoinBackend):
         """
         :param wallet_notify: Wallet notify configuration
         """
+
+        CoinBackend.__init__(self)
+
         self.coin = coin
         self.block_io = _BlockIo(api_key, pin, 2)
         # self.lock_factory = lock_factory
         self.monitor = None
 
         self.walletnotify_config = walletnotify
+
+    def require_tracking_incoming_confirmations(self):
+        return True
 
     def to_internal_amount(self, amount):
         return Decimal(amount)

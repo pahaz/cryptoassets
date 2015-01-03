@@ -30,10 +30,14 @@ from .app import Subsystem
 
 
 class ConfigurationError(Exception):
-    pass
+    """ConfigurationError is thrown when the Configurator thinks somethink cannot make sense with the config data."""
 
 
 class Configurator:
+    """Read configuration data and set up Cryptoassets library.
+
+    Reads Python or YAML format config data and then setss :py:class:`cryptoassets.core.app.CryptoassetsApp` up and running  accordingly.
+    """
 
     def __init__(self, app):
         self.app = app
@@ -76,6 +80,9 @@ class Configurator:
         klass = data.pop("class")
         data["coin"] = coin
         provider = resolve(klass)
+
+        max_tracked_incoming_confirmations = data.pop("max_tracked_incoming_confirmations", 15)
+
         # Pass given configuration options to the backend as is
         try:
             instance = provider(**data)
@@ -86,6 +93,9 @@ class Configurator:
             raise ConfigurationError("Could not initialize backend {} with options {}".format(klass, data)) from te
 
         assert isinstance(instance, CoinBackend)
+
+        instance.max_tracked_incoming_confirmations = max_tracked_incoming_confirmations
+
         return instance
 
     def setup_model(self, module):
@@ -131,7 +141,9 @@ class Configurator:
                 raise ConfigurationError("No backend config given for {}".format(name))
 
             coin = Coin(wallet_model)
+
             backend = self.setup_backend(coin, data.get("backend"))
+
             coin.backend = backend
 
             coin_registry.register(name, coin)
@@ -141,7 +153,7 @@ class Configurator:
     def setup_notify(self, notifiers):
         """Read notification settings.
 
-        Example notifier format:
+        Example notifier format::
 
             {
                 "shell": {
@@ -149,6 +161,7 @@ class Configurator:
                     "script": "/usr/bin/local/new-payment.sh"
                 }
             }
+
         """
 
         # Do not enable notifiers

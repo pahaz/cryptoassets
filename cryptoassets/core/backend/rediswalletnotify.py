@@ -38,7 +38,7 @@ Options
 
 :param password: optional password
 
-:param channel: Name of Redis pubsub channel where we write transaction txids, default ``bitcoind_walletnotify_pubsub`
+:param channel: Name of Redis pubsub channel where we write transaction txids, default ``bitcoind_walletnotify_pubsub``
 """
 
 import logging

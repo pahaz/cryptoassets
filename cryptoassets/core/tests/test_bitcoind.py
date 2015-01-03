@@ -6,18 +6,25 @@ import os
 import time
 import unittest
 import subprocess
-import transaction
 from decimal import Decimal
+import logging
+
+import pytest
 
 from ..backend.bitcoind import TransactionUpdater
+from ..tools import opentransactions
 
 from ..backend.pipewalletnotify import PipedWalletNotifyHandler
 from .base import CoinTestCase
 from .base import has_local_bitcoind
+from .base import is_slow_test_hostile
 
 from . import danglingthreads
 
 WALLETNOTIFY_PIPE = "/tmp/cryptoassets-unittest-walletnotify-pipe"
+
+
+logger = logging.getLogger(__name__)
 
 
 class BitcoindTestCase(CoinTestCase, unittest.TestCase):
@@ -183,3 +190,80 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
             self.assertEqual(account.balance, Decimal("1.2"))
 
         self.walletnotify_pipe.stop()
+
+    @pytest.mark.skipif(is_slow_test_hostile(), reason="Running send + receive loop may take > 20 minutes")
+    def test_open_transactions(self):
+        """Test that we get confirmation count increase.
+
+        This test will take > 15 minutes to run.
+
+        We stress out ``tools.opentransactions`` functionality. See CoinBackend base class for comments.
+        """
+
+        self.Transaction.confirmation_count = 3
+
+        self.setup_balance()
+
+        with self.app.conflict_resolver.transaction() as session:
+
+            # Reload objects from db for this transaction
+            wallet = session.query(self.Wallet).get(1)
+            account = session.query(self.Account).get(1)
+
+            # Create account for receiving the tx
+            receiving_account = wallet.create_account("Test receiving account {}".format(time.time()))
+            session.flush()
+            receiving_address = wallet.create_receiving_address(receiving_account, "Test receiving address {}".format(time.time()))
+
+            self.setup_receiving(wallet)
+
+        # Commit new receiveing address to the database
+
+        with self.app.conflict_resolver.transaction() as session:
+            self.wait_receiving_address_ready(wallet, receiving_address)
+
+            # Make sure we don't have any balance beforehand
+            receiving_account = session.query(self.Account).get(receiving_account.id)
+            self.assertEqual(receiving_account.balance, 0, "Receiving account got some balance already before sending")
+
+            logger.info("Sending from account %d to %s amount %f", account.id, receiving_address.address, self.external_send_amount)
+            tx = wallet.send(account, receiving_address.address, self.external_send_amount, "Test send", force_external=True)
+            session.flush()
+
+            broadcasted_count = wallet.broadcast()
+
+            self.assertEqual(broadcasted_count, 1)
+            receiving_address_id = receiving_address.id
+
+            # Wait until backend notifies us the transaction has been received
+            logger.info("Monitoring receiving address {} on wallet {}".format(receiving_address.address, wallet.id))
+
+        deadline = time.time() + self.external_receiving_timeout
+
+        while time.time() < deadline:
+
+            time.sleep(30)
+
+            opentransactions.rescan(self.transaction_updater, 3)
+
+            # Don't hold db locked for an extended perior
+            with self.app.conflict_resolver.transaction() as session:
+                wallet = session.query(self.Wallet).get(1)
+                address = session.query(wallet.Address).get(receiving_address_id)
+                account = address.account
+                txs = wallet.get_external_received_transactions()
+
+                logger.info("Checking out addr {} incoming txs {}".format(address.address, txs.count()))
+                for tx in txs:
+                    logger.debug(tx)
+
+                # The transaction is confirmed and the account is credited
+                # and we have no longer pending incoming transaction
+                if txs.count() > 0:
+                    assert txs.count() < 2
+                    tx = txs[0]
+                    if tx.confirmations >= 2:
+                        # We got more than 1 confirmation, good, we are counting!
+                        break
+
+            self.assertLess(time.time(), deadline, "Never got confirmations update through")

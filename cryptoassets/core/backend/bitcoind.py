@@ -69,6 +69,12 @@ class Bitcoind(BitcoindDerivate):
 
         self.walletnotify_config = walletnotify
 
+        self.track_incoming_confirmations = True
+        self.max_tracked_incoming_confirmations = 99
+
+    def require_tracking_incoming_confirmations(self):
+        return True
+
     def to_internal_amount(self, amount):
         return Decimal(amount)
 
@@ -181,6 +187,9 @@ class Bitcoind(BitcoindDerivate):
 
     def get_transaction(self, txid):
         """ """
+        return self.api_call("gettransaction", txid)
+
+    def get_incoming_transaction_info(self, txid):
         return self.api_call("gettransaction", txid)
 
     def get_lock(self, name):
