@@ -10,7 +10,6 @@ Manages asynchronous tasks for sending and receiving cryptocurrency over various
 import sys
 import datetime
 import logging
-import transaction
 import time
 
 import pkg_resources
@@ -89,7 +88,7 @@ class Service:
         logger.info("Setting up broadcast scheduled job")
         self.scheduler = BackgroundScheduler()
         self.broadcast_job = self.scheduler.add_job(self.broadcast, 'interval', minutes=2)
-        self.open_transaction_job = self.scheduler.add_job(self.rescan, 'interval', minutes=1)
+        self.open_transaction_job = self.scheduler.add_job(self.scan_open_transactions, 'interval', minutes=1)
 
     def start_status_server(self):
         """Start the status server on HTTP.
@@ -161,8 +160,7 @@ class Service:
         for name, coin in self.app.coins.all():
             logger.info("Scanning through all transactions for %s", name)
             tx_updater = coin.backend.create_transaction_updater(self.app.conflict_resolver, self.app.notifiers)
-            transaction_manager = transaction.manager
-            tx_updater.rescan_all(transaction_manager)
+            tx_updater.rescan_all()
 
     def start(self):
         """
