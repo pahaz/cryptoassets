@@ -28,18 +28,13 @@ class BlockChainAPIError(Exception):
 
 
 class BlockChain:
-    """ """
+    """XXX: Unsupported"""
 
-    def __init__(self, identifier, password, lock_factory):
+    def __init__(self, identifier, password):
         """
         """
         self.identifier = identifier
         self.password = password
-        self.lock_factory = lock_factory
-
-    def get_lock(self, name):
-        """ Create a named lock to protect the operation. """
-        return self.lock_factory(name)
 
     def create_address(self, label):
         params = {

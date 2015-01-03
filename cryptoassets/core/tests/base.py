@@ -25,6 +25,7 @@ from ..tools import walletimport
 
 from . import testlogging
 from . import testwarnings
+from . import danglingthreads
 
 
 logger = logging.getLogger(__name__)
@@ -116,6 +117,10 @@ class CoinTestCase:
     def teardown_receiving(self):
         """Teardown incoming transaction monitoring."""
 
+    def tearDown(self):
+        self.teardown_receiving()
+        danglingthreads.check_dangling_threads()
+
     @abc.abstractmethod
     def setup_coin(self):
         """Setup coin backend for this test case."""
@@ -139,9 +144,6 @@ class CoinTestCase:
             account = session.query(self.Account).get(1)
             wallet = session.query(self.Wallet).get(1)
             self.assertGreater(account.balance, 0, "We need have some balance on the unit test wallet to proceed with the send test")
-
-    def tearDown(self):
-        pass
 
     def test_create_address(self):
         """ Creates a new wallet and fresh bitcoin address there. """

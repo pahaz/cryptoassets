@@ -19,9 +19,6 @@ class DummyCoinBackend(base.CoinBackend):
     def get_balances(self, addresses):
         pass
 
-    def get_lock(self, name):
-        pass
-
     def send(self, recipients):
         pass
 

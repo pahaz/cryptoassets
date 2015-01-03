@@ -54,10 +54,6 @@ class CoinBackend(abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_lock(self, name):
-        """ Create a named lock to protect the operation. """
-
-    @abc.abstractmethod
     def send(self, recipients):
         """Broadcast outgoing transaction.
 

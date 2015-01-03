@@ -19,8 +19,6 @@ from .base import CoinTestCase
 from .base import has_local_bitcoind
 from .base import is_slow_test_hostile
 
-from . import danglingthreads
-
 WALLETNOTIFY_PIPE = "/tmp/cryptoassets-unittest-walletnotify-pipe"
 
 
@@ -75,8 +73,6 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         walletnotify_pipe = getattr(self, "walletnotify_pipe", None)
         if walletnotify_pipe:
             walletnotify_pipe.stop()
-
-        danglingthreads.check_dangling_threads()
 
     def setup_coin(self):
 

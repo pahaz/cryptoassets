@@ -192,10 +192,6 @@ class Bitcoind(BitcoindDerivate):
     def get_incoming_transaction_info(self, txid):
         return self.api_call("gettransaction", txid)
 
-    def get_lock(self, name):
-        """ Create a named lock to protect the operation. """
-        raise NotImplementedError()
-
     def send(self, recipients, label):
         """ Broadcast outgoing transaction.
 

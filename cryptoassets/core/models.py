@@ -28,8 +28,6 @@ from sqlalchemy.orm.session import Session
 from sqlalchemy.schema import UniqueConstraint
 from zope.sqlalchemy import ZopeTransactionExtension
 
-from . import lock
-
 # Create a thread-local DB session constructor
 DBSession = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 
@@ -38,10 +36,6 @@ Base = declarative_base()
 
 def _now():
     return datetime.datetime.utcnow()
-
-
-def _get_lock(name):
-    return lock.get_or_create_lock(name)
 
 
 class NotEnoughAccountBalance(Exception):
@@ -127,13 +121,6 @@ class GenericAccount(TableName, Base, CoinBackend):
     @declared_attr
     def wallet(cls):
         return relationship(cls._wallet_cls_name, backref="accounts")
-
-    def lock(self):
-        """ Get a lock context manager to protect operations targeting this account.
-
-        This lock must be acquired for all operations touching the balance.
-        """
-        return _get_lock("{}_account_lock_{}".format(self.coin, self.id))
 
 
 class GenericAddress(TableName, Base):
@@ -364,6 +351,19 @@ class GenericWallet(TableName, Base, CoinBackend):
         self.balance = 0
 
     @classmethod
+    def get_by_id(cls, session, wallet_id):
+        """Returns an existing wallet instance by its id.
+
+        :return: Wallet instance
+        """
+
+        assert wallet_id
+        assert type(wallet_id) == int
+
+        instance = session.query(cls).get(wallet_id)
+        return instance
+
+    @classmethod
     def get_or_create_by_name(cls, name, session):
         """Returns a new or existing instance of a named wallet.
 
@@ -381,14 +381,6 @@ class GenericWallet(TableName, Base, CoinBackend):
             session.add(instance)
 
         return instance
-
-    def lock(self):
-        """ Get a lock context manager to protect operations targeting this account.
-
-        This lock must be acquired for all operations touching the wallet balance,
-        or adding a new address.
-        """
-        return _get_lock("{}_wallet_lock_{}".format(self.coin, self.id))
 
     def create_account(self, name):
         """Create a new account inside this wallet.
@@ -448,21 +440,20 @@ class GenericWallet(TableName, Base, CoinBackend):
         assert label
         assert account.id
 
-        with self.lock():
+        _address = self.backend.create_address(label=label)
 
-            _address = self.backend.create_address(label=label)
+        address = self.Address()
+        address.address = _address
+        address.account = account
+        address.label = label
+        address.wallet = self
 
-            address = self.Address()
-            address.address = _address
-            address.account = account
-            address.label = label
-            address.wallet = self
+        session.add(address)
 
-            session.add(address)
+        # Make sure the address is written to db before we can make any entires of received transaction on it in monitoring
+        session.flush()
 
-            # Make sure the address is written to db before we can make any entires of received transaction on it in monitoring
-            session.flush()
-
+        # XXX: Need to get rid of this
         self.backend.monitor_address(address)
 
         return address
@@ -615,18 +606,17 @@ class GenericWallet(TableName, Base, CoinBackend):
         assert session
         assert account.wallet == self
 
-        with account.lock():
-            addresses = session.query(self.Address).filter(self.Address.account == account).values("address")
+        addresses = session.query(self.Address).filter(self.Address.account == account).values("address")
 
-            total_balance = 0
+        total_balance = 0
 
-            # The backend might do exists checks using in operator
-            # to this, we cannot pass generator, thus list()
-            for address, balance in self.backend.get_balances(list(item.address for item in addresses)):
-                total_balance += balance
-                session.query(self.Address).filter(self.Address.address == address).update({"balance": balance})
+        # The backend might do exists checks using in operator
+        # to this, we cannot pass generator, thus list()
+        for address, balance in self.backend.get_balances(list(item.address for item in addresses)):
+            total_balance += balance
+            session.query(self.Address).filter(self.Address.address == address).update({"balance": balance})
 
-            account.balance = total_balance
+        account.balance = total_balance
 
     def send_internal(self, from_account, to_account, amount, label, allow_negative_balance=False):
         """ Tranfer currency internally between the accounts of this wallet.
@@ -649,23 +639,21 @@ class GenericWallet(TableName, Base, CoinBackend):
         if from_account.id == to_account.id:
             raise SameAccount("Trying to do internal transfer on account id {}".format(from_account.id))
 
-        with from_account.lock(), to_account.lock():
+        if not allow_negative_balance:
+            if from_account.balance < amount:
+                raise NotEnoughAccountBalance()
 
-            if not allow_negative_balance:
-                if from_account.balance < amount:
-                    raise NotEnoughAccountBalance()
+        transaction = self.Transaction()
+        transaction.sending_account = from_account
+        transaction.receiving_account = to_account
+        transaction.amount = amount
+        transaction.wallet = self
+        transaction.credited_at = _now()
+        transaction.label = label
+        session.add(transaction)
 
-            transaction = self.Transaction()
-            transaction.sending_account = from_account
-            transaction.receiving_account = to_account
-            transaction.amount = amount
-            transaction.wallet = self
-            transaction.credited_at = _now()
-            transaction.label = label
-            session.add(transaction)
-
-            from_account.balance -= amount
-            to_account.balance += amount
+        from_account.balance -= amount
+        to_account.balance += amount
 
         return transaction
 
@@ -684,27 +672,25 @@ class GenericWallet(TableName, Base, CoinBackend):
         assert session
         assert from_account.wallet == self
 
-        with from_account.lock(), self.lock():
+        # TODO: Currently we don't allow
+        # negative withdrawals on external sends
+        #
+        if from_account.balance < amount:
+            raise NotEnoughAccountBalance()
 
-            # TODO: Currently we don't allow
-            # negative withdrawals on external sends
-            #
-            if from_account.balance < amount:
-                raise NotEnoughAccountBalance()
+        _address = self.get_or_create_external_address(to_address)
 
-            _address = self.get_or_create_external_address(to_address)
+        transaction = self.Transaction()
+        transaction.sending_account = from_account
+        transaction.amount = amount
+        transaction.state = "pending"
+        transaction.wallet = self
+        transaction.address = _address
+        transaction.label = label
+        session.add(transaction)
 
-            transaction = self.Transaction()
-            transaction.sending_account = from_account
-            transaction.amount = amount
-            transaction.state = "pending"
-            transaction.wallet = self
-            transaction.address = _address
-            transaction.label = label
-            session.add(transaction)
-
-            from_account.balance -= amount
-            self.balance -= amount
+        from_account.balance -= amount
+        self.balance -= amount
 
         return transaction
 
@@ -722,22 +708,22 @@ class GenericWallet(TableName, Base, CoinBackend):
         # Get all outgoing pending transactions
         txs = session.query(self.Transaction).filter(self.Transaction.state == "pending", self.Transaction.receiving_account == None)  # noqa
 
-        broadcast_lock = _get_lock("{}_broadcast_lock".format(self.coin, self.id))
-        with broadcast_lock:
-            outgoing = Counter()
-            for tx in txs:
-                assert tx.address
-                assert tx.amount > 0
-                assert isinstance(tx.address, self.Address)
-                outgoing[tx.address.address] += tx.amount
+        # XXX: Rewrite
 
-            if outgoing:
-                txid, fee = self.backend.send(outgoing, "Cryptoassets tx {}".format(tx.id))
-                assert txid
-                txs.update(dict(state="broadcasted", processed_at=_now(), txid=txid))
+        outgoing = Counter()
+        for tx in txs:
+            assert tx.address
+            assert tx.amount > 0
+            assert isinstance(tx.address, self.Address)
+            outgoing[tx.address.address] += tx.amount
 
-                if fee:
-                    self.charge_network_fees(txs, txid, fee)
+        if outgoing:
+            txid, fee = self.backend.send(outgoing, "Cryptoassets tx {}".format(tx.id))
+            assert txid
+            txs.update(dict(state="broadcasted", processed_at=_now(), txid=txid))
+
+            if fee:
+                self.charge_network_fees(txs, txid, fee)
 
         return len(outgoing)
 
@@ -771,11 +757,8 @@ class GenericWallet(TableName, Base, CoinBackend):
         transaction.label = "Network fees for {}".format(txid)
         transaction.txid = txid
 
-        with fee_account.lock():
-            fee_account.balance -= fee
-
-        with self.lock():
-            self.balance -= fee
+        fee_account.balance -= fee
+        self.balance -= fee
 
         session.add(fee_account)
         session.add(transaction)

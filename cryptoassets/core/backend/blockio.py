@@ -34,7 +34,6 @@ class BlockIo(CoinBackend):
 
         self.coin = coin
         self.block_io = _BlockIo(api_key, pin, 2)
-        # self.lock_factory = lock_factory
         self.monitor = None
 
         self.walletnotify_config = walletnotify
@@ -104,10 +103,6 @@ class BlockIo(CoinBackend):
             return self.to_internal_amount(resp["data"]["pending_received_balance"])
         else:
             return self.to_internal_amount(resp["data"]["available_balance"])
-
-    def get_lock(self, name):
-        """ Create a named lock to protect the operation. """
-        return self.lock_factory(name)
 
     def send(self, recipients, label):
         """
