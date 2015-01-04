@@ -55,7 +55,8 @@ class Bitcoind(BitcoindDerivate):
         assert isinstance(coin, Coin)
 
         self.url = url
-        self.bitcoind = AuthServiceProxy(url, timeout=int(timeout))
+        self.timeout = int(timeout)
+        self.bitcoind = AuthServiceProxy(url, timeout=self.timeout)
         self.coin = coin
         self.default_confirmations = 3
 
@@ -105,7 +106,7 @@ class Bitcoind(BitcoindDerivate):
             #   File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/http/client.py", line 966, in putrequest
             #     raise CannotSendRequest(self.__state)
             # http.client.CannotSendRequest: Request-sent
-            self.bitcoind = AuthServiceProxy(self.url, timeout=TIMEOUT)
+            self.bitcoind = AuthServiceProxy(self.url, timeout=self.timeout)
             raise
         except JSONRPCException as e:
             msg = e.error.get("message")
