@@ -16,8 +16,6 @@ from .coin.defaults import COIN_MODEL_DEFAULTS
 from .coin.registry import Coin
 from .coin.registry import CoinRegistry
 
-from .models import GenericWallet
-
 from .backend.base import CoinBackend
 
 from .coin import registry as coin_registry
@@ -103,7 +101,7 @@ class Configurator:
 
         :param module: Python module defining SQLAlchemy models for a cryptocurrency
 
-        :return: GenericWallet instance
+        :return: :py:class:`cryptoassets.core.coin.registry.CoinModelDescription` instance
         """
         _engine = None
 
@@ -111,14 +109,11 @@ class Configurator:
         if not result:
             raise ConfigurationError("Could not resolve {}".format(module))
 
-        # TODO: Better method of resolving model mapping of coins
-        for obj_name in dir(result):
-            if obj_name.startswith("_"):
-                continue
-            obj = getattr(result, obj_name)
-            if inspect.isclass(obj):
-                if issubclass(obj, (GenericWallet,)):
-                    return obj
+        coin_description = getattr(result, "coin_description", None)
+        if not coin_description:
+            raise ConfigurationError("Module does not export coin_description attribute: {}".format(module))
+
+        return coin_description
 
     def setup_coins(self, coins):
 
@@ -134,13 +129,13 @@ class Configurator:
             if not models_module:
                 raise ConfigurationError("Don't know which SQLAlchemy model to use for coin {}.".format(name))
 
-            wallet_model = self.setup_model(models_module)
+            coin_description = self.setup_model(models_module)
 
             backend_config = data.get("backend")
             if not backend_config:
                 raise ConfigurationError("No backend config given for {}".format(name))
 
-            coin = Coin(wallet_model)
+            coin = Coin(coin_description)
 
             backend = self.setup_backend(coin, data.get("backend"))
 

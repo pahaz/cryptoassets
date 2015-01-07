@@ -57,13 +57,14 @@ class SameAccount(Exception):
 
 
 class TableName:
-    """Mix-in class to create database tables based on the coin name. """
+    """Mix-in class to create database tables based on the coin description. """
+
     @declared_attr
     def __tablename__(cls):
-        if not hasattr(cls, "coin"):
+        if not hasattr(cls, "coin_description"):
             # Abstract base class
             return None
-        return cls.__name__.lower()
+        return cls.coin_description.name()
 
 
 class CoinBackend:
@@ -73,7 +74,16 @@ class CoinBackend:
     backend = None
 
 
-class GenericAccount(TableName, Base, CoinBackend):
+class CoinDescriptionModel(Base):
+    """Base class for all cryptocurrency models."""
+
+    __abstract__ = True
+
+    #: Reference to :py:class:`cryptoassets.core.coin.registry.CoinDescription` which tells the relationships between this model and its counterparts in the system
+    coin_description = None
+
+
+class GenericAccount(CoinDescriptionModel, CoinBackend):
     """ An account within the wallet.
 
     We associate addresses and transactions to one account.
@@ -112,18 +122,18 @@ class GenericAccount(TableName, Base, CoinBackend):
 
     @declared_attr
     def __tablename__(cls):
-        return "{}_account".format(cls.coin)
+        return cls.coin_description.account_table_name
 
     @declared_attr
     def wallet_id(cls):
-        return Column(Integer, ForeignKey('{}_wallet.id'.format(cls.coin)))
+        return Column(Integer, ForeignKey('{}.id'.format(cls.coin_description.wallet_table_name)))
 
     @declared_attr
     def wallet(cls):
-        return relationship(cls._wallet_cls_name, backref="accounts")
+        return relationship(cls.coin_description.wallet_model_name, backref="accounts")
 
 
-class GenericAddress(TableName, Base):
+class GenericAddress(CoinDescriptionModel):
     """ The base class for cryptocurrency addresses.
 
     The address can represent a
@@ -158,11 +168,12 @@ class GenericAddress(TableName, Base):
 
     @declared_attr
     def __tablename__(cls):
-        return "{}_address".format(cls.coin)
+        return cls.coin_description.address_table_name
 
     @declared_attr
     def account_id(cls):
-        return Column(Integer, ForeignKey('{}_account.id'.format(cls.coin)))
+        assert cls.coin_description.account_table_name
+        return Column(Integer, ForeignKey(cls.coin_description.account_table_name))
 
     def is_internal(self):
         return self.account is not None
@@ -174,14 +185,15 @@ class GenericAddress(TableName, Base):
 
         NULL if this is an external address.
         """
-        return relationship(cls._account_cls_name, backref="addresses")
+        assert cls.coin_description.account_model_name
+        return relationship(cls.coin_description.account_model_name, backref="addresses")
 
     @declared_attr
     def __table_args__(cls):
         return (UniqueConstraint('account_id', 'address', name='_account_address_uc'),)
 
 
-class GenericTransaction(TableName, Base):
+class GenericTransaction(CoinDescriptionModel):
     """ A transaction between accounts, incoming transaction or outgoing transaction.
     """
     __abstract__ = True
@@ -227,31 +239,31 @@ class GenericTransaction(TableName, Base):
     #: Must be unique for each account
     label = Column(String(255), nullable=True)
 
-    #: Eternal transaction id associated with this transaction.
-    #: E.g. Bitcion transaction hash.
-    txid = Column(String(255), nullable=True)
-
     # Dynamically generated attributes based on the coin name
 
     @declared_attr
     def __tablename__(cls):
-        return "{}_transaction".format(cls.coin)
+        return cls.coin_description.transaction_table_name
 
     @declared_attr
     def address_id(cls):
-        return Column(Integer, ForeignKey('{}_address.id'.format(cls.coin)), nullable=True)
+        return Column(Integer, ForeignKey(cls.coin_description.address_model_name), nullable=True)
 
     @declared_attr
     def wallet_id(cls):
-        return Column(Integer, ForeignKey('{}_wallet.id'.format(cls.coin)), nullable=False)
+        return Column(Integer, ForeignKey(cls.coin_description.wallet_model_name), nullable=False)
 
     @declared_attr
     def sending_account_id(cls):
-        return Column(Integer, ForeignKey('{}_account.id'.format(cls.coin)))
+        return Column(Integer, ForeignKey(cls.coin_description.account_model_name))
 
     @declared_attr
     def receiving_account_id(cls):
-        return Column(Integer, ForeignKey('{}_account.id'.format(cls.coin)))
+        return Column(Integer, ForeignKey(cls.coin_description.account_model_name))
+
+    @declared_attr
+    def network_transaction_id(cls):
+        return Column(Integer, ForeignKey('{}.id'.format(cls.coin_description.network_transaction_model_name)))
 
     @declared_attr
     def address(cls):
@@ -263,31 +275,39 @@ class GenericTransaction(TableName, Base):
         For incoming transactions this is the Address object with the reference
         to the Account object who we credited for this transfer.
         """
-        return relationship(cls._address_cls_name,  # noqa
-            primaryjoin="{}.address_id == {}.id".format(cls.__name__, cls._address_cls_name),
+        return relationship(cls.coin_description.address_model_name,  # noqa
+            primaryjoin="{}.address_id == {}.id".format(cls.__name__, cls.coin_description.address_model_name),
             backref="addresses")
 
     @declared_attr
     def sending_account(cls):
         """ The account where the payment was made from.
         """
-        return relationship(cls._account_cls_name,  # noqa
-            primaryjoin="{}.sending_account_id == {}.id".format(cls.__name__, cls._account_cls_name),
+        return relationship(cls.coin_description.account_model_name,  # noqa
+            primaryjoin="{}.sending_account_id == {}.id".format(cls.__name__, cls.coin_description.account_model_name),
             backref="sent_transactions")
 
     @declared_attr
     def receiving_account(cls):
         """ The account which received the payment.
         """
-        return relationship(cls._account_cls_name,  # noqa
-            primaryjoin="{}.receiving_account_id == {}.id".format(cls.__name__, cls._account_cls_name),
+        return relationship(cls.coin_description.account_model_name,  # noqa
+            primaryjoin="{}.receiving_account_id == {}.id".format(cls.__name__, cls.coin_description.account_model_name),
             backref="received_transactions")
+
+    @declared_attr
+    def network_transaction(cls):
+        """Associated cryptocurrency network transaction.
+        """
+        return relationship(cls.coin_description.network_transaction_model_name,  # noqa
+            primaryjoin="{}.network_transaction_id == {}.id".format(cls.__name__, cls.coin_description.network_transaction_model_name),
+            backref="network_transactions")
 
     @declared_attr
     def wallet(cls):
         """ Which Wallet object contains this transaction.
         """
-        return relationship(cls._wallet_cls_name, backref="transactions")
+        return relationship(cls.coin_description.wallet_model_name, backref="transactions")
 
     def can_be_confirmed(self):
         """ Return if the transaction can be considered as final.
@@ -315,7 +335,7 @@ class GenericConfirmationTransaction(GenericTransaction):
         return self.confirmations >= self.confirmation_count
 
 
-class GenericWallet(TableName, Base, CoinBackend):
+class GenericWallet(CoinDescriptionModel, CoinBackend):
     """ A generic wallet implemetation.
 
     Inside the wallet there is a number of accounts.
@@ -343,18 +363,9 @@ class GenericWallet(TableName, Base, CoinBackend):
     #: NOTE: accuracy checked for Bitcoin only
     balance = Column(Numeric(21, 8))
 
-    #: Reference to the Address class used by this wallet
-    Address = None
-
-    #: Reference to the Transaction class used by this wallet
-    Transaction = None
-
-    #: Reference to the Account class used by this wallet
-    Account = None
-
     @declared_attr
     def __tablename__(cls):
-        return "{}_wallet".format(cls.coin)
+        return cls.coin_description.wallet_table_name
 
     def __init__(self):
         self.balance = 0
@@ -879,3 +890,68 @@ class GenericWallet(TableName, Base, CoinBackend):
         assert transactions.count() == 1
 
         transactions.update(dict(state="processed", processed_at=_now()))
+
+
+class GenericNetworkTransaction(CoinDescriptionModel):
+    """
+
+    Handling incoming transactions
+    ------------------------------------
+
+    xxxx
+
+    Broadcasting outgoing transactions
+    -------------------------------------
+
+
+    Broadcast constructs an network transaction and bundles any number of outgoing pending transactions to it. During the broadcast, one can freely bundle transactions together to lower the network fees, or mix transactions for additional privacy.
+
+    Broadcasts are constructed by Cryptoassets helper service which will periodically scan for outgoing transactions and construct broadcasts of them. After constructing, broadcasting is attempted. If the backend, for a reason or another, fails to make a broadcast then this broadcast is marked as open and must be manually vetted to succeeded or failed.
+
+    """
+
+    __abstract__ = True
+
+    #: Running counter used in foreign key references
+    id = Column(Integer, primary_key=True)
+
+    #: When this transaction become visible in our database
+    created_at = Column(DateTime, default=_now)
+
+    #: Network transaction has associated with this transaction.
+    #: E.g. Bitcoin transaction hash.
+    txid = Column(String(255), nullable=True)
+
+    #: Is this transaction incoming or outgoing from our system
+    transaction_type = Column(Enum('deposit', 'broadcast', name="network_transaction_type"))
+
+    state = Column(Enum('incoming', 'credited', 'pending', 'broadcasted', name="deposit_state"))
+
+    #: When broadcast was marked as outgoing
+    opened_at = Column(DateTime)
+
+    #: When broadcast was marked as sent
+    closed_at = Column(DateTime)
+
+    @declared_attr
+    def __tablename__(cls):
+        return cls.coin_description.network_transaction_table_name
+
+
+class GenericConfirmationNetworkTransaction(GenericNetworkTransaction):
+    """ Mined transaction which receives "confirmations" from miners in blockchain.
+    """
+    __abstract__ = True
+
+    #: How many miner confirmations this tx has received
+    confirmations = Column(Integer)
+
+    #: How many confirmations to wait until the transaction is set as confirmed.
+    #: TODO: Make this configurable.
+    confirmation_count = 3
+
+    def can_be_confirmed(self):
+        """ Does this transaction have enough confirmations it could be confirmed by our standards. """
+        return self.confirmations >= self.confirmation_count
+
+
