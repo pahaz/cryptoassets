@@ -2,6 +2,8 @@ import datetime
 from collections import Counter
 import logging
 
+from sqlalchemy.orm.session import Session
+
 from ..coin.registry import Coin
 from ..notify.registry import NotifierRegistry
 from ..notify import events
@@ -54,7 +56,10 @@ class TransactionUpdater:
         else:
             self.notifiers = None
 
-    def handle_address_receive(self, txid, address, amount, confirmations):
+        #: Diagnostics and bookkeeping statistics
+        self.stats = Counter(network_transaction_updates=0, deposit_update=0)
+
+    def _update_address_deposit(self, ntx, address, amount, confirmations):
         """Handle an incoming transaction update to a single address.
 
         TODO: confirmations is relevant for mined coins only. Abstract it away here.
@@ -68,55 +73,84 @@ class TransactionUpdater:
         :return: tuple (Transaction id, boolean credited) for the Transaction object created/updated related to external txid
         """
 
-        transaction_id = None
-        account_id = None
-        credited = False
-
         assert amount > 0
+
+        session = Session.object_session(ntx)
 
         # Pass confirmations in the extra transaction details
         extra = dict(confirmations=confirmations)
 
         Address = self.coin.address_model
 
-        @self.conflict_resolver.managed_transaction
-        def handle_account_update(session):
+        address_obj = session.query(Address).filter(Address.address == address).first()  # noqa
 
-            address_obj = session.query(Address).filter(Address.address == address).first()  # noqa
+        if address_obj:
+            wallet = address_obj.account.wallet
 
-            if address_obj:
-                wallet = address_obj.account.wallet
+            # Credit the account
+            account, transaction = wallet.deposit(ntx, address, amount, extra)
 
-                # Credit the account
-                account, transaction = wallet.receive(txid, address, amount, extra)
+            self.stats["deposit_updates"] += 1
 
-                confirmations = transaction.confirmations
+            confirmations = transaction.confirmations
 
-                logger.info("Wallet notify account %d, address %s, amount %s, tx confirmations %d", account.id, address, amount, confirmations)
+            logger.info("Wallet notify account %d, address %s, amount %s, tx confirmations %d", account.id, address, amount, confirmations)
 
-                # This will cause Transaction instance to get transaction.id
-                session.flush()
+            # This will cause Transaction instance to get transaction.id
+            session.flush()
 
-                return account.id, transaction.id, (transaction.credited_at is not None)
+            return account.id, transaction.id, (transaction.credited_at is not None)
 
-            else:
-                logger.info("Skipping transaction notify for unknown address %s, amount %s", address, amount)
-                return None, None, None
-
-        # Write db entry
-        account_id, transaction_id, credited = handle_account_update()
-
-        # Tranasactipn is committed in this point, notify the application about the new data in the database
-        if transaction_id:
-            notifier_count = len(self.notifiers.get_all()) if self.notifiers else 0
-            logger.info("Posting txupdate notify for %d notifiers", notifier_count)
-            if self.notifiers:
-                event_name, data = events.create_txupdate(txid=txid, transaction=transaction_id, account=account_id, address=address, amount=amount, confirmations=confirmations)
-                self.notifiers.notify(event_name, data)
-            return transaction_id, credited
         else:
-            logger.info("No transaction object was created")
-            return None, False
+            logger.info("Skipping transaction notify for unknown address %s, amount %s", address, amount)
+            return None, None, None
+
+    def update_incoming_network_transaction(self, txid, txdata):
+        """
+        :return: Tuple (network transaction id, bool credited)
+        """
+
+        @self.conflict_resolver.managed_transaction
+        def handle_incoming_tx(session):
+
+            txupdate_events = []
+
+            ntx = self.coin.coin_description.NetworkTransaction.get_or_create_deposit(session, txid)
+            session.flush()
+
+            if ntx.confirmations != txdata["confirmations"]:
+                logger.info("Updating network transaction %d, txid %s, confirmations to %s", ntx.id, ntx.txid, ntx.confirmations)
+                ntx.confirmations = txdata["confirmations"]
+
+            # Sum together received per address
+            addresses = Counter()  # address -> amount mapping
+            for detail in txdata["details"]:
+                if detail["category"] == "receive":
+                    addresses[detail["address"]] += self.backend.to_internal_amount(detail["amount"])
+
+            # TODO: Filter out address updates which are not managed by our database
+
+            confirmations = txdata["confirmations"]
+
+            for address, amount in addresses.items():
+                account_id, transaction_id, credited = self._update_address_deposit(ntx, address, amount, confirmations)
+                address = address
+                event_name, event = events.txupdate(network_transaction=ntx.id, txid=txid, transaction=transaction_id, account=account_id, address=address, amount=amount, confirmations=confirmations, credited=True)
+                txupdate_events.append(event)
+
+            self.stats["network_transaction_updates"] += 1
+
+            return ntx.id, txupdate_events
+
+        ntx_id, txupdate_events = handle_incoming_tx()
+
+        notifier_count = len(self.notifiers.get_all()) if self.notifiers else 0
+        logger.info("Posting txupdate notify for %d notifiers", notifier_count)
+        if self.notifiers:
+            for e in txupdate_events:
+                self.notifiers.notify("txupdate", e)
+
+        return ntx_id
 
     def handle_wallet_notify(self, txid):
         """Handle incoming wallet notifications.
@@ -128,24 +162,10 @@ class TransactionUpdater:
         self.last_wallet_notify = datetime.datetime.utcnow()
 
         txdata = self.backend.get_transaction(txid)
+        return self.update_incoming_network_transaction(txid, txdata)
 
         # ipdb> print(txdata)
         # {'blockhash': '00000000cb7b5d9fed3316cceec1af71b941b77ce0b0588c98a34f05bd292b6f', 'time': 1415201940, 'timereceived': 1416370475, 'details': [{'account': 'test', 'address': 'n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr', 'amount': Decimal('1.20000000'), 'category': 'receive'}], 'blockindex': 6, 'walletconflicts': [], 'amount': Decimal('1.20000000'), 'confirmations': 2848, 'txid': 'bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf', 'hex': '01000000017b0fedcafed339974e892f2a6da74e6e35789a60cf6efbf23b9059c346e33f32010000006b483045022100fce7ce10797c4a0bd56d5e64dc0fa1e5d3cdba4b495e2a8d76d9c43e1790d82302207b885373d9fc8dbf08165fd24250174344d6792207d98f051c98280b5a1720510121021f8ab4e791c159ba43a2d45464312f7cbafee6cd6bbcdaafb26b545e1deecf64ffffffff0234634e3e090000001976a9141a257a2ef0e6821f314d074f84a4ece9274d7e9488ac000e2707000000001976a914e138e119752bdd89cf8b46ff283181398d85b55288ac00000000', 'blocktime': 1415201940}
-
-        # Sum together received per address
-        addresses = Counter()  # address -> amount mapping
-        for detail in txdata["details"]:
-            if detail["category"] == "receive":
-                addresses[detail["address"]] += self.backend.to_internal_amount(detail["amount"])
-
-        # TODO: Filter out address updates which are not managed by our database
-
-        confirmations = txdata["confirmations"]
-
-        for address, amount in addresses.items():
-            self.handle_address_receive(txid, address, amount, confirmations)
-
-        self.count += 1
 
     def rescan_address(self, address, confirmations):
         """

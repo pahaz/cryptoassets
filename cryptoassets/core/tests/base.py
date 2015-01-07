@@ -22,6 +22,7 @@ from ..app import CryptoAssetsApp
 from ..app import Subsystem
 from ..configure import Configurator
 from ..tools import walletimport
+from ..tools import broadcast
 
 from . import testlogging
 from . import testwarnings
@@ -79,6 +80,7 @@ class CoinTestCase:
         self.Transaction = None
         self.Wallet = None
         self.Account = None
+        self.NetworkTransaction = None
 
         # How many satoshis we use in send_external()
         self.external_send_amount = Decimal("0.0001")
@@ -95,6 +97,7 @@ class CoinTestCase:
             session.query(self.Transaction).delete()
             session.query(self.Wallet).delete()
             session.query(self.Account).delete()
+            session.query(self.NetworkTransaction).delete()
 
     def create_engine(self):
         """Create SQLAclhemy database engine for the tests."""
@@ -124,6 +127,10 @@ class CoinTestCase:
     @abc.abstractmethod
     def setup_coin(self):
         """Setup coin backend for this test case."""
+
+    def broadcast(self, wallet):
+        broadcaster = broadcast.Broadcaster(wallet, self.app.conflict_resolver, self.backend)
+        return broadcaster.do_broadcasts()
 
     def wait_receiving_address_ready(self, wallet, address):
         """Wait that API service gets the address on the monitored list."""
@@ -224,7 +231,7 @@ class CoinTestCase:
             receiving_account = wallet.create_account("Test account 2")
             session.flush()
             sending_account.balance = 100
-            tx = wallet.send_internal(sending_account, receiving_account, 100, "Test transaction")
+            tx = wallet.send_internal(sending_account, receiving_account, Decimal(100), "Test transaction")
             self.assertEqual(receiving_account.balance, 100)
             self.assertEqual(sending_account.balance, 0)
 
@@ -253,7 +260,7 @@ class CoinTestCase:
             assert sending_account.id
 
             def test():
-                wallet.send_internal(sending_account, receiving_account, 110, "Test transaction")
+                wallet.send_internal(sending_account, receiving_account, Decimal(110), "Test transaction")
 
             self.assertRaises(NotEnoughAccountBalance, test)
 
@@ -270,7 +277,7 @@ class CoinTestCase:
             assert sending_account.id
 
             def test():
-                wallet.send_internal(sending_account, sending_account, 10, "Test transaction")
+                wallet.send_internal(sending_account, sending_account, Decimal(10), "Test transaction")
 
             self.assertRaises(SameAccount, test)
 
@@ -330,7 +337,7 @@ class CoinTestCase:
             self.assertEqual(tx.state, "pending")
             self.assertEqual(tx.txid, None)
             self.assertIsNone(tx.processed_at)
-            wallet.broadcast()
+            self.broadcast(wallet)
 
             # Reread the tranansaction
             tx = session.query(self.Transaction).get(tx.id)
@@ -355,8 +362,9 @@ class CoinTestCase:
             wallet.send_external(account, receiving_address.address, self.external_send_amount, "Test send {}".format(time.time()))
             session.flush()
 
-            wallet.broadcast()
-            session.flush()
+            txcount, fees = self.broadcast(wallet)
+            self.assertEqual(txcount, 1)
+            self.assertGreater(fees, 0)
 
             # Our fee account goes below zero, because network fees
             # are subtracted from there
@@ -373,7 +381,10 @@ class CoinTestCase:
         with self.app.conflict_resolver.transaction() as session:
             wallet = self.Wallet()
             session.add(wallet)
-            wallet.broadcast()
+            session.flush()
+            broadcaster = broadcast.Broadcaster(wallet, self.app.conflict_resolver, self.backend)
+
+        broadcaster.do_broadcasts()
 
     def test_receive_external_spoofed(self):
         """ Test receiving external transaction.
@@ -382,17 +393,21 @@ class CoinTestCase:
         """
 
         test_amount = 1000
+        NetworkTransaction = self.NetworkTransaction
 
         with self.app.conflict_resolver.transaction() as session:
             wallet = self.Wallet()
             session.add(wallet)
+
+            ntx = NetworkTransaction.get_or_create_deposit(session, "foobar")
             session.flush()
 
             account = wallet.create_account("Test account")
             session.flush()
             receiving_address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
             txid = "fakefakefakefake"
-            wallet.receive(txid, receiving_address.address, test_amount, dict(confirmations=0))
+            session.flush()
+            wallet.deposit(ntx, receiving_address.address, test_amount, dict(confirmations=0))
 
         # ...
         # write the transaction
@@ -408,8 +423,10 @@ class CoinTestCase:
             self.assertEqual(wallet.balance, 0)
             self.assertIsNone(txs.first().processed_at)
 
+            ntx = NetworkTransaction.get_or_create_deposit(session, "foobar")
+
             # Exceed the confirmation threshold
-            wallet.receive(txid, receiving_address.address, test_amount, dict(confirmations=6))
+            wallet.deposit(ntx, receiving_address.address, test_amount, dict(confirmations=6))
             self.assertTrue(txs.first().can_be_confirmed())
             self.assertEqual(account.balance, test_amount)
             self.assertEqual(wallet.balance, test_amount)
@@ -444,7 +461,7 @@ class CoinTestCase:
                 # Reload objects from db for this transaction
                 wallet = session.query(self.Wallet).get(wallet_id)
                 account = session.query(self.Account).get(1)
-                txs_before_send = wallet.get_external_received_transactions().count()
+                txs_before_send = wallet.get_deposit_transactions().count()
 
                 # Create account for receiving the tx
                 receiving_account = wallet.create_account("Test receiving account {}".format(time.time()))
@@ -470,7 +487,7 @@ class CoinTestCase:
                 self.assertEqual(tx.state, "pending")
                 self.assertEqual(tx.label, "Test send")
 
-                broadcasted_count = wallet.broadcast()
+                broadcasted_count, tx_fees = self.broadcast(wallet)
 
                 # Reread the changed transaction
                 tx = session.query(self.Transaction).get(tx.id)
@@ -495,11 +512,12 @@ class CoinTestCase:
 
                 # Don't hold db locked for an extended perior
                 with self.app.conflict_resolver.transaction() as session:
+                    Address = self.Address
                     wallet = session.query(self.Wallet).get(wallet_id)
-                    address = session.query(wallet.Address).filter(self.Address.id == receiving_address_id)
+                    address = session.query(Address).filter(self.Address.id == receiving_address_id)
                     self.assertEqual(address.count(), 1)
                     account = address.first().account
-                    txs = wallet.get_external_received_transactions()
+                    txs = wallet.get_deposit_transactions()
 
                     # print(account.balance, len(wallet.transactions), wallet.get_active_external_received_transcations().count())
 
@@ -536,7 +554,7 @@ class CoinTestCase:
             self.assertGreaterEqual(len(wallet.transactions), 3)
 
             # The transaction should be external
-            txs = wallet.get_external_received_transactions()
+            txs = wallet.get_deposit_transactions()
             self.assertEqual(txs.count(), txs_before_send + 1)
 
             # The transaction should no longer be active

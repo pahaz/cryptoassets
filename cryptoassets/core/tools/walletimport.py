@@ -41,7 +41,7 @@ def create_import_transaction(amount, account):
 
     session = Session.object_session(account)
 
-    Transaction = account.wallet.Transaction
+    Transaction = account.coin_description.Transaction
     wallet = account.wallet
 
     all_imports = session.query(Transaction).filter(Transaction.receiving_account == account, Transaction.state == "balance_import")

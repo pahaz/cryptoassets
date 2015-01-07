@@ -47,16 +47,6 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
             account = session.query(self.Account).get(account.id)
             self.assertGreater(account.balance, 0)
 
-    def setup_test_fund_address(self, wallet, account):
-        # Import some TESTNET coins
-        assert wallet.id
-        assert account.id
-        label = "Test import {}".format(time.time())
-        private_key, public_address = os.environ["BITCOIND_TESTNET_FUND_ADDRESS"].split(":")
-        self.backend.import_private_key(label, private_key)
-        wallet.add_address(account, "Test import {}".format(time.time()), public_address)
-        self.assertGreater(wallet.get_receiving_addresses().count(), 0)
-
     def setup_receiving(self, wallet):
 
         self.transaction_updater = self.backend.create_transaction_updater(self.app.conflict_resolver, self.app.notifiers)
@@ -94,6 +84,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         self.Wallet = coin.wallet_model
         self.Transaction = coin.transaction_model
         self.Account = coin.account_model
+        self.NetworkTransaction = coin.network_transaction_model
 
         self.external_transaction_confirmation_count = 1
 
@@ -164,13 +155,14 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         subprocess.call("echo bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf >> {}".format(WALLETNOTIFY_PIPE), shell=True)
 
         deadline = time.time() + 3
-        while transaction_updater.count == 0:
+        while transaction_updater.stats["network_transaction_updates"] == 0:
             time.sleep(0.1)
             self.assertLess(time.time(), deadline, "Transaction updater never kicked in")
 
         # Check that transaction manager did not die with an exception
         # in other thread
-        self.assertEqual(transaction_updater.count, 1)
+        self.assertEqual(transaction_updater.stats["network_transaction_updates"], 1)
+        self.assertEqual(transaction_updater.stats["deposit_updates"], 1)
         self.assertTrue(self.walletnotify_pipe.is_alive())
 
         with self.app.conflict_resolver.transaction() as session:
@@ -235,7 +227,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
             tx = wallet.send(account, receiving_address.address, self.external_send_amount, "Test send", force_external=True)
             session.flush()
 
-            broadcasted_count = wallet.broadcast()
+            broadcasted_count, tx_fees = self.broadcast(wallet)
 
             self.assertEqual(broadcasted_count, 1)
             receiving_address_id = receiving_address.id

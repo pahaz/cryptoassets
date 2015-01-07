@@ -1,3 +1,4 @@
+import random
 from decimal import Decimal
 
 from . import base
@@ -10,7 +11,7 @@ class DummyCoinBackend(base.CoinBackend):
         self.coin = coin
 
     def create_address(self, label):
-        pass
+        return "foobar{}".format(random.randint(0, 999999))
 
     def get_backend_balance(self):
         """In the country of null, we always have balance!"""

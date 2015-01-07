@@ -187,6 +187,37 @@ class ConflictResolver:
 
         return decorated_func
 
+    def managed_non_retryable_transaction(self, func):
+        """
+        """
+
+        def decorated_func(*args, **kwargs):
+
+            session = self.session_factory()
+
+            try:
+                result = func(session, *args, **kwargs)
+                session.commit()
+                self.stats["success"] += 1
+                return result
+
+            except Exception as e:
+
+                session.rollback()
+
+                if self.is_retryable_exception(e):
+                    self.stats["unresolved"] += 1
+                    raise CannotResolveDatabaseConflict("Cannot attempt to retry the transaction {}".format(func)) from e
+                else:
+                    self.stats["errors"] += 1
+                    # All other exceptions should fall through
+                    raise
+
+        # Make tracebacks friendlier
+        decorated_func.__name__ = "{} wrapped by managed_transaction".format(func.__name__)
+
+        return decorated_func
+
     def transaction(self):
         """Get a transaction contextmanager instance using the conflict resolver session.
 

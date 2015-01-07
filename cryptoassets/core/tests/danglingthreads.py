@@ -11,5 +11,5 @@ def check_dangling_threads():
         time.sleep(1)
 
     if threading.active_count() > 1:
-        threads = list(threading.threading.enumerate())
+        threads = list(threading.enumerate())
         assert "Had extra threads alive at the end of the tests {}".format(threads)

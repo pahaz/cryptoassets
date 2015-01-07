@@ -6,21 +6,18 @@ from zope.dottedname.resolve import resolve
 
 
 class CoinModelDescription:
-    """Describe cryptocurrency data structures: what SQLAlchemy models and database classes it uses.
+    """Describe one cryptocurrency data structures: what SQLAlchemy models and database tables it uses.
 
+    The instance of this class is used by :py:class:`cryptoassets.core.models.CoinDescriptionModel` to build the model relatinoships and foreign keys between the tables of one cryptoasset.
     """
 
-    #: Name of this coin
-    coin_name = None
-
-    # Direct model class reference. Available after Python modules are loaded and Cryptoassets App session initialized
-    _Wallet = None
-    _Address = None
-    _Account = None
-    _NetworkTransaction = None
-    _Transaction = None
-
     def __init__(self, coin_name, wallet_model_name, address_model_name, account_model_name, transaction_model_name, network_transaction_model_name):
+        """Create the description with fully dotted paths to Python classes.
+
+        :param coin_name: Name of this coin, lowercase acronym
+        """
+        assert coin_name == coin_name.lower()
+
         self.coin_name = coin_name
         self.wallet_model_name = wallet_model_name
         self.address_model_name = address_model_name
@@ -28,24 +25,36 @@ class CoinModelDescription:
         self.transaction_model_name = transaction_model_name
         self.network_transaction_model_name = network_transaction_model_name
 
+        # Direct model class reference. Available after Python modules are loaded and Cryptoassets App session initialized
+        self._Wallet = None
+        self._Address = None
+        self._Account = None
+        self._NetworkTransaction = None
+        self._Transaction = None
+
     @property
     def Wallet(self):
+        """Get wallet model class."""
         return self._lazy_initialize_class_ref("_Wallet", self.wallet_model_name)
 
     @property
     def Address(self):
+        """Get address model class."""
         return self._lazy_initialize_class_ref("_Address", self.address_model_name)
 
     @property
     def Account(self):
+        """Get account model class."""
         return self._lazy_initialize_class_ref("_Account", self.account_model_name)
 
     @property
     def NetworkTransaction(self):
+        """Get network transaction model class."""
         return self._lazy_initialize_class_ref("_NetworkTransaction", self.network_transaction_model_name)
 
     @property
     def Transaction(self):
+        """Get transaction model class."""
         return self._lazy_initialize_class_ref("_Transaction", self.transaction_model_name)
 
     @property
@@ -85,6 +94,11 @@ class Coin:
     """
 
     def __init__(self, coin_description, backend=None):
+        """
+        :param coin_description: :py:class:`cryptoassets.core.coin.registry.CoinModelDescription`
+
+        :param backend: :py:class:`cryptoassets.core.backend.base.CoinBackend`
+        """
 
         assert isinstance(coin_description, CoinModelDescription)
 

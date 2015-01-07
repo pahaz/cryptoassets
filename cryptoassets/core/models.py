@@ -115,7 +115,7 @@ class GenericAccount(CoinDescriptionModel, CoinBackend):
 
     #: Available internal balance on this account
     #: NOTE: Accuracy checked for bitcoin only
-    balance = Column(Numeric(21, 8), default=0)
+    balance = Column(Numeric(21, 8), default=0, nullable=False)
 
     def __init__(self):
         self.balance = 0
@@ -173,7 +173,7 @@ class GenericAddress(CoinDescriptionModel):
     @declared_attr
     def account_id(cls):
         assert cls.coin_description.account_table_name
-        return Column(Integer, ForeignKey(cls.coin_description.account_table_name))
+        return Column(Integer, ForeignKey(cls.coin_description.account_table_name + ".id"))
 
     def is_internal(self):
         return self.account is not None
@@ -194,7 +194,36 @@ class GenericAddress(CoinDescriptionModel):
 
 
 class GenericTransaction(CoinDescriptionModel):
-    """ A transaction between accounts, incoming transaction or outgoing transaction.
+    """A transaction between accounts, incoming transaction or outgoing transaction.
+
+    Transactions can be classified as following:
+
+    * Deposit: Incoming, external, transaction from cryptocurrency network.
+
+        * Has ``network_transaction`` set.
+
+        * Has ``receiving_account`` set.
+
+        * No ``sending_account``
+
+    * Broadcast: Outgoign, external, transaction to cryptocurrency network.
+
+        * Has ``network_transaction`` set.
+
+        * Has ``receiving_account`` set.
+
+        * No ``receiving_account``
+
+    * Internal transactions
+
+        * Which are not visible outside our system.
+
+        * have both ``sending_account`` and ``receiving_account`` set.
+
+        * ``network_transaction`` is null
+
+        * Internal transactions can be further classified as: ``ìnternal`` (normal between accounts), ``balance_import`` (initial wallet import to system) and ``network_fee`` (fees accounted to the network fee account when transaction was broadcasted)
+
     """
     __abstract__ = True
 
@@ -233,7 +262,7 @@ class GenericTransaction(CoinDescriptionModel):
     #:
     #: **network_fee**: When the transaction has been broadcasted, we create an internal transaction to account the occured network fees
     #:
-    state = Column(Enum('pending', 'broadcasted', 'incoming', 'processed', 'internal', 'network_fee', 'balance_import', name="transaction_state"))
+    state = Column(Enum('pending', 'broadcasted', 'incoming', 'processed', 'internal', 'network_fee', 'balance_import', name="transaction_state"), nullable=False)
 
     #: Human readable label what this transaction is all about.
     #: Must be unique for each account
@@ -246,24 +275,24 @@ class GenericTransaction(CoinDescriptionModel):
         return cls.coin_description.transaction_table_name
 
     @declared_attr
-    def address_id(cls):
-        return Column(Integer, ForeignKey(cls.coin_description.address_model_name), nullable=True)
+    def wallet_id(cls):
+        return Column(Integer, ForeignKey(cls.coin_description.wallet_table_name + ".id"), nullable=False)
 
     @declared_attr
-    def wallet_id(cls):
-        return Column(Integer, ForeignKey(cls.coin_description.wallet_model_name), nullable=False)
+    def address_id(cls):
+        return Column(Integer, ForeignKey(cls.coin_description.address_table_name + ".id"), nullable=True)
 
     @declared_attr
     def sending_account_id(cls):
-        return Column(Integer, ForeignKey(cls.coin_description.account_model_name))
+        return Column(Integer, ForeignKey(cls.coin_description.account_table_name + ".id"))
 
     @declared_attr
     def receiving_account_id(cls):
-        return Column(Integer, ForeignKey(cls.coin_description.account_model_name))
+        return Column(Integer, ForeignKey(cls.coin_description.account_table_name + ".id"))
 
     @declared_attr
     def network_transaction_id(cls):
-        return Column(Integer, ForeignKey('{}.id'.format(cls.coin_description.network_transaction_model_name)))
+        return Column(Integer, ForeignKey(cls.coin_description.network_transaction_table_name + ".id"))
 
     @declared_attr
     def address(cls):
@@ -301,7 +330,7 @@ class GenericTransaction(CoinDescriptionModel):
         """
         return relationship(cls.coin_description.network_transaction_model_name,  # noqa
             primaryjoin="{}.network_transaction_id == {}.id".format(cls.__name__, cls.coin_description.network_transaction_model_name),
-            backref="network_transactions")
+            backref="transactions")
 
     @declared_attr
     def wallet(cls):
@@ -313,6 +342,16 @@ class GenericTransaction(CoinDescriptionModel):
         """ Return if the transaction can be considered as final.
         """
         return True
+
+    @property
+    def txid(self):
+        """Return txid of associated network transaction (if any).
+
+        Shortcut for ``self.network_transaction.txid``.
+        """
+        if self.network_transaction:
+            return self.network_transaction.txid
+        return None
 
     def __str__(self):
         return "TX id:{} state:{} txid:{} sending acco:{} receiving acco:{}".format(self.id, self.state, self.txid, self.sending_account and self.sending_account.id, self.receiving_account and self.receiving_account.id)
@@ -341,8 +380,6 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
     Inside the wallet there is a number of accounts.
 
     We support internal transaction between the accounts of the same wallet as off-chain transactions. If you call ``send()``for the address which is managed by the same wallet, an internal transaction is created by ``send_internal()``.
-
-    When you send cryptocurrency out from the wallet, the transaction is put to the outgoing queue. Only after you call ``wallet.broadcast()`` the transaction is send out. This is to guarantee the system responsiveness and fault-tolerance, so that outgoing transactions can be created even if we have lost the connection with the cryptocurrency network. Calling ``broadcast()`` should the responsiblity of an external cron-job like process.
     """
 
     __abstract__ = True
@@ -412,7 +449,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         assert session
 
-        account = self.Account()
+        account = self.coin_description.Account()
         account.name = name
         account.wallet = self
         session.add(account)
@@ -420,12 +457,12 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
     def get_account_by_name(self, name):
         session = Session.object_session(self)
-        instance = session.query(self.Account).filter_by(name=name).first()
+        instance = session.query(self.coin_description.Account).filter_by(name=name).first()
         return instance
 
     def get_or_create_account_by_name(self, name):
         session = Session.object_session(self)
-        instance = session.query(self.Account).filter_by(name=name).first()
+        instance = session.query(self.coin_description.Account).filter_by(name=name).first()
         if not instance:
             instance = self.create_account(name)
 
@@ -438,7 +475,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         charged from the users doing the actual transaction, but it
         must be solved on the application level.
         """
-        return self.get_or_create_account_by_name(self.Account.NETWORK_FEE_ACCOUNT)
+        return self.get_or_create_account_by_name(self.coin_description.Account.NETWORK_FEE_ACCOUNT)
 
     def create_receiving_address(self, account, label):
         """ Creates a new receiving address.
@@ -462,7 +499,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         _address = self.backend.create_address(label=label)
 
-        address = self.Address()
+        address = self.coin_description.Address()
         address.address = _address
         address.account = account
         address.label = label
@@ -491,9 +528,9 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         session = Session.object_session(self)
 
-        _address = session.query(self.Address).filter_by(address=address, account_id=None).first()
+        _address = session.query(self.coin_description.Address).filter_by(address=address, account_id=None).first()
         if not _address:
-            _address = self.Address()
+            _address = self.coin_description.Address()
             _address.address = address
             _address.account = None
             _address.label = "External {}".format(address)
@@ -502,22 +539,29 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         return _address
 
     def send(self, from_account, receiving_address, amount, label, force_external=False):
-        """ Send the amount of cryptocurrency to the target address.
+        """Send the amount of cryptocurrency to the target address.
 
-        If the address is hosted in the same wallet do the internal accounting,
-        otherwise go through the publib blockchain.
+        If the address is hosted in the same wallet do the internal send with :py:meth:`cryptoassets.core.models.GenericWallet.send_internal`,  otherwise go through the public blockchain with :py:meth:`cryptoassets.core.models.GenericWallet.send_external`.
 
-        :param account: The account owner from whose balance we
+        :param from_account: The account owner from whose balance we
+
+        :param receiving_address: Receiving address as a string
+
+        :param amount: Instance of `Decimal`
+
+        :param label: Recorded text to the sending wallet
+
+        :param force_external: Set to true to force the transaction go through the network even if the target address is in our system.
 
         :return: Transaction object
         """
         session = Session.object_session(self)
 
-        assert isinstance(from_account, self.Account)
+        assert isinstance(from_account, self.coin_description.Account)
         assert type(receiving_address) == str
         assert isinstance(amount, Decimal)
 
-        Address = self.Address
+        Address = self.coin_description.Address
 
         internal_receiving_address = session.query(Address).filter(Address.address == receiving_address, Address.account != None).first()  # noqa
 
@@ -541,7 +585,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         assert session, "Tried to add address to a non-bound wallet object"
 
-        address_obj = self.Address()
+        address_obj = self.coin_description.Address()
         address_obj.address = address
         address_obj.account = account
         address_obj.label = label
@@ -557,7 +601,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         session = Session.object_session(self)
         # Go through all accounts and all their addresses
 
-        return session.query(self.Account).filter(self.Account.wallet_id == self.id)  # noqa
+        return session.query(self.coin_description.Account).filter(self.coin_description.Account.wallet_id == self.id)  # noqa
 
     def get_account_by_address(self, address):
         """Check if a particular address belongs to receiving address of this wallet and return its account.
@@ -567,11 +611,19 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         :return: Account instance or None if the wallet doesn't know about the address
         """
         session = Session.object_session(self)
-        addresses = session.query(self.Address).filter(self.Address.address == address).join(self.Account).filter(self.Account.wallet_id == self.id)  # noqa
+        addresses = session.query(self.coin_description.Address).filter(self.coin_description.Address.address == address).join(self.coin_description.Account).filter(self.coin_description.Account.wallet_id == self.id)  # noqa
         _address = addresses.first()
         if _address:
             return _address.account
         return None
+
+    def get_pending_outgoing_transactions(self):
+        """Get the list of outgoing transactions which have not been associated with any broadcast yet."""
+
+        session = Session.object_session(self)
+        Transaction = self.coin_description.Transaction
+        txs = session.query(Transaction).filter(Transaction.state == "pending", Transaction.receiving_account == None, Transaction.network_transaction == None)  # noqa
+        return txs
 
     def get_receiving_addresses(self, archived=False):
         """ Get all receiving addresses for this wallet.
@@ -589,28 +641,33 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
             raise RuntimeError("TODO")
 
         # Go through all accounts and all their addresses
-        return session.query(self.Address).filter(self.Address.archived_at == None).join(self.Account).filter(self.Account.wallet_id == self.id)  # noqa
+        return session.query(self.coin_description.Address).filter(self.coin_description.Address.archived_at == None).join(self.coin_description.Account).filter(self.coin_description.Account.wallet_id == self.id)  # noqa
 
-    def get_external_received_transactions(self):
-        """Get all external transactions to this wallet.
+    def get_deposit_transactions(self):
+        """Get all deposit transactions to this wallet.
 
-        Returns both unconfirmed and confirmed transactions.
+        These are external incoming transactions, both unconfirmed and confirmed.
 
-        :return: SQLAlchemy query
+        :return: SQLAlchemy query of Transaction model
         """
 
         session = Session.object_session(self)
 
         # Go through all accounts and all their addresses
         # XXX: Make state handling more robust
-        return session.query(self.Transaction).filter(self.Transaction.sending_account == None, self.Transaction.address != None, self.Transaction.txid != None)  # noqa
+        Transaction = self.coin_description.Transaction
+        NetworkTransaction = self.coin_description.NetworkTransaction
+
+        return session.query(Transaction).join(NetworkTransaction).filter(Transaction.wallet == self)  # noqa
+
+
+        return session.query(Transaction).filter(Transaction.wallet == self).filter(Transaction.network_transaction_id != None).join(NetworkTransaction).filter(NetworkTransaction.transaction_type == "deposit")  # noqa
 
     def get_active_external_received_transcations(self):
         """Return all incoming transactions which are still pending.
 
-        :return: SQLAlchemy query
         """
-        return self.get_external_received_transactions().filter(self.Transaction.credited_at == None).join(self.Address)  # noqa
+        return self.get_external_received_transactions().filter(self.coin_description.Transaction.credited_at == None).join(self.coin_description.Address)  # noqa
 
     def refresh_account_balance(self, account):
         """Refresh the balance for one account.
@@ -629,7 +686,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         assert session
         assert account.wallet == self
 
-        addresses = session.query(self.Address).filter(self.Address.account == account).values("address")
+        addresses = session.query(self.coin_description.Address).filter(self.coin_description.Address.account == account).values("address")
 
         total_balance = 0
 
@@ -637,7 +694,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         # to this, we cannot pass generator, thus list()
         for address, balance in self.backend.get_balances(list(item.address for item in addresses)):
             total_balance += balance
-            session.query(self.Address).filter(self.Address.address == address).update({"balance": balance})
+            session.query(self.coin_description.Address).filter(self.coin_description.Address.address == address).update({"balance": balance})
 
         account.balance = total_balance
 
@@ -660,7 +717,8 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         # Cannot do internal transactions within the account
         assert from_account.id
         assert to_account.id
-        assert session
+
+        assert isinstance(amount, Decimal)
 
         if from_account.id == to_account.id:
             raise SameAccount("Trying to do internal transfer on account id {}".format(from_account.id))
@@ -669,13 +727,14 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
             if from_account.balance < amount:
                 raise NotEnoughAccountBalance()
 
-        transaction = self.Transaction()
+        transaction = self.coin_description.Transaction()
         transaction.sending_account = from_account
         transaction.receiving_account = to_account
         transaction.amount = amount
         transaction.wallet = self
         transaction.credited_at = _now()
         transaction.label = label
+        transaction.state = "internal"
         session.add(transaction)
 
         from_account.balance -= amount
@@ -684,14 +743,19 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         return transaction
 
     def send_external(self, from_account, to_address, amount, label):
-        """ Create a new external transaction and put it to the transaction queue.
+        """Create a new external transaction and put it to the transaction queue.
 
-        The transaction is not send until `broadcast()` is called
-        for this wallet.
+        When you send cryptocurrency out from the wallet, the transaction is put to the outgoing queue. Only after you broadcast has been performed (:py:mod:`cryptoassets.core.tools.broadcast`) the transaction is send out to the network. This is to guarantee the system responsiveness and fault-tolerance, so that outgoing transactions are created even if we have temporarily lost the connection with the cryptocurrency network. Broadcasting is usually handled by *cryptoassets helper service*.
+
+        :param from_account: Instance of :py:class:`cryptoassets.core.models.GenericAccount`
 
         :param to_address: Address as a string
 
-        :return: Transaction object
+        :param amount: Instance of `Decimal`
+
+        :param label: Recorded to the sending wallet history
+
+        :return: Instance of :py:class:`cryptoassets.core.models.GenericTransaction`
         """
         session = Session.object_session(self)
 
@@ -706,7 +770,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         _address = self.get_or_create_external_address(to_address)
 
-        transaction = self.Transaction()
+        transaction = self.coin_description.Transaction()
         transaction.sending_account = from_account
         transaction.amount = amount
         transaction.state = "pending"
@@ -720,41 +784,8 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         return transaction
 
-    def broadcast(self):
-        """ Broadcast all pending external send transactions.
-
-        This is desgined to be run from a background task,
-        as this might be blocking operation or the backend connection might be down.
-
-        :return: The number of succesfully broadcasted transactions
-        """
-
-        session = Session.object_session(self)
-
-        # Get all outgoing pending transactions
-        txs = session.query(self.Transaction).filter(self.Transaction.state == "pending", self.Transaction.receiving_account == None)  # noqa
-
-        # XXX: Rewrite
-
-        outgoing = Counter()
-        for tx in txs:
-            assert tx.address
-            assert tx.amount > 0
-            assert isinstance(tx.address, self.Address)
-            outgoing[tx.address.address] += tx.amount
-
-        if outgoing:
-            txid, fee = self.backend.send(outgoing, "Cryptoassets tx {}".format(tx.id))
-            assert txid
-            txs.update(dict(state="broadcasted", processed_at=_now(), txid=txid))
-
-            if fee:
-                self.charge_network_fees(txs, txid, fee)
-
-        return len(outgoing)
-
-    def charge_network_fees(self, txs, txid, fee):
-        """ Account network fees due to transaction broadcast.
+    def charge_network_fees(self, broadcast, fee):
+        """Account network fees due to transaction broadcast.
 
         By default this creates a new accounting entry on a special account
         (`GenericAccount.NETWORK_FEE_ACCOUNT`) where the network fees are put.
@@ -774,14 +805,13 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         # assert fee_account.id, "Fee account is not properly constructed, flush() DB"
         session.flush()
 
-        transaction = self.Transaction()
+        transaction = self.coin_description.Transaction()
         transaction.sending_account = fee_account
         transaction.receiving_account = None
         transaction.amount = fee
         transaction.state = "network_fee"
         transaction.wallet = self
-        transaction.label = "Network fees for {}".format(txid)
-        transaction.txid = txid
+        transaction.label = "Network fees for {}".format(broadcast.txid)
 
         fee_account.balance -= fee
         self.balance -= fee
@@ -798,7 +828,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         """
         self.balance = self.backend.get_balance()
 
-    def receive(self, txid, address, amount, extra=None):
+    def deposit(self, ntx, address, amount, extra=None):
         """Informs the wallet updates regarding external incoming transction.
 
         This method should be called by the coin backend only.
@@ -809,7 +839,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         Note that we may receive the transaction many times with different confirmation counts.
 
-        :param txid: External transaction id
+        :param ntx: Associated :py:class:`cryptoassets.core.models.NetworkTransaction`
 
         :param address: Address as a string
 
@@ -817,42 +847,48 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         :param extra: Extra variables to set on the transaction object as a dictionary. E.g. `dict(confirmations=5)`.
 
-        :return: tuple (account, new or existing Transaction object)
+        :return: tuple (Account instance, new or existing Transaction object, credited boolean)
         """
 
         session = Session.object_session(self)
 
         assert self.id
         assert amount > 0, "Receiving transaction to {} with amount {}".format(address, amount)
-        assert txid
+        assert ntx
+        assert ntx.id
         assert type(address) == str
 
-        _address = session.query(self.Address).filter(self.Address.address == address).first()  # noqa
+        _address = session.query(self.coin_description.Address).filter(self.coin_description.Address.address == address).first()  # noqa
 
         assert _address, "Wallet {} does not have address {}".format(self.id, address)
         assert _address.id
 
         # TODO: Have something smarter here after we use relationships
-        account = session.query(self.Account).filter(self.Account.id == _address.account_id).first()  # noqa
+        account = session.query(self.coin_description.Account).filter(self.coin_description.Account.id == _address.account_id).first()  # noqa
         assert account.wallet == self
 
         # Check if we already have this transaction
-        transaction = session.query(self.Transaction).filter(self.Transaction.txid == txid, self.Transaction.address_id == _address.id).first()
+        Transaction = self.coin_description.Transaction
+        transaction = session.query(Transaction).filter(Transaction.network_transaction_id == ntx.id, self.coin_description.Transaction.address_id == _address.id).first()
+
         if not transaction:
             # We have not seen this transaction before in the database
-            transaction = self.Transaction()
-            transaction.txid = txid
+            transaction = self.coin_description.Transaction()
+            transaction.network_transaction = ntx
             transaction.address = _address
             transaction.state = "incoming"
             transaction.wallet = self
             transaction.amount = amount
+        else:
+            assert transaction.state in ("incoming", "credited")
+            assert transaction.sending_account is None
 
         transaction.sending_account = None
         transaction.receiving_account = account
         session.add(transaction)
 
         #
-        # TODO: Move confirmation code to a separate subclass
+        # TODO: Move confirmation code to a separate subclass to handle consensus networks
         #
 
         # Copy extra transaction payload
@@ -868,7 +904,6 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
                 account.balance += transaction.amount
                 _address.balance += transaction.amount
                 account.wallet.balance += transaction.amount
-
                 session.add(account)
 
         return account, transaction
@@ -884,7 +919,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         assert type(transaction_id) == int
 
         # Only non-archived addresses can receive transactions
-        transactions = session.query(self.Transaction.id, self.Transaction.state).filter(self.Transaction.id == transaction_id, self.Transaction.state == "incoming")  # noqa
+        transactions = session.query(self.coin_description.Transaction.id, self.coin_description.Transaction.state).filter(self.coin_description.Transaction.id == transaction_id, self.coin_description.Transaction.state == "incoming")  # noqa
 
         # We should mark one and only one transaction processed
         assert transactions.count() == 1
@@ -893,20 +928,33 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
 
 class GenericNetworkTransaction(CoinDescriptionModel):
-    """
+    """A transaction in cryptocurrencty networkwhich is concern of our system.
+
+    External transactions can be classified as
+
+    * Deposits: incoming transactions to our receiving addresses
+
+    * Broadcasts: we are sending out currency to the network
+
+    If our intenal transaction (:py:class:`cryptoassets.core.models.Transaction`) has associated network transaction, it's ``transaction.network_transaction`` reference is set. Otherwise transactions are internal transactions and not visible in blockchain.
+
+    .. note ::
+
+        NetworkTransaction does not have reference to wallet. One network transaction may contain transfers to many wallets.
 
     Handling incoming transactions
     ------------------------------------
 
-    xxxx
+    For more information see :py:mo:`cryptoassets.core.backend.transactionupdater`.
 
     Broadcasting outgoing transactions
     -------------------------------------
 
-
     Broadcast constructs an network transaction and bundles any number of outgoing pending transactions to it. During the broadcast, one can freely bundle transactions together to lower the network fees, or mix transactions for additional privacy.
 
     Broadcasts are constructed by Cryptoassets helper service which will periodically scan for outgoing transactions and construct broadcasts of them. After constructing, broadcasting is attempted. If the backend, for a reason or another, fails to make a broadcast then this broadcast is marked as open and must be manually vetted to succeeded or failed.
+
+    For more information see :py:mo:`cryptoassets.core.tools.broadcast`.
 
     """
 
@@ -923,9 +971,9 @@ class GenericNetworkTransaction(CoinDescriptionModel):
     txid = Column(String(255), nullable=True)
 
     #: Is this transaction incoming or outgoing from our system
-    transaction_type = Column(Enum('deposit', 'broadcast', name="network_transaction_type"))
+    transaction_type = Column(Enum('deposit', 'broadcast', name="network_transaction_type"), nullable=False)
 
-    state = Column(Enum('incoming', 'credited', 'pending', 'broadcasted', name="deposit_state"))
+    state = Column(Enum('incoming', 'credited', 'pending', 'broadcasted', name="network_transaction_state"), nullable=False)
 
     #: When broadcast was marked as outgoing
     opened_at = Column(DateTime)
@@ -937,9 +985,37 @@ class GenericNetworkTransaction(CoinDescriptionModel):
     def __tablename__(cls):
         return cls.coin_description.network_transaction_table_name
 
+    @declared_attr
+    def __table_args__(cls):
+        """Each txid can appear twice, once for deposit once for broadcast. """
+        return (UniqueConstraint('transaction_type', 'txid', name='_transaction_type_txid_uc'),)
+
+    def __str__(self):
+        return "NTX:{} type:{} state:{} txid:{} opened_at:{} closed_at:{}".format(self.id, self.transaction_type, self.state, self.txid, self.opened_at, self.closed_at)
+
+    @classmethod
+    def get_or_create_deposit(cls, session, txid):
+        """Get a hold of incoming transaction.
+
+        :return: Instance of :py:class:`cryptoassets.core.models.GenericNetworkTransaction`.
+        """
+        NetworkTransaction = cls
+        instance = session.query(NetworkTransaction).filter_by(transaction_type="deposit", txid=txid).first()
+
+        if not instance:
+            instance = NetworkTransaction()
+            instance.txid = txid
+            instance.transaction_type = "deposit"
+            instance.state = "incoming"
+            session.add(instance)
+
+        return instance
+
 
 class GenericConfirmationNetworkTransaction(GenericNetworkTransaction):
-    """ Mined transaction which receives "confirmations" from miners in blockchain.
+    """Mined transaction which receives "confirmations" from miners in blockchain.
+
+    This is a subtype of ``GenericNetworkTransaction`` with confirmation counting abilities.
     """
     __abstract__ = True
 
@@ -953,5 +1029,3 @@ class GenericConfirmationNetworkTransaction(GenericNetworkTransaction):
     def can_be_confirmed(self):
         """ Does this transaction have enough confirmations it could be confirmed by our standards. """
         return self.confirmations >= self.confirmation_count
-
-

@@ -25,6 +25,8 @@ from .notify.base import Notifier
 
 from .service import status
 from .app import Subsystem
+from .utils.dicttools import merge_dict
+
 
 
 class ConfigurationError(Exception):
@@ -231,7 +233,6 @@ class Configurator:
     def load_standalone_from_dict(config):
         """"""
 
-
     @staticmethod
     def prepare_yaml_file(fname):
         """Extract config dictionary from a YAML file."""
@@ -244,7 +245,13 @@ class Configurator:
 
         return config
 
-    def load_yaml_file(self, fname):
-        """Load config from a YAML file."""
+    def load_yaml_file(self, fname, overrides={}):
+        """Load config from a YAML file.
+
+        :param fname: Path to the YAML file
+
+        :param overrides: Python nested dicts for specific setting overrides
+        """
         config = self.prepare_yaml_file(fname)
+        merge_dict(config, overrides)
         self.load_from_dict(config)
