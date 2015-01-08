@@ -25,6 +25,7 @@ def _now():
 
 
 class Broadcaster:
+    """Create and send transactions to the cryptoasset networks."""
 
     def __init__(self, wallet, conflict_resolver, backend):
 

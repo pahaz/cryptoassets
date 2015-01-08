@@ -1,33 +1,33 @@
-"""AppleByte database implementation.
+"""AppleByte database support."""
 
-All amounts are stored in satoshis in integer fields.
-
-Modify ``AppleByteTransaction.confirmation_count`` global
-to set the threshold when transcations are considered confirmed.
-"""
 from cryptoassets.core import models
+from cryptoassets.core.coin.registry import CoinModelDescription
+
+
+coin_description = CoinModelDescription(
+    coin_name="aby",
+    wallet_model_name="cryptoassets.core.coin.applebyte.models.AppleByteWallet",
+    address_model_name="cryptoassets.core.coin.applebyte.models.AppleByteAddress",
+    account_model_name="cryptoassets.core.coin.applebyte.models.AppleByteAccount",
+    transaction_model_name="cryptoassets.core.coin.applebyte.models.AppleByteTransaction",
+    network_transaction_model_name="cryptoassets.core.coin.applebyte.models.AppleByteNetworkTransaction")
 
 
 class AppleByteAccount(models.GenericAccount):
-    coin = "aby"
-    _wallet_cls_name = "AppleByteWallet"
-    _address_cls_name = "AppleByteAddress"
+    coin_description = coin_description
 
 
 class AppleByteAddress(models.GenericAddress):
-    coin = "aby"
-    _account_cls_name = "AppleByteAccount"
+    coin_description = coin_description
 
 
 class AppleByteTransaction(models.GenericConfirmationTransaction):
-    coin = "aby"
-    _wallet_cls_name = "AppleByteWallet"
-    _account_cls_name = "AppleByteAccount"
-    _address_cls_name = "AppleByteAddress"
+    coin_description = coin_description
 
 
 class AppleByteWallet(models.GenericWallet):
-    coin = "aby"
-    Address = AppleByteAddress
-    Account = AppleByteAccount
-    Transaction = AppleByteTransaction
+    coin_description = coin_description
+
+
+class AppleByteNetworkTransaction(models.GenericConfirmationNetworkTransaction):
+    coin_description = coin_description

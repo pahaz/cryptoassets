@@ -1,33 +1,33 @@
-"""Litecoin database implementation.
+"""Litecoin database support."""
 
-All amounts are stored in satoshis in integer fields.
-
-Modify ``LitecoinTransaction.confirmation_count`` global
-to set the threshold when transcations are considered confirmed.
-"""
 from cryptoassets.core import models
+from cryptoassets.core.coin.registry import CoinModelDescription
+
+
+coin_description = CoinModelDescription(
+    coin_name="ltc",
+    wallet_model_name="cryptoassets.core.coin.litecoin.models.LitecoinWallet",
+    address_model_name="cryptoassets.core.coin.litecoin.models.LitecoinAddress",
+    account_model_name="cryptoassets.core.coin.litecoin.models.LitecoinAccount",
+    transaction_model_name="cryptoassets.core.coin.litecoin.models.LitecoinTransaction",
+    network_transaction_model_name="cryptoassets.core.coin.litecoin.models.LitecoinNetworkTransaction")
 
 
 class LitecoinAccount(models.GenericAccount):
-    coin = "ltc"
-    _wallet_cls_name = "LitecoinWallet"
-    _address_cls_name = "LitecoinAddress"
+    coin_description = coin_description
 
 
 class LitecoinAddress(models.GenericAddress):
-    coin = "ltc"
-    _account_cls_name = "LitecoinAccount"
+    coin_description = coin_description
 
 
 class LitecoinTransaction(models.GenericConfirmationTransaction):
-    coin = "ltc"
-    _wallet_cls_name = "LitecoinWallet"
-    _account_cls_name = "LitecoinAccount"
-    _address_cls_name = "LitecoinAddress"
+    coin_description = coin_description
 
 
 class LitecoinWallet(models.GenericWallet):
-    coin = "ltc"
-    Address = LitecoinAddress
-    Account = LitecoinAccount
-    Transaction = LitecoinTransaction
+    coin_description = coin_description
+
+
+class LitecoinNetworkTransaction(models.GenericConfirmationNetworkTransaction):
+    coin_description = coin_description

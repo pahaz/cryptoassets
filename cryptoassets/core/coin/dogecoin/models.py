@@ -1,28 +1,33 @@
 """Dogecoin database support."""
 
 from cryptoassets.core import models
+from cryptoassets.core.coin.registry import CoinModelDescription
 
 
-class DogeAccount(models.GenericAccount):
-    coin = "doge"
-    _wallet_cls_name = "DogeWallet"
-    _address_cls_name = "DogeAddress"
+coin_description = CoinModelDescription(
+    coin_name="doge",
+    wallet_model_name="cryptoassets.core.coin.dogecoin.models.DogecoinWallet",
+    address_model_name="cryptoassets.core.coin.dogecoin.models.DogecoinAddress",
+    account_model_name="cryptoassets.core.coin.dogecoin.models.DogecoinAccount",
+    transaction_model_name="cryptoassets.core.coin.dogecoin.models.DogecoinTransaction",
+    network_transaction_model_name="cryptoassets.core.coin.dogecoin.models.DogecoinNetworkTransaction")
 
 
-class DogeAddress(models.GenericAddress):
-    coin = "doge"
-    _account_cls_name = "DogeAccount"
+class DogecoinAccount(models.GenericAccount):
+    coin_description = coin_description
 
 
-class DogeTransaction(models.GenericConfirmationTransaction):
-    coin = "doge"
-    _wallet_cls_name = "DogeWallet"
-    _account_cls_name = "DogeAccount"
-    _address_cls_name = "DogeAddress"
+class DogecoinAddress(models.GenericAddress):
+    coin_description = coin_description
 
 
-class DogeWallet(models.GenericWallet):
-    coin = "doge"
-    Address = DogeAddress
-    Account = DogeAccount
-    Transaction = DogeTransaction
+class DogecoinTransaction(models.GenericConfirmationTransaction):
+    coin_description = coin_description
+
+
+class DogecoinWallet(models.GenericWallet):
+    coin_description = coin_description
+
+
+class DogecoinNetworkTransaction(models.GenericConfirmationNetworkTransaction):
+    coin_description = coin_description

@@ -56,6 +56,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         self.Wallet = coin.wallet_model
         self.Transaction = coin.transaction_model
         self.Account = coin.account_model
+        self.NetworkTransaction = coin.network_transaction_model
 
         self.external_transaction_confirmation_count = 1
 
@@ -89,73 +90,6 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
                 break
 
         self.assertTrue(self.is_address_monitored(wallet, receiving_address), "The receiving address didn't become monitored {}".format(receiving_address.address))
-
-    def test_get_active_transactions(self):
-        """ Query for the list of unconfirmed transactions.
-        """
-
-        # Spoof three transactions
-        # - one internal
-        # - one external, confirmed
-        # - one external, unconfirmed
-        #
-
-        with self.app.conflict_resolver.transaction() as session:
-            wallet = self.Wallet()
-            session.add(wallet)
-            session.flush()
-
-            account = wallet.create_account("Test account")
-            session.flush()
-
-            address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
-            session.flush()
-
-            # internal
-            t = wallet.Transaction()
-            t.sending_account = account
-            t.receiving_account = account
-            t.amount = 1000
-            t.wallet = wallet
-            t.credited_at = _now()
-            t.label = "tx1"
-            session.add(t)
-
-            # external, confirmed
-            t = wallet.Transaction()
-            t.sending_account = None
-            t.receiving_account = account
-            t.amount = 1000
-            t.wallet = wallet
-            t.credited_at = _now()
-            t.label = "tx2"
-            t.txid = "txid2"
-            t.confirmations = 6
-            t.address = address
-            session.add(t)
-
-            # external, unconfirmed
-            t = wallet.Transaction()
-            t.sending_account = None
-            t.receiving_account = account
-            t.amount = 1000
-            t.wallet = wallet
-            t.credited_at = None
-            t.label = "tx3"
-            t.txid = "txid3"
-            t.confirmations = 1
-            t.address = address
-            session.add(t)
-
-            session.flush()
-
-            external_txs = wallet.get_external_received_transactions()
-            self.assertEqual(external_txs.count(), 2)
-
-            active_txs = wallet.get_active_external_received_transcations()
-            self.assertEqual(active_txs.count(), 1)
-            self.assertEqual(active_txs.first().txid, "txid3")
-            self.assertEqual(active_txs.first().address.id, address.id)
 
 
 class BlockIoDogeTestCase(BlockIoBTCTestCase):

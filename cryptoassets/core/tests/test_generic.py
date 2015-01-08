@@ -47,8 +47,8 @@ class GenericWalletTestCase(unittest.TestCase):
             session.flush()
             self.assertEqual(wallet.id, 1)
 
-    def test_get_desposits(self):
-        """Create internal and incoming transactions and see we can tell deposits apart."""
+    def test_get_deposits(self):
+        """Create internal, incoming transactions and broadcasted transactions and see we can tell deposits apart."""
 
         with self.app.conflict_resolver.transaction() as session:
             wallet_class = self.app.coins.get("btc").wallet_model
@@ -74,7 +74,7 @@ class GenericWalletTestCase(unittest.TestCase):
             self.assertEqual(session.query(Transaction).count(), 1)
 
             # Create deposit
-            ntx = NetworkTransaction.get_or_create_deposit(session, "foobar")
+            ntx, created = NetworkTransaction.get_or_create_deposit(session, "foobar")
             session.flush()
             account, transaction = wallet.deposit(ntx, receiving_addr.address, Decimal(20), extra=dict(confirmations=999))
             session.flush()
@@ -89,5 +89,25 @@ class GenericWalletTestCase(unittest.TestCase):
             desposits = wallet.get_deposit_transactions()
             self.assertEqual(desposits.count(), 1)
 
+            # Create outgoing transaction + broadcast
+            broadcast = NetworkTransaction()
+            broadcast.txid = "foobar2"
+            broadcast.transaction_type = "broadcast"
+            broadcast.state = "pending"
+            session.add(broadcast)
+            session.flush()
 
+            transaction = Transaction()
+            transaction.network_transaction = broadcast
+            transaction.sending_account = account2
+            transaction.state = "pending"
+            transaction.wallet = wallet
+            out_addr = wallet.get_or_create_external_address("foobar2")
+            session.flush()
+            transaction.address = out_addr
+            session.add(transaction)
+            session.flush()
 
+            # Broadcasts should not count as deposits
+            desposits = wallet.get_deposit_transactions()
+            self.assertEqual(desposits.count(), 1)

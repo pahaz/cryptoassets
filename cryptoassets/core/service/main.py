@@ -21,7 +21,7 @@ from ..configure import Configurator
 from ..backend.base import IncomingTransactionRunnable
 from ..coin.registry import Coin
 
-from ..tools import opentransactions
+from ..tools import depositupdate
 
 from . import status
 from . import defaultlogging
@@ -157,7 +157,7 @@ class Service:
             if coin.backend.require_tracking_incoming_confirmations():
                 max_tracked_incoming_confirmations = coin.backend.max_tracked_incoming_confirmations
                 tx_updater = coin.backend.create_transaction_updater(self.app.conflict_resolver, self.app.notifiers)
-                opentransactions.rescan(tx_updater, max_tracked_incoming_confirmations)
+                depositupdate.update_deposits(tx_updater, max_tracked_incoming_confirmations)
                 rescans += 1
 
         return rescans

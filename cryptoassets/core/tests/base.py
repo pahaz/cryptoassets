@@ -399,7 +399,7 @@ class CoinTestCase:
             wallet = self.Wallet()
             session.add(wallet)
 
-            ntx = NetworkTransaction.get_or_create_deposit(session, "foobar")
+            ntx, created = NetworkTransaction.get_or_create_deposit(session, "foobar")
             session.flush()
 
             account = wallet.create_account("Test account")
@@ -423,10 +423,12 @@ class CoinTestCase:
             self.assertEqual(wallet.balance, 0)
             self.assertIsNone(txs.first().processed_at)
 
-            ntx = NetworkTransaction.get_or_create_deposit(session, "foobar")
-
+            ntx, created = NetworkTransaction.get_or_create_deposit(session, "foobar")
+            ntx.confirmations = 999
             # Exceed the confirmation threshold
             wallet.deposit(ntx, receiving_address.address, test_amount, dict(confirmations=6))
+
+            txs = session.query(self.Transaction).filter(self.Transaction.state == "incoming")
             self.assertTrue(txs.first().can_be_confirmed())
             self.assertEqual(account.balance, test_amount)
             self.assertEqual(wallet.balance, test_amount)
@@ -533,7 +535,7 @@ class CoinTestCase:
 
             # Just some debug output
             with self.app.conflict_resolver.transaction() as session:
-                address = session.query(wallet.Address).filter(self.Address.id == receiving_address_id)
+                address = session.query(self.Address).filter(self.Address.id == receiving_address_id)
                 account = address.first().account
                 logger.info("Receiving account %d balance %f", account.id, account.balance)
 

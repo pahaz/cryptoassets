@@ -34,7 +34,7 @@ class CoinBackend(abc.ABC):
 
         Some daemons and walletnotify methods, namely bitcoind, only notify us back the first occurence of an incoming transactions. If we want to receive further confirmations from the transaction, we need to manually poll the transactions where our confirmation threshold is not yet met.
 
-        Set this to true and the cryptoassets helper service will start a background job (:py:mod:`cryptoassets.core.tools.opentransactions` to keep receiving updates about the confirmations).
+        Set this to true and the cryptoassets helper service will start a background job (:py:mod:`cryptoassets.core.tools.depositupdate` to keep receiving updates about the confirmations).
 
         :return: True or False
         """

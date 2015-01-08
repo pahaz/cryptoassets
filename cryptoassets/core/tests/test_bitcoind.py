@@ -12,7 +12,7 @@ import logging
 import pytest
 
 from ..backend.bitcoind import TransactionUpdater
-from ..tools import opentransactions
+from ..tools import depositupdate
 
 from ..backend.pipewalletnotify import PipedWalletNotifyHandler
 from .base import CoinTestCase
@@ -188,7 +188,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
     def test_open_transactions(self):
         """Test that we get confirmation count increase.
 
-        We stress out ``tools.opentransactions`` functionality. See CoinBackend base class for comments.
+        We stress out ``tools.depositupdate`` functionality. See CoinBackend base class for comments.
 
         This test will take > 15 minutes to run.
 
@@ -240,16 +240,14 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         while time.time() < deadline:
 
-            time.sleep(30)
-
-            opentransactions.rescan(self.transaction_updater, 3)
+            depositupdate.update_deposits(self.transaction_updater, 3)
 
             # Don't hold db locked for an extended perior
             with self.app.conflict_resolver.transaction() as session:
                 wallet = session.query(self.Wallet).get(1)
-                address = session.query(wallet.Address).get(receiving_address_id)
+                address = session.query(self.Address).get(receiving_address_id)
                 account = address.account
-                txs = wallet.get_external_received_transactions()
+                txs = wallet.get_deposit_transactions()
 
                 logger.info("Checking out addr {} incoming txs {}".format(address.address, txs.count()))
                 for tx in txs:
@@ -263,5 +261,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
                     if tx.confirmations >= 2:
                         # We got more than 1 confirmation, good, we are counting!
                         break
+
+            time.sleep(30)
 
             self.assertLess(time.time(), deadline, "Never got confirmations update through")

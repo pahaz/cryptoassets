@@ -358,20 +358,44 @@ class GenericTransaction(CoinDescriptionModel):
 
 
 class GenericConfirmationTransaction(GenericTransaction):
-    """ Mined transaction which receives "confirmations" from miners in blockchain.
+    """Mined transaction which receives "confirmations" from miners in blockchain.
+
+    This works in pair with :py:class:`cryptoassets.core.models.GenericConfirmationNetworkTransaction`. :py:class`GenericConfirmationTransaction` has logic to decide when the incoming transaction is final and the balance in the coming transaction appears credited on :py:class:`cryptoassets.core.models.GenericAccount`.
     """
+
     __abstract__ = True
 
-    #: How many miner confirmations this tx has received
-    confirmations = Column(Integer)
-
-    #: How many confirmations to wait until the transaction is set as confirmed.
+    #: How many confirmations to wait until the deposit is set as credited.
     #: TODO: Make this configurable.
     confirmation_count = 3
 
     def can_be_confirmed(self):
-        """ Does this transaction have enough confirmations it could be confirmed by our standards. """
+        """Does this transaction have enough confirmations it could be confirmed by our standards."""
         return self.confirmations >= self.confirmation_count
+
+    @property
+    def confirmations(self):
+        """Get number of confirmations the incoming NetworkTransaction has.
+
+        .. note::
+
+            Currently confirmations count supported only for deposit transactions.
+
+        :return: -1 if the confirmation count is not available
+        """
+
+        # -1 was chosen instead of none to make confirmation count easier
+
+        ntx = self.network_transaction
+        if ntx is None:
+            return -1
+
+        if ntx.confirmations is None:
+            return -1
+
+        assert ntx
+        assert isinstance(ntx, GenericConfirmationNetworkTransaction)
+        return ntx.confirmations
 
 
 class GenericWallet(CoinDescriptionModel, CoinBackend):
@@ -658,16 +682,16 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         Transaction = self.coin_description.Transaction
         NetworkTransaction = self.coin_description.NetworkTransaction
 
-        return session.query(Transaction).join(NetworkTransaction).filter(Transaction.wallet == self)  # noqa
-
-
         return session.query(Transaction).filter(Transaction.wallet == self).filter(Transaction.network_transaction_id != None).join(NetworkTransaction).filter(NetworkTransaction.transaction_type == "deposit")  # noqa
 
     def get_active_external_received_transcations(self):
-        """Return all incoming transactions which are still pending.
+        """Return unconfirmed transactions which are still pending the network confirmations to be credited.
 
+        :return: SQLAlchemy query of Transaction model
         """
-        return self.get_external_received_transactions().filter(self.coin_description.Transaction.credited_at == None).join(self.coin_description.Address)  # noqa
+        Transaction = self.coin_description.Transaction
+        deposits = self.get_deposit_transactions()
+        return deposits.filter(Transaction.credited_at == None)  # noqa
 
     def refresh_account_balance(self, account):
         """Refresh the balance for one account.
@@ -845,7 +869,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         :param amount: Int, as the basic currency unit
 
-        :param extra: Extra variables to set on the transaction object as a dictionary. E.g. `dict(confirmations=5)`.
+        :param extra: Extra variables to set on the transaction object as a dictionary. (Currently not used)
 
         :return: tuple (Account instance, new or existing Transaction object, credited boolean)
         """
@@ -886,15 +910,6 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         transaction.sending_account = None
         transaction.receiving_account = account
         session.add(transaction)
-
-        #
-        # TODO: Move confirmation code to a separate subclass to handle consensus networks
-        #
-
-        # Copy extra transaction payload
-        if extra:
-            for key, value in extra.items():
-                setattr(transaction, key, value)
 
         if not transaction.credited_at:
 
@@ -997,7 +1012,7 @@ class GenericNetworkTransaction(CoinDescriptionModel):
     def get_or_create_deposit(cls, session, txid):
         """Get a hold of incoming transaction.
 
-        :return: Instance of :py:class:`cryptoassets.core.models.GenericNetworkTransaction`.
+        :return: tuple(Instance of :py:class:`cryptoassets.core.models.GenericNetworkTransaction`., bool created)
         """
         NetworkTransaction = cls
         instance = session.query(NetworkTransaction).filter_by(transaction_type="deposit", txid=txid).first()
@@ -1008,8 +1023,9 @@ class GenericNetworkTransaction(CoinDescriptionModel):
             instance.transaction_type = "deposit"
             instance.state = "incoming"
             session.add(instance)
-
-        return instance
+            return instance, True
+        else:
+            return instance, False
 
 
 class GenericConfirmationNetworkTransaction(GenericNetworkTransaction):

@@ -105,9 +105,35 @@ class TransactionUpdater:
             logger.info("Skipping transaction notify for unknown address %s, amount %s", address, amount)
             return None, None, None
 
-    def update_incoming_network_transaction(self, txid, txdata):
-        """
-        :return: Tuple (network transaction id, bool credited)
+    def verify_amount(self, txdata, address, amount):
+        """Check that transaction amounts have not somehow changed between confirmations."""
+
+        total = 0
+
+        # This transaction has new confirmations
+        for detail in txdata["details"]:
+
+            if detail["category"] != "receive":
+                # Don't crash when we are self-sending into back to our wallet
+                continue
+
+            if detail["address"] == address:
+                # This transaction contained sends to some other addresses too, not just us
+                assert detail["amount"] > 0
+                total += self.backend.to_internal_amount(detail["amount"])
+
+        return total == amount
+
+    def update_network_transaction_deposit(self, txid, txdata):
+        """Create or update NetworkTransaction in the database.
+
+        Updates the confirmation count of inbound network deposit transaction. For all associated receiving addresses and transactions, confirmation and crediting check if performed, account balances updated and ``txupdate`` event fired. Any action is taken only if the confirmation status has changed since the last call.
+
+        :param txid: Network transaction hash
+
+        :param txdata: Transaction details, as given by *bitcoind* backend
+
+        :return: Tuple (new or existing network transaction id, fired txupdate events as a list)
         """
 
         @self.conflict_resolver.managed_transaction
@@ -115,12 +141,24 @@ class TransactionUpdater:
 
             txupdate_events = []
 
-            ntx = self.coin.coin_description.NetworkTransaction.get_or_create_deposit(session, txid)
+            ntx, created = self.coin.coin_description.NetworkTransaction.get_or_create_deposit(session, txid)
             session.flush()
 
-            if ntx.confirmations != txdata["confirmations"]:
-                logger.info("Updating network transaction %d, txid %s, confirmations to %s", ntx.id, ntx.txid, ntx.confirmations)
-                ntx.confirmations = txdata["confirmations"]
+            assert ntx.transaction_type == "deposit"
+
+            # Verify transaction data looks good compared what we have recorded earlier in the database
+            if not created:
+
+                if ntx.confirmations == txdata["confirmations"]:
+                    # Confirmations have not changed, nothing to do
+                    return ntx.id, 0
+
+                for tx in ntx.transactions:
+                    assert self.verify_amount(txdata, tx.address.address, tx.amount)
+
+            logger.info("Updating network transaction %d, txid %s, confirmations to %s", ntx.id, ntx.txid, ntx.confirmations)
+
+            ntx.confirmations = txdata["confirmations"]
 
             # Sum together received per address
             addresses = Counter()  # address -> amount mapping
@@ -129,12 +167,15 @@ class TransactionUpdater:
                     addresses[detail["address"]] += self.backend.to_internal_amount(detail["amount"])
 
             # TODO: Filter out address updates which are not managed by our database
-
             confirmations = txdata["confirmations"]
 
             for address, amount in addresses.items():
                 account_id, transaction_id, credited = self._update_address_deposit(ntx, address, amount, confirmations)
-                address = address
+
+                if not account_id:
+                    # This address was not in our system
+                    continue
+
                 event_name, event = events.txupdate(network_transaction=ntx.id, txid=txid, transaction=transaction_id, account=account_id, address=address, amount=amount, confirmations=confirmations, credited=True)
                 txupdate_events.append(event)
 
@@ -144,13 +185,14 @@ class TransactionUpdater:
 
         ntx_id, txupdate_events = handle_incoming_tx()
 
+        # Fire event handlers outside the db transaction
         notifier_count = len(self.notifiers.get_all()) if self.notifiers else 0
         logger.info("Posting txupdate notify for %d notifiers", notifier_count)
         if self.notifiers:
             for e in txupdate_events:
                 self.notifiers.notify("txupdate", e)
 
-        return ntx_id
+        return ntx_id, txupdate_events
 
     def handle_wallet_notify(self, txid):
         """Handle incoming wallet notifications.
@@ -162,10 +204,7 @@ class TransactionUpdater:
         self.last_wallet_notify = datetime.datetime.utcnow()
 
         txdata = self.backend.get_transaction(txid)
-        return self.update_incoming_network_transaction(txid, txdata)
-
-        # ipdb> print(txdata)
-        # {'blockhash': '00000000cb7b5d9fed3316cceec1af71b941b77ce0b0588c98a34f05bd292b6f', 'time': 1415201940, 'timereceived': 1416370475, 'details': [{'account': 'test', 'address': 'n23pUFwzyVUXd7t4nZLzkZoidbjNnbQLLr', 'amount': Decimal('1.20000000'), 'category': 'receive'}], 'blockindex': 6, 'walletconflicts': [], 'amount': Decimal('1.20000000'), 'confirmations': 2848, 'txid': 'bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf', 'hex': '01000000017b0fedcafed339974e892f2a6da74e6e35789a60cf6efbf23b9059c346e33f32010000006b483045022100fce7ce10797c4a0bd56d5e64dc0fa1e5d3cdba4b495e2a8d76d9c43e1790d82302207b885373d9fc8dbf08165fd24250174344d6792207d98f051c98280b5a1720510121021f8ab4e791c159ba43a2d45464312f7cbafee6cd6bbcdaafb26b545e1deecf64ffffffff0234634e3e090000001976a9141a257a2ef0e6821f314d074f84a4ece9274d7e9488ac000e2707000000001976a914e138e119752bdd89cf8b46ff283181398d85b55288ac00000000', 'blocktime': 1415201940}
+        return self.update_network_transaction_deposit(txid, txdata)
 
     def rescan_address(self, address, confirmations):
         """
