@@ -13,8 +13,10 @@ from collections import Counter
 from decimal import Decimal
 
 from slugify import slugify
+import requests
 
 from block_io import BlockIo as _BlockIo
+
 
 from .base import CoinBackend
 
@@ -22,10 +24,26 @@ from .base import CoinBackend
 logger = logging.getLogger(__name__)
 
 
+def _transform_txdata_to_bitcoind_format(inp):
+    """Grab out data as mangle we expect it to be.
+
+    Input chain.so format txdata and output it as bitcoind format txdata. We probably miss half of the things ATM, so please keep updating this function.
+    """
+    output = {}
+    assert inp["status"] == "success"
+    inp = inp["data"]
+    output["confirmations"] = inp["confirmations"]
+    output["txid"] = inp["txid"]
+    output["details"] = []
+    for op in inp["outputs"]:
+        output["details"].append(dict(category="receive", address=op["address"], amount=Decimal(op["value"])))
+    return output
+
+
 class BlockIo(CoinBackend):
     """Block.io API."""
 
-    def __init__(self, coin, api_key, pin, walletnotify=None):
+    def __init__(self, coin, api_key, pin, network=None, walletnotify=None):
         """
         :param wallet_notify: Wallet notify configuration
         """
@@ -35,6 +53,10 @@ class BlockIo(CoinBackend):
         self.coin = coin
         self.block_io = _BlockIo(api_key, pin, 2)
         self.monitor = None
+
+        assert network, "Please give argument network as one of chain.so networks: btc, btctest, doge, dogetest"
+
+        self.network = network
 
         self.walletnotify_config = walletnotify
 
@@ -122,6 +144,13 @@ class BlockIo(CoinBackend):
         resp = self.block_io.withdraw(amounts=",".join(amounts), to_addresses=",".join(addresses))
 
         return resp["data"]["txid"], self.to_internal_amount(resp["data"]["network_fee"])
+
+    def get_transaction(self, txid):
+        """ """
+        resp = requests.get("https://chain.so//api/v2/get_tx/{}/{}".format(self.network, txid))
+        data = resp.json()
+        data = _transform_txdata_to_bitcoind_format(data)
+        return data
 
     def scan_addresses(self, addresses):
         """Give all known transactions to list of addresses.

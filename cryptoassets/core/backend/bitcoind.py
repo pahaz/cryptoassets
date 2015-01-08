@@ -188,9 +188,6 @@ class Bitcoind(BitcoindDerivate):
         """ """
         return self.api_call("gettransaction", txid)
 
-    def get_incoming_transaction_info(self, txid):
-        return self.api_call("gettransaction", txid)
-
     def send(self, recipients, label):
         """ Broadcast outgoing transaction.
 

@@ -151,7 +151,7 @@ class TransactionUpdater:
 
                 if ntx.confirmations == txdata["confirmations"]:
                     # Confirmations have not changed, nothing to do
-                    return ntx.id, 0
+                    return ntx.id, []
 
                 for tx in ntx.transactions:
                     assert self.verify_amount(txdata, tx.address.address, tx.amount)

@@ -107,6 +107,7 @@ class BlockIoDogeTestCase(BlockIoBTCTestCase):
         self.Wallet = coin.wallet_model
         self.Transaction = coin.transaction_model
         self.Account = coin.account_model
+        self.NetworkTransaction = coin.network_transaction_model
 
         # Withdrawal amounts must be at least 0.00002000 BTCTEST, and at most 50.00000000 BTCTEST.
         self.external_send_amount = Decimal("2")

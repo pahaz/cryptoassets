@@ -1,4 +1,4 @@
-"""Incoming transactions are considered open as long as the confirmation threshold has not been reached. Because backends do not actively report the progress of confirmation status, we poll the backend for all transactions under confirmation threshold until the treshold has been reached. For example, *bitcoind* gives you a walletnotify only for 0 and 1 confirmations.
+"""Incoming transactions are considered open as long as the confirmation threshold has not been reached. Because backends do not actively report the progress of confirmation status, we poll the backend for all transactions under confirmation threshold until the treshold has been reached. For example, *bitcoind* gives you a walletnotify only for 0 and 1 confirmations. *block.io* does not have any confirmation hooks, but you can subcribe to *chain.so* real-time API to receive 0 confirmations notificatoin to an address.
 
 :py:func:`cryptoassets.core.tools.depositupdate.update_deposits` polls the backend. It will scan all transactions where confirmation threshold has not been reached and then ask the backend of more transaction details. Eventually all open incoming transactions exceed the confirmation threshold and we can stop polling them.
 
@@ -58,8 +58,8 @@ def update_deposits(transaction_updater, confirmation_threshold):
 
     total_txupdate_events = 0
     for txid in open_ntxs:
-        txdata = backend.get_incoming_transaction_info(txid)
+        txdata = backend.get_transaction(txid)
         _, txupdate_events = transaction_updater.update_network_transaction_deposit(txid, txdata)
-        total_txupdate_events += txupdate_events
+        total_txupdate_events += len(txupdate_events)
 
     return txupdate_events
