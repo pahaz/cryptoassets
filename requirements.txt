@@ -1,7 +1,6 @@
 # Packages needed on rtd.org
 apscheduler==3.0.1
 SQLAlchemy==0.9.7
-Unidecode==0.04.16
 -e git+https://github.com/BlockIo/block_io-python.git@1.1.0-dev#egg=block-io
 blockchain==1.0.1
 colorama==0.3.2
