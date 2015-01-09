@@ -150,7 +150,7 @@ backend
 
 Installed backends.
 
-For the available backends see :doc:`backends list <./backends>`_.
+For the available backends see :doc:`backends list <./backends>`.
 
 Each backend contains the following options
 
@@ -165,7 +165,7 @@ Each backend contains the following options
 walletnotify
 ~~~~~~~~~~~~~~~~~
 
-Wallet notify configuration tells how :doc:`cryptoassets helper service <./service> receives cryptoasset transaction updates from the cryptoassets backend (bitcoind, API service). Unless this is configured, cryptoassets service or your application won't know about incoming transactions.
+Wallet notify configuration tells how :doc:`cryptoassets helper service <./service>` receives cryptoasset transaction updates from the cryptoassets backend (bitcoind, API service). Unless this is configured, cryptoassets service or your application won't know about incoming transactions.
 
 Usually you must configure your backend to send notifications to cryptoassets helper service e.g. by editing ``bitcoin.conf`` and entering ``walletnotify`` configure setting.
 

@@ -12,7 +12,7 @@ you inherit from the base classes and set the cryptocurrency specific properties
 
 Models also specify the core API how to interact with *cryptoassets.core*
 
-*
+See :doc:`how to get started interacting with models <../gettingstarted>`.
 
 For more information, see :doc:`coin documentation <../coins>` and how to :doc:`extend the framework with your own altcoins <../extend>`.
 
@@ -55,10 +55,10 @@ Transaction
 NetworkTransaction
 +++++++++++++++++++
 
-.. autoclass:: cryptoassets.core.models.GenericNetworkTranacttion
+.. autoclass:: cryptoassets.core.models.GenericNetworkTransaction
  :members:
 
-.. autoclass:: cryptoassets.core.models.GenericConfirmationNetworkTranacttion
+.. autoclass:: cryptoassets.core.models.GenericConfirmationNetworkTransaction
  :members:
 
 Wallet

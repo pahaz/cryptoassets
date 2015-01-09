@@ -33,7 +33,7 @@ The basic interaction happens as following
 
 * You set up :py:class:`cryptoassets.core.app.CryptoassetsApp` instance and configure it
 
-* You also set up a channel how :doc:`cryptoassets helper service <./service>` process can call you app, like over :doc:`HTTP web hooks <./conf>`_. Minimally this is needed to get events from incoming transactions.
+* You also set up a channel how :doc:`cryptoassets helper service <./service>` process can call you app, like over :doc:`HTTP web hooks <./config>`. Minimally this is needed to get events from incoming transactions.
 
 * You obtain SQLAlchemy session through :py:class:`cryptoassets.core.app.CryptoassetsApp.conflict_resolver` to interact with database
 

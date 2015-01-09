@@ -957,19 +957,17 @@ class GenericNetworkTransaction(CoinDescriptionModel):
 
         NetworkTransaction does not have reference to wallet. One network transaction may contain transfers to many wallets.
 
-    Handling incoming transactions
-    ------------------------------------
+    **Handling incoming deposit transactions**
 
-    For more information see :py:mo:`cryptoassets.core.backend.transactionupdater`.
+    For more information see :py:mod:`cryptoassets.core.backend.transactionupdater` and :py:mod:`cryptoassets.core.tools.depositupdate`.
 
-    Broadcasting outgoing transactions
-    -------------------------------------
+    **Broadcasting outgoing transactions**
 
     Broadcast constructs an network transaction and bundles any number of outgoing pending transactions to it. During the broadcast, one can freely bundle transactions together to lower the network fees, or mix transactions for additional privacy.
 
     Broadcasts are constructed by Cryptoassets helper service which will periodically scan for outgoing transactions and construct broadcasts of them. After constructing, broadcasting is attempted. If the backend, for a reason or another, fails to make a broadcast then this broadcast is marked as open and must be manually vetted to succeeded or failed.
 
-    For more information see :py:mo:`cryptoassets.core.tools.broadcast`.
+    For more information see :py:mod:`cryptoassets.core.tools.broadcast`.
 
     """
 

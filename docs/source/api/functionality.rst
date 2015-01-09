@@ -7,8 +7,8 @@ Tools and asset management
 Deposit updates
 ---------------------------------------------------
 
-.. automodule:: cryptoassets.core.tools.opentransactions
- :members
+.. automodule:: cryptoassets.core.tools.depositupdate
+ :members:
 
 Broadcasting outgoing transactions
 ---------------------------------------------------

@@ -94,7 +94,8 @@ class Coin:
     """
 
     def __init__(self, coin_description, backend=None):
-        """
+        """Create a binding between asset models and backend.
+
         :param coin_description: :py:class:`cryptoassets.core.coin.registry.CoinModelDescription`
 
         :param backend: :py:class:`cryptoassets.core.backend.base.CoinBackend`
@@ -112,7 +113,7 @@ class Coin:
 
     @property
     def address_model(self):
-        """SQLAlchemy model for address of this cryptoasset.
+        """Property to get SQLAlchemy model for address of this cryptoasset.
 
         Subclass of :py:class:`cryptoassets.core.models.GenericAddress`.
         """
@@ -120,7 +121,7 @@ class Coin:
 
     @property
     def transaction_model(self):
-        """SQLAlchemy model for transaction of this cryptoasset.
+        """Property to get SQLAlchemy model for transaction of this cryptoasset.
 
         Subclass of :py:class:`cryptoassets.core.models.GenericTransaction`.
         """
@@ -128,7 +129,7 @@ class Coin:
 
     @property
     def account_model(self):
-        """SQLAlchemy model for account of this cryptoasset.
+        """Property to get SQLAlchemy model for account of this cryptoasset.
 
         Subclass of :py:class:`cryptoassets.core.models.GenericAccount`.
         """
@@ -136,7 +137,7 @@ class Coin:
 
     @property
     def wallet_model(self):
-        """SQLAlchemy model for account of this cryptoasset.
+        """Property to get SQLAlchemy model for account of this cryptoasset.
 
         Subclass of :py:class:`cryptoassets.core.models.GenericWallet`.
         """
@@ -144,7 +145,7 @@ class Coin:
 
     @property
     def network_transaction_model(self):
-        """SQLAlchemy model for account of this cryptoasset.
+        """Property to get SQLAlchemy model for account of this cryptoasset.
 
         Subclass of :py:class:`cryptoassets.core.models.GenericWallet`.
         """

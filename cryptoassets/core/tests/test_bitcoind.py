@@ -95,7 +95,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         if "CI" in os.environ:
             # TODO: Figure out why test bitcoind server doubled its network fees
-            self.network_fee = Decimal("20000") / Decimal(10**8)
+            self.network_fee = Decimal("10000") / Decimal(10**8)
         else:
             self.network_fee = Decimal("10000") / Decimal(10**8)
         # Wait 10 minutes for 1 confimation from the BTC TESTNET

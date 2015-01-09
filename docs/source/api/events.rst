@@ -73,7 +73,7 @@ For 0 confirmations and 1 confirmations
 For 2 and more confirmations
 
 # Cryptoassets helper service (``cryptoassets-helper``)
-    * Run periodical open transaction update task - :pymod:`cryptoassets.core.tools.opentransactions`
+    * Run periodical open transaction update task - :py:mod:`cryptoassets.core.tools.opentransactions`
     * Poll the *bitcond* for transactions where the confirmation count in the database has not reached the maximum threshold yet. This is 15 confirmations by default.
     * If the transaction confirmation count has changed in the backend.
         * Update account balances, etc.
