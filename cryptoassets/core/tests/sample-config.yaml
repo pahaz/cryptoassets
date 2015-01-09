@@ -23,6 +23,7 @@ coins:
         models: cryptoassets.core.coin.dogecoin.models
         backend:
             class: cryptoassets.core.backend.blockio.BlockIo
+            network: doge
             # API key is to Dogetest
             api_key: 0266-c2b6-c2c8-ee07
             pin: foobar123

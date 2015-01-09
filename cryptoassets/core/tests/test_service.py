@@ -1,15 +1,10 @@
 """Test posting notifications.
 
 """
-import io
 import os
-import stat
 import unittest
-import json
-import threading
-import warnings
 import time
-import faulthandler
+import logging
 
 import requests
 
@@ -17,7 +12,6 @@ from cryptoassets.core.service.main import Service
 from cryptoassets.core.app import ALL_SUBSYSTEMS
 
 from ..configure import Configurator
-from . import testlogging
 
 from ..service import status
 
@@ -108,6 +102,9 @@ class ServiceTestCase(unittest.TestCase):
         status_http_server = self.service.status_server
         self.assertIsNotNone(status_http_server)
 
+        # Don't show wanted exceptions in the logging output
+        status.logger.setLevel(logging.FATAL)
+
         try:
 
             service.start()
@@ -117,9 +114,13 @@ class ServiceTestCase(unittest.TestCase):
             while not status_http_server.ready:
                 self.assertLess(time.time(), deadline, "Status server did not start")
 
-            report = requests.get("http://localhost:{}/".format(config["status-server"]["port"]))
-            self.assertEqual(report.status_code, 200)
-            service.shutdown()
+            for page in ("/", "/wallets", "/transactions", "/network_transactions", "/accounts", "/addresses"):
+                report = requests.get("http://localhost:{}{}".format(config["status-server"]["port"], page))
+                self.assertEqual(report.status_code, 200, "Failed page {}".format(page))
+
+                # See we handle exception in status server code
+                report = requests.get("http://localhost:{}/error".format(config["status-server"]["port"]))
+                self.assertEqual(report.status_code, 500)
 
         finally:
 

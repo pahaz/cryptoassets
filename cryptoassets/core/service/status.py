@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Status displayer for cryptoassets service.
+"""Create mini status server at port 9000 to explore the state of cryptoassets helper service.
+
+This will allow one to see if backends are running properly and when was the last incoming transaction processed.
 """
 
 import os
 import threading
 import codecs
 from io import StringIO
+from io import BytesIO
 import logging
 
 from http.server import HTTPServer
@@ -88,6 +91,24 @@ class StatusReportGenerator:
 
         tx()
 
+    def network_transactions(self, output):
+        c = TableCreator(output)
+
+        @self.conflict_resolver.managed_transaction
+        def tx(session):
+            c.open("Currency", "id", "transaction_type", "state", "txid", "confirmations", "created_at")
+            for coin_name, coin in self.service.app.coins.all():
+                NetworkTransaction = coin.network_transaction_model
+                # TODO: optimize counting
+                # http://stackoverflow.com/questions/19484059/sqlalchemy-query-for-object-with-count-of-relationship
+                for t in session.query(NetworkTransaction).all():
+                    # TODO: remove confirmations when cryptocurrency does not support it
+                    c.row(coin_name, t.id, t.transaction_type, t.state, t.txid, t.confirmations, t.created_at)
+                    output.flush()
+            c.close()
+
+        tx()
+
     def addresses(self, output):
         t = TableCreator(output)
 
@@ -99,7 +120,7 @@ class StatusReportGenerator:
                 # TODO: optimize counting
                 # http://stackoverflow.com/questions/19484059/sqlalchemy-query-for-object-with-count-of-relationship
                 for addr in session.query(Address).all():
-                    t.row(coin_name, addr.id, addr.address, addr.account.id, addr.label, addr.balance)
+                    t.row(coin_name, addr.id, addr.address, addr.account.id if addr.account else "(external)", addr.label, addr.balance)
                     output.flush()
             t.close()
 
@@ -150,6 +171,10 @@ class StatusReportGenerator:
 
         tx()
 
+    def error(self, output):
+        """Exception handling test page."""
+        raise RuntimeError("Test exception")
+
 
 class StatusHTTPServer(threading.Thread):
     """
@@ -188,6 +213,7 @@ class StatusHTTPServer(threading.Thread):
                 link("/addresses", "Addresses")
                 link("/transactions", "Transactions")
                 link("/wallets", "Wallets")
+                link("/network_transactions", "Network transactions")
                 print("</p>", file=writer)
 
             def do_GET(self):
@@ -202,7 +228,9 @@ class StatusHTTPServer(threading.Thread):
                     "{}/accounts".format(prefix): report_generator.accounts,
                     "{}/addresses".format(prefix): report_generator.addresses,
                     "{}/transactions".format(prefix): report_generator.transactions,
-                    "{}/wallets".format(prefix): report_generator.wallets
+                    "{}/wallets".format(prefix): report_generator.wallets,
+                    "{}/network_transactions".format(prefix): report_generator.network_transactions,
+                    "{}/error".format(prefix): report_generator.error,
                 }
 
                 func = paths.get(self.path)
@@ -210,14 +238,26 @@ class StatusHTTPServer(threading.Thread):
                     self.send_error(404)
                     return
 
+                buf = BytesIO()
+
+                try:
+                    # http://www.macfreek.nl/memory/Encoding_of_Python_stdout
+                    writer = codecs.getwriter('utf-8')(buf, 'strict')
+                    self.nav(writer)
+                    func(writer)
+
+                except Exception as e:
+                    logger.error("Could not process page %s: %s", self.path, e)
+                    logger.exception(e)
+                    self.send_response(500, "Internal server error")
+                    self.send_header("Content-type", "text/html; charset=utf-8")
+                    self.end_headers()
+                    return
+
                 self.send_response(200, "OK")
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
-
-                # http://www.macfreek.nl/memory/Encoding_of_Python_stdout
-                writer = codecs.getwriter('utf-8')(self.wfile, 'strict')
-                self.nav(writer)
-                func(writer)
+                self.wfile.write(buf.getvalue())
 
         server_address = (self.ip, self.port)
         try:

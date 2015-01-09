@@ -4,39 +4,17 @@ Base models
 
 .. contents:: :local:
 
-Base models describe how ``cryptoassets.core`` handles any cryptocurrency on the database level.
+Base models describe how *cryptoassets.core* handles any cryptocurrency on the database level.
 `SQLAlchemy library <http://www.sqlalchemy.org/>`_ is used for modeling.
 
 Models are abstract and when you instiate a new cryptocurrency,
 you inherit from the base classes and set the cryptocurrency specific properties.
-For details, see :doc:`coin documentation <../coins>`.
 
-Example from `cryptoassets.core.coin.bitcoin``::
+Models also specify the core API how to interact with *cryptoassets.core*
 
+*
 
-    class BitcoinAccount(models.GenericAccount):
-        coin = "btc"
-        _wallet_cls_name = "BitcoinWallet"
-        _address_cls_name = "BitcoinAddress"
-
-
-    class BitcoinAddress(models.GenericAddress):
-        coin = "btc"
-        _account_cls_name = "BitcoinAccount"
-
-
-    class BitcoinTransaction(models.GenericConfirmationTransaction):
-        coin = "btc"
-        _wallet_cls_name = "BitcoinWallet"
-        _account_cls_name = "BitcoinAccount"
-        _address_cls_name = "BitcoinAddress"
-
-
-    class BitcoinWallet(models.GenericWallet):
-        coin = "btc"
-        Address = BitcoinAddress
-        Account = BitcoinAccount
-        Transaction = BitcoinTransaction
+For more information, see :doc:`coin documentation <../coins>` and how to :doc:`extend the framework with your own altcoins <../extend>`.
 
 Cryptoasset registry
 ----------------------
@@ -68,13 +46,19 @@ Address
 .. autoclass:: cryptoassets.core.models.GenericAddress
  :members:
 
-Transactions
+Transaction
 ++++++++++++++
 
 .. autoclass:: cryptoassets.core.models.GenericTransaction
  :members:
 
-.. autoclass:: cryptoassets.core.models.GenericConfirmationTransaction
+NetworkTransaction
++++++++++++++++++++
+
+.. autoclass:: cryptoassets.core.models.GenericNetworkTranacttion
+ :members:
+
+.. autoclass:: cryptoassets.core.models.GenericConfirmationNetworkTranacttion
  :members:
 
 Wallet

@@ -48,6 +48,12 @@ Running tests for continuous integration service (15 minute timeout) and skippin
 
     CI=true py.test cryptoassets
 
+Running unittests using vanilla Python 3 unittest::
+
+    python -m unittest discover
+
+(This ignores all skipping hints)
+
 More info
 
 * http://pytest.org/latest/usage.html

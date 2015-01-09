@@ -26,6 +26,23 @@ Basics
 
 * *cryptoassets.core* is initialized from its own :doc:`configuration <./config>`, which can be passed in as Python dictionary or YAML configuration file.
 
+Interacting with cryptoassets.core
+-----------------------------------
+
+The basic interaction happens as following
+
+* You set up :py:class:`cryptoassets.core.app.CryptoassetsApp` instance and configure it
+
+* You also set up a channel how :doc:`cryptoassets helper service <./service>` process can call you app, like over :doc:`HTTP web hooks <./conf>`_. Minimally this is needed to get events from incoming transactions.
+
+* You obtain SQLAlchemy session through :py:class:`cryptoassets.core.app.CryptoassetsApp.conflict_resolver` to interact with database
+
+* You obtain an instance to :py:class:`cryptoassets.core.app.models.Wallet` - most applications have only one shared wallet
+
+* You call various wallet methods like :py:class:`cryptoassets.core.app.models.Wallet.send`
+
+* Your application listens to incoming transaction update :doc:`events <api/events>` and performs application logic when a payment is received
+
 Example command-line application
 ========================================
 

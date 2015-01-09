@@ -50,6 +50,8 @@ class Configurator:
 
         See ``sqlalchemy.engine_from_config`` for details.
 
+        TODO: Move engine to its own module?
+
         :param dict configuration: ``engine`` configuration section
         """
 
@@ -61,7 +63,7 @@ class Configurator:
         self.app.transaction_retries = transaction_retries
 
         echo = configuration.get("echo") in (True, "true")
-        return engine_from_config(configuration, prefix="", echo=echo)
+        return engine_from_config(configuration, prefix="", echo=echo, isolation_level="SERIALIZABLE")
 
     def setup_backend(self, coin, data):
         """Setup backends.
