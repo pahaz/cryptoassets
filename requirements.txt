@@ -20,5 +20,8 @@ zope.sqlalchemy==0.7.5
 zope.dottedname==4.0.1
 rainbow-logging-handler==2.2.2
 
+python-slugify==0.1.0
+Unidecode==0.04.16
+
 # pytz==2014.10
 # tzlocal==1.1.2

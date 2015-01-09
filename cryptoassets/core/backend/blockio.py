@@ -13,11 +13,12 @@ from collections import Counter
 from decimal import Decimal
 
 import requests
+from slugify import slugify
 
 from block_io import BlockIo as _BlockIo
 
 from .base import CoinBackend
-from ..utils.slugify import slugify
+
 
 logger = logging.getLogger(__name__)
 
