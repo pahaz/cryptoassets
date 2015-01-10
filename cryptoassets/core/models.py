@@ -354,7 +354,7 @@ class GenericTransaction(CoinDescriptionModel):
         return None
 
     def __str__(self):
-        return "TX id:{} state:{} txid:{} sending acco:{} receiving acco:{}".format(self.id, self.state, self.txid, self.sending_account and self.sending_account.id, self.receiving_account and self.receiving_account.id)
+        return "TX:{} state:{} txid:{} sending acco:{} receiving acco:{} confirms:{}".format(self.id, self.state, self.txid, self.sending_account and self.sending_account.id, self.receiving_account and self.receiving_account.id, getattr(self, "confirmations", "-"))
 
 
 class GenericConfirmationTransaction(GenericTransaction):
@@ -533,9 +533,6 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         # Make sure the address is written to db before we can make any entires of received transaction on it in monitoring
         session.flush()
-
-        # XXX: Need to get rid of this
-        self.backend.monitor_address(address)
 
         return address
 
@@ -959,7 +956,7 @@ class GenericNetworkTransaction(CoinDescriptionModel):
 
     **Handling incoming deposit transactions**
 
-    For more information see :py:mod:`cryptoassets.core.backend.transactionupdater` and :py:mod:`cryptoassets.core.tools.depositupdate`.
+    For more information see :py:mod:`cryptoassets.core.backend.transactionupdater` and :py:mod:`cryptoassets.core.tools.confirmationupdate`.
 
     **Broadcasting outgoing transactions**
 
@@ -968,7 +965,6 @@ class GenericNetworkTransaction(CoinDescriptionModel):
     Broadcasts are constructed by Cryptoassets helper service which will periodically scan for outgoing transactions and construct broadcasts of them. After constructing, broadcasting is attempted. If the backend, for a reason or another, fails to make a broadcast then this broadcast is marked as open and must be manually vetted to succeeded or failed.
 
     For more information see :py:mod:`cryptoassets.core.tools.broadcast`.
-
     """
 
     __abstract__ = True
@@ -1033,8 +1029,8 @@ class GenericConfirmationNetworkTransaction(GenericNetworkTransaction):
     """
     __abstract__ = True
 
-    #: How many miner confirmations this tx has received
-    confirmations = Column(Integer)
+    #: How many miner confirmations this tx has received. The value is ``-1`` until the transaction is succesfully broadcasted, after which is it ``0`.
+    confirmations = Column(Integer, nullable=False, default=-1)
 
     #: How many confirmations to wait until the transaction is set as confirmed.
     #: TODO: Make this configurable.
@@ -1043,3 +1039,6 @@ class GenericConfirmationNetworkTransaction(GenericNetworkTransaction):
     def can_be_confirmed(self):
         """ Does this transaction have enough confirmations it could be confirmed by our standards. """
         return self.confirmations >= self.confirmation_count
+
+    def __str__(self):
+        return "NTX:{} type:{} state:{} txid:{} confirmations:{}, opened_at:{} closed_at:{}".format(self.id, self.transaction_type, self.state, self.txid, self.confirmations, self.opened_at, self.closed_at)

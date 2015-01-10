@@ -185,7 +185,7 @@ class Broadcaster:
                 #: TODO: Throw emergency event here?
                 continue
 
-            logger.info("Closing broadcast %d as done", b.id)
+            logger.info("Closing broadcast %d as done, it got txid %s", b.id, txid)
             mark_sending_done(b.id, txid)
 
             if fee:

@@ -21,7 +21,9 @@ from ..configure import Configurator
 from ..backend.base import IncomingTransactionRunnable
 from ..coin.registry import Coin
 
-from ..tools import depositupdate
+from ..tools import confirmationupdate
+from ..tools import receivescan
+from ..tools import broadcast
 
 from . import status
 from . import defaultlogging
@@ -87,8 +89,8 @@ class Service:
     def setup_jobs(self):
         logger.info("Setting up broadcast scheduled job")
         self.scheduler = BackgroundScheduler()
-        self.broadcast_job = self.scheduler.add_job(self.broadcast, 'interval', minutes=2)
-        self.open_transaction_job = self.scheduler.add_job(self.scan_open_transactions, 'interval', minutes=1)
+        self.broadcast_job = self.scheduler.add_job(self.poll_broadcast, 'interval', minutes=2)
+        self.open_transaction_job = self.scheduler.add_job(self.poll_network_transaction_confirmations, 'interval', minutes=1)
 
     def start_status_server(self):
         """Start the status server on HTTP.
@@ -118,7 +120,7 @@ class Service:
                 if runnable:
                     self.incoming_transaction_runnables[name] = runnable
 
-    def broadcast(self):
+    def poll_broadcast(self):
         """"A scheduled task to broadcast any new transactions to the bitcoin network.
 
         Each wallet is broadcasted in its own transaction.
@@ -129,24 +131,15 @@ class Service:
             wallet_class = coin.wallet_model
 
             @self.app.conflict_resolver.managed_transaction
-            def get_wallet_ids(session):
-                return [wallet.id for wallet in session.query(wallet_class).all()]
+            def create_broadcasters(session):
+                return [broadcast.Broadcaster(wallet, self.app.conflict_resolver, coin.backend) for wallet in session.query(wallet_class).all()]
 
-            wallet_ids = get_wallet_ids()
+            broadcasters = create_broadcasters()
 
-            for wallet_id in wallet_ids:
+            for broadcaster in broadcasters:
+                broadcaster.do_broadcasts()
 
-                # XXX: Rewrite this
-                @self.app.conflict_resolver.managed_transaction
-                def broadcast_tx(session, wallet_id):
-                    wallet = session.query(wallet_class).get(wallet_id)
-                    logger.info("Broadcasting transactions for wallet class %s wallet %d:%s", wallet_class, wallet.id, wallet.name)
-                    outgoing = wallet.broadcast()
-                    logger.info("%d transactionsn send", outgoing)
-
-                broadcast_tx(wallet_id)
-
-    def scan_open_transactions(self):
+    def poll_network_transaction_confirmations(self):
         """Scan incoming open transactions.
 
         :return: Number of rescans attempted
@@ -157,20 +150,21 @@ class Service:
             if coin.backend.require_tracking_incoming_confirmations():
                 max_tracked_incoming_confirmations = coin.backend.max_tracked_incoming_confirmations
                 tx_updater = coin.backend.create_transaction_updater(self.app.conflict_resolver, self.app.notifiers)
-                depositupdate.update_deposits(tx_updater, max_tracked_incoming_confirmations)
+                confirmationupdate.update_deposits(tx_updater, max_tracked_incoming_confirmations)
                 rescans += 1
 
         return rescans
 
-    def rescan(self):
-        """Scan through all bitcoind transactions, see if we missed some through walletnotify."""
-        for name, coin in self.app.coins.all():
-            logger.info("Scanning through all transactions for %s", name)
-            tx_updater = coin.backend.create_transaction_updater(self.app.conflict_resolver, self.app.notifiers)
-            tx_updater.rescan_all()
+    def scan_received(self):
+        """Scan through all received transactions, see if we missed some through walletnotify."""
+        receivescan.scan(self.app.coins, self.app.conflict_resolver, self.app.notifiers)
+
+    def start_startup_receive_scan(self):
+        t = receivescan.BackgroundScanThread(self.app.coins, self.app.conflict_resolver, self.app.notifiers)
+        t.start()
 
     def start(self):
-        """
+        """Start cryptoassets helper service.
         """
         logger.info("Starting cryptoassets helper service")
         self.running = True
@@ -178,7 +172,9 @@ class Service:
         for coin, runnable in self.incoming_transaction_runnables.items():
             logger.info("Starting incoming transaction notifications for %s", coin)
             runnable.start()
+
         self.start_status_server()
+        self.start_startup_receive_scan()
 
     def shutdown(self):
 
@@ -214,6 +210,14 @@ def initializedb():
     config = parse_config_argv()
     service = Service(config, (Subsystem.database,))
     service.initialize_db()
+
+
+def scan_received():
+    defaultlogging.setup_stdout_logging()
+    splash_version()
+    config = parse_config_argv()
+    service = Service(config, (Subsystem.database, Subsystem.backend, Subsystem.notifiers))
+    service.scan_received()
 
 
 def helper():

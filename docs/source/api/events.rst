@@ -15,16 +15,12 @@ Introduction
 
 * New confirmations for outgoing transactions
 
-**cryptoassets.core** offers a framework how you can flexbile queue notifications for your application, regardless of API service or cryptocurrency you work on.
-
-E.g. your application may receive notifications over
-
-* UNIX scripts
-
-* Redis queues
+*cryptoassets.core* will also post more complex events in the future (cold wallet top ups, etc.).
 
 Events
-=======
+=============
+
+*cryptoassets.core* currently sends the following events.
 
 .. note ::
 
@@ -33,41 +29,53 @@ Events
 .. automodule:: cryptoassets.core.notify.events
  :members:
 
-Event hooks
-=============
+Event handlers
+===============
 
-Event hooks tell how *cryptoassets.core* will post the event to your application.
+Event handlers tell how *cryptoassets.core* will post the event to your application.
+
+**cryptoassets.core** offers a framework how you can flexbile queue notifications for your application, regardless of API service or cryptocurrency you work on.
+
+* If you want to your web server process handle events, configure HTTP webhook
+
+* If you want to run event handling code inside *cryptoasset helper service*, use in-process Python notifications
 
 HTTP webhook
-========================
+----------------
 
 .. automodule:: cryptoassets.core.notify.http
  :members:
 
 In-process Python
-========================
+--------------------
 
 .. automodule:: cryptoassets.core.notify.python
+ :members:
+
+Shell script
+--------------------
+
+.. automodule:: cryptoassets.core.notify.script
  :members:
 
 Incoming transaction confirmation updates
 ===========================================
 
-Handling incoming transactions is as not as straightforward as one would hope, especially with limited APIs provided with *bitcoind* and its derivates. Incoming transaction event chain for *bitcoind* goes as following:
+Handling incoming cryptoasset transactions is as not as straightforward as one would hope, especially with limited APIs provided with *bitcoind* and its derivates. Incoming transaction event chain for *bitcoind* goes as following:
 
 For 0 confirmations and 1 confirmations
 
 # Receive raw cryptocurrency protocol packet
     * Read transaction from the network
-# API service notification / bitcoind `walletnotify <http://stackoverflow.com/q/20517442/315168>`_ shell hook
+# API service notification / bitcoind :doc:`walletnotify <../backends>` shell hook
     * Push out notification about the updated transaction status
 # Cryptoassets helper service (``cryptoassets-helper``)
     * Catch the low level transaction update notification (via named pipe, HTTP hook)
     * Write updated transaction information to the database
     * Update account balances, etc.
-    * Call all generic cryptoasets notification handlers
+    * Call all generic cryptoasets notification handlers with ``txupdate`` event
 # Your application
-    * Listen cryptoassets notifications
+    * Listen for ``txupdate`` event
     * Process updated transaction
 
 For 2 and more confirmations

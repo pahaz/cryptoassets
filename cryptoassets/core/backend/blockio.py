@@ -151,6 +151,12 @@ class BlockIo(CoinBackend):
         data = _transform_txdata_to_bitcoind_format(data)
         return data
 
+    def get_received_by_address(self, address):
+        """
+        At the moment this uses `chain.so Get Received Tx API <https://chain.so/api#get-received-tx>`_ to enumerate received transactions per address.
+        """
+
+
     def scan_addresses(self, addresses):
         """Give all known transactions to list of addresses.
 

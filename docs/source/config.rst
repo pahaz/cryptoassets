@@ -114,7 +114,7 @@ url
 echo
 +++++
 
-Set to ``true`` (or Python `True``) and all SQL statements will be logged via Python logging.
+Set to ``true`` (or in Python to ``True``) and `executed SQL statements will be logged via Python logging <http://stackoverflow.com/a/2950685/315168>`_.
 
 coins
 -----------------------
@@ -143,12 +143,49 @@ Example:
                 },
             },
         },
+
+        "bitcoin": {
+            "backend": {
+                "class": "cryptoassets.core.backend.bitcoind.Bitcoind",
+                "url": "http://foo:bar@127.0.0.1:8332/"
+                "max_tracked_incoming_confirmations": 20,
+                "walletnotify":
+                    "class": "cryptoassets.core.backend.pipewalletnotify.PipedWalletNotifyHandler",
+                    "fname": "/tmp/cryptoassets-unittest-walletnotify"
+            }
+        }
     },
+
+models
+++++++++
+
+**Optional**.
+
+You can set up your own altcoin or override :doc:`default SQLAlchemy model configuration <api/models>` for an existing cryptoasset.
+
+The value of this variable is the Python module containing ``coin_description`` variable. For more information how to describe your cryptoasset models, see :py:mod:`cryptoassets.core.coin.registry`.
+
+Example:
+
+.. code-block:: python
+
+        "jesuscoin": {
+            "backend": {
+                "class": "cryptoassets.core.backend.bitcoind.Bitcoind",
+                "url": "http://x:y@127.0.0.1:8607/",
+                "walletnotify": {
+                    "class": "cryptoassets.core.backend.httpwalletnotify.HTTPWalletNotifyHandler",
+                    "ip": "127.0.0.1",
+                    "port": 28882
+                },
+            },
+            "models": "mycoin.models"
+        },
 
 backend
 ++++++++++
 
-Installed backends.
+Installed backends for one cryptoasset in ``coins`` section.
 
 For the available backends see :doc:`backends list <./backends>`.
 
@@ -160,55 +197,55 @@ Each backend contains the following options
 
 :param max_tracked_incoming_confirmations: This applications for mined coins and backends which do not actively post confirmations updates. It tells up to how many confirmations we poll the backend for confirmation updates. For details see :py:mod:`cryptoassets.core.tools.opentransactions`.
 
-:param other: All backends take connection details (url, IPs) and credentials (passwords, API keys, etc.) These options are backend specific, so see the details from the backend documentation.
+**Other options**: All backends take connection details (url, IPs) and credentials (passwords, API keys, etc.) These options are backend specific, so see the details from the :doc:`backend documentation <./backends>.
 
 walletnotify
-~~~~~~~~~~~~~~~~~
+++++++++++++++++
 
-Wallet notify configuration tells how :doc:`cryptoassets helper service <./service>` receives cryptoasset transaction updates from the cryptoassets backend (bitcoind, API service). Unless this is configured, cryptoassets service or your application won't know about incoming transactions.
+:doc:`Wallet notify <./backends>` configuration tells how :doc:`cryptoassets helper service <./service>` receives cryptoasset transaction updates from the cryptoassets backend (bitcoind, API service). Unless this is configured, cryptoassets service or your application won't know about incoming transactions.
 
-Usually you must configure your backend to send notifications to cryptoassets helper service e.g. by editing ``bitcoin.conf`` and entering ``walletnotify`` configure setting.
+``walletnotify`` section must be given in under backend configuration. It's content depends on the chosen wallet notifiaction method. For more information see :doc:`qallet notification documentation <./backends>`.
 
-Example configuration for receiving walletnotify notifications over a named UNIX pipe:
+tracked_confirmation_count
++++++++++++++++++++++++++++
 
-.. code-block:: yaml
+Max confirmation count updates we write to database for this coin, until we stop writing confirmation updates and sending out ``txupdate`` events. Default is 15 confirmations.xw
 
-    backend:
-        class: cryptoassets.core.backend.bitcoind.Bitcoind
-        url: http://foo:bar@127.0.0.1:8332/
-        walletnotify:
-            class: cryptoassets.core.backend.pipewalletnotify.PipedWalletNotifyHandler
-            fname: /tmp/cryptoassets-unittest-walletnotify
+For more information see :py:mod:`cryptoassets.core.tools.confirmationupdate`.
 
-
-Named UNIX pipe
-++++++++++++++++++
-
-.. automodule:: cryptoassets.core.backend.pipewalletnotify
-
-HTTP webhook
-++++++++++++++++++
-
-.. automodule:: cryptoassets.core.backend.httpwalletnotify
-
-Redis pubsub
-++++++++++++++++++
-
-.. automodule:: cryptoassets.core.backend.rediswalletnotify
-
-Event handling
+events
 ---------------
-
-Event handling configuration tells :doc:`cryptoassets helper service <./service>` how to notify your application about occured events (transaction updates, etc.). There exist various means to communicate between your application and *cryptoassets helper service*.
 
 Event handling is configured in the ``events`` section of the configuration file.
 
-HTTP webhook
-+++++++++++++
+Event handling configuration tells how :doc:`cryptoassets helper service <./service>` notifies your application about occured events (transaction updates, etc.). There exist various means to communicate between your application and *cryptoassets helper service*.
+
+For more information and examples read :doc:`event API documentation <api/events>`.
+
+Event section consists name and configuration data pairs. Currently event handler name is only used for logging purposes. You can configure multiple event handlers
+
+Each handler gets **class** parameters and event handler specific setup parameters.
+
+Example configuration
+
+.. code-block:: python
+
+    # List of cryptoassets notification handlers.
+    # Use this special handler to convert cryptoassets notifications to Django signals.
+    "events": {
+        "django": {
+            "class": "cryptoassets.core.notify.python.InProcessNotifier",
+            "callback": "cryptoassets.django.incoming.handle_tx_update"
+        }
+    },
+
 
 Logging
 --------
 
 *cryptoassets.core* uses `standard Python logging <https://docs.python.org/3/library/logging.html>`_.
 
-You can configure it with `Python logging configuration <https://docs.python.org/3/howto/logging.html#configuring-logging>`_.
+For logging within your application when calling :doc:`model methods <api/models>` configure logging with `Python logging configuration <https://docs.python.org/3/howto/logging.html#configuring-logging>`_.
+
+For configuring logging for *cryptoassets helper service* please wait for upcoming updates.
+

@@ -1,10 +1,42 @@
-"""bitcoind and bitcoind-likes backend.
+"""bitcoind and bitcoind-derivate backend. Interact directly with *bitcoind* service running on your own server.
 
-Created upon https://github.com/4tar/python-bitcoinrpc/tree/p34-compatablity
+Because most bitcoin forks have the same `JSON-RPC API <https://en.bitcoin.it/wiki/API_reference_%28JSON-RPC%29>`_ as the original *bitcoind*, you can use this backend for having service for most bitcoind-derived altcoins.
 
-Developer reference: https://bitcoin.org/en/developer-reference#bitcoin-core-apis
+You must configure *bitcoind* on your server to work with *cryptoassets.core*. This happens by editing `bitcoin.conf <https://en.bitcoin.it/wiki/Running_Bitcoin#Bitcoin.conf_Configuration_File>`_.
 
-Original API call list: https://en.bitcoin.it/wiki/Original_Bitcoin_client/API_calls_list
+Example ``bitcoin.conf``::
+
+    # We use bitcoin testnet, not real bitcoins
+    testnet=1
+
+    # Enable JSON-RPC
+    server=1
+
+    # Username and password
+    rpcuser=foo
+    rpcpassword=bar
+
+    rpctimeout=5
+    rpcport=8332
+
+    # This must be enabled for gettransaction() to work
+    txindex=1
+
+    # Send notifications to cryptoassetshelper service over HTTP
+    walletnotify=curl --data "txid=%s" http://localhost:28882
+
+.. note ::
+
+    You need to install curl on your server too (sudo apt install curl)
+
+The backend configuration takes following parameters.
+
+:param url: Bitcoind connection URL with username and password (rpcuser and rpcassword in bitcoin config) for `AuthServiceProxy <https://github.com/jgarzik/python-bitcoinrpc>`_. Usually something like ``http://foo:bar@127.0.0.1:8332/``
+
+:param walletnotify: Dictionary of settings up walletnotify handler.
+
+:param timeout: Timeout for JSON-RPC call. Default is 15 seconds. If the timeout occurs, the API operation can be considered as failed and the bitcoind as dead.
+
 """
 
 import logging
@@ -42,7 +74,14 @@ class BitcoindDerivate(CoinBackend):
 
 
 class Bitcoind(BitcoindDerivate):
-    """Backend for the original bitcoind (BTC) itself."""
+    """Backend for the original bitcoind (BTC) itself.
+
+    Created upon https://github.com/4tar/python-bitcoinrpc/tree/p34-compatablity
+
+    Developer reference: https://bitcoin.org/en/developer-reference#bitcoin-core-apis
+
+    Original API call list: https://en.bitcoin.it/wiki/Original_Bitcoin_client/API_calls_list
+    """
 
     def __init__(self, coin, url, walletnotify=None, timeout=15):
         """
@@ -133,6 +172,12 @@ class Bitcoind(BitcoindDerivate):
         # labeled addresses
 
         result = self.api_call("getnewaddress", self.bitcoind_account_name)
+        return result
+
+    def list_received_by_address(self, address, extra={}):
+        confirmations = extra.get("confirmations", 0)
+        result = self.api_call("listreceivedbyaddress", self.bitcoind_account_name, confirmations, True)
+        import ipdb; ipdb.set_trace()
         return result
 
     def refresh_account(self, account):

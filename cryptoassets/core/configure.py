@@ -25,7 +25,7 @@ from .notify.base import Notifier
 
 from .service import status
 from .app import Subsystem
-from .utils.dicttools import merge_dict
+from .utils.dictutil import merge_dict
 
 
 

@@ -27,12 +27,12 @@ Besides providing a daemon for communications additional helping commands are av
 cryptoassetshelper
 ------------------
 
-This is the helper service daemon.
+This command is the service helper process. It must be running on the background for your cryptoassets application to function properly.
 
 Running the service with Python project
 +++++++++++++++++++++++++++++++++++++++++++
 
-After installing ``cryptoassets.core`` to your virtualenv you should be able to run the cryptoassets helper service as following::
+After installing *cryptoassets.core* to your virtualenv you should be able to run the cryptoassets helper service as following::
 
     cryptoassethelper <your YAML config file>
 
@@ -46,14 +46,23 @@ System service integration
 
 To have automatic start/stop and other functionality for cryptoassets helper service, use something akin *systemd* or `supervisord <http://supervisord.org/>`_.
 
-cryptoassets-initializedb
-----------------------------
+cryptoassets-initialize-database
+---------------------------------
 
 This command will create database tables for different cryptocurrencies as described in the configuration file. Usually you need to do this only once when setting up the database.
 
-cryptoassets-rescan
+cryptoassets-scan-received
 ----------------------------
 
-Rescan for the missing transactions.
+Rescan all receiving addresses for missed deposit transactions.
+
+This is also performed automatically on startup of *cryptoassets helper service*.
+
+For more information see :py:mod:`cryptoassets.core.tools.receivescan`.
+
+.. note ::
+
+    At the moment it is not recommended to run this command while cryptoassetshelper is running on background.
+
 
 

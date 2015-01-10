@@ -87,7 +87,7 @@ Install Python SQLite driver (in the virtual environment)::
 
 Create the database tables::
 
-    cryptoassets-initializedb
+    cryptoassets-initialize-database
 
 Running the example
 ---------------------
@@ -101,7 +101,12 @@ Running the example application::
 You can receive and send testnet coins, but the actual sending and receiving is handled by the :doc:`helper service <./service>`. Thus, nothing comes in or goes out before you start the helper process::
 
     # Run this command in another terminal
-    cryptoassets-helper
+    cryptoassets-helper-service
+
+After completing the example
+===============================
+
+Explore :doc:`model API documentation <api/models>`, :doc:`configuration <config>` and :doc:`what tools there are available <api/functionality>`.
 
 Django integration
 =======================

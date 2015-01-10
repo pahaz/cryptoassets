@@ -23,7 +23,8 @@ from ..app import Subsystem
 from ..configure import Configurator
 from ..tools import walletimport
 from ..tools import broadcast
-from ..tools import depositupdate
+from ..tools import confirmationupdate
+from ..tools import receivescan
 
 from . import testlogging
 from . import testwarnings
@@ -132,9 +133,6 @@ class CoinTestCase:
     def broadcast(self, wallet):
         broadcaster = broadcast.Broadcaster(wallet, self.app.conflict_resolver, self.backend)
         return broadcaster.do_broadcasts()
-
-    def wait_receiving_address_ready(self, wallet, address):
-        """Wait that API service gets the address on the monitored list."""
 
     def setup_balance(self):
         """Create an a wallet and an account with balance. """
@@ -347,6 +345,55 @@ class CoinTestCase:
             self.assertIsNotNone(tx.txid)
             self.assertIsNotNone(tx.processed_at)
 
+    def test_update_broadcast_confirmation_count(self):
+        """Do a broadcast and see we get updates for the confirmation count."""
+
+        self.setup_balance()
+        Transaction = self.Transaction
+
+        with self.app.conflict_resolver.transaction() as session:
+
+            wallet = session.query(self.Wallet).get(1)
+            account = session.query(self.Account).get(1)
+
+            # Random address on block.io testnet test wallet
+            tx = wallet.send_external(account, "2N5Ji2nCnvjTXDxsv9dPuKocXicctSuNs4n", self.external_send_amount, "Test send {}".format(time.time()))
+            session.flush()
+
+            self.broadcast(wallet)
+
+            # Reread the tranansaction
+            tx = session.query(self.Transaction).get(tx.id)
+            self.assertEqual(tx.state, "broadcasted")
+            self.assertIsNotNone(tx.network_transaction)
+            tx_id = tx.id
+
+        transaction_updater = self.backend.create_transaction_updater(self.app.conflict_resolver, None)
+
+        deadline = time.time() + 40 * 60
+        while time.time() < deadline:
+
+            confirmationupdate.update_deposits(transaction_updater, 5)
+
+            time.sleep(5.0)
+
+            with self.app.conflict_resolver.transaction() as session:
+                tx = session.query(Transaction).get(tx_id)
+
+                logger.debug("Polling transaction updates for txid %s, confirmations %d", tx.txid, tx.confirmations)
+
+                if tx.network_transaction.confirmations >= 1:
+                    break
+
+                self.assertLess(time.time(), deadline, "Did not receive updates for broadcast tx {}".format(tx.network_transaction.txid))
+
+        self.assertGreaterEqual(transaction_updater.stats["network_transaction_updates"], 1)
+        # We should have
+        # 1 update for 0 confirmations
+        # 1 update for 1 confirmations
+        self.assertEqual(transaction_updater.stats["broadcast_updates"], 2)
+        self.assertEqual(transaction_updater.stats["deposit_updates"], 0)
+
     def test_charge_network_fee(self):
         """Do an external transaction and see we account network fees correctly."""
 
@@ -515,7 +562,7 @@ class CoinTestCase:
 
                 # Make sure confirmations are updated
                 transaction_updater = self.backend.create_transaction_updater(self.app.conflict_resolver, None)
-                depositupdate.update_deposits(transaction_updater, 5)
+                confirmationupdate.update_deposits(transaction_updater, 5)
 
                 # Don't hold db locked for an extended perior
                 with self.app.conflict_resolver.transaction() as session:
@@ -569,3 +616,47 @@ class CoinTestCase:
             self.assertEqual(txs.count(), 0)
 
             self.assertGreater(account.balance, 0, "Timeouted receiving external transaction")
+
+    def test_receive_scan(self):
+        """Make sure we don't miss transactions even if helper service is down.
+
+        We simulate a missed transaction (backend deposit updates are not running) and then manually trigger rescan to see rescan picks up the transaction.
+        """
+        Address = self.Address
+
+        # First create incoming address
+        with self.app.conflict_resolver.transaction() as session:
+            wallet = self.Wallet()
+            session.add(wallet)
+            session.flush()
+
+            account = wallet.create_account("Test account")
+            session.flush()
+            address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
+            addr_str = address.address
+
+        # Then perform send to this address using raw backend, so we shouldn't get notification the incoming deposit
+        txid = self.backend.send(addr_str, dict(addr_str=self.external_send_amount))
+
+        # Now ask backend until we know the tx is broadcasted
+        deadline = time.time() + 30
+        while True:
+            txdata = self.backend.get_transaction(txid)
+            if txdata["confirmations"] >= 0:
+                break
+            self.assertLess(time.time(), deadline)
+
+        t = receivescan.BackgroundScanThread(self.app.coins, self.app.conflict_resolver, None)
+        t.start()
+
+        # Now ask backend until we know the tx is broadcasted
+        deadline = time.time() + 30
+        while True:
+            if t.missed_txs >= 0:
+                break
+            self.assertLess(time.time(), deadline)
+
+        # Check that address is now credited
+        with self.app.conflict_resolver.transaction() as session:
+            address = session.query(Address).filter(Address.address == addr_str).first()
+            self.assertGreater(len(address.transactions), 0)

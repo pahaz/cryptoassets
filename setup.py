@@ -36,7 +36,8 @@ setup(name='cryptoassets.core',
       install_requires=requires,
       entry_points="""\
       [console_scripts]
-      cryptoassets-initializedb = cryptoassets.core.service.main:initializedb
-      cryptoassets-helper = cryptoassets.core.service.main:helper
+      cryptoassets-initialize-database = cryptoassets.core.service.main:initializedb
+      cryptoassets-helper-service = cryptoassets.core.service.main:helper
+      cryptoassets-scan-received = cryptoassets.core.service.main:scan_received
       """,
       )

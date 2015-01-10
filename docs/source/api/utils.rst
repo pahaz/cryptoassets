@@ -21,6 +21,12 @@ Automatic enumeration classes
 .. automodule:: cryptoassets.core.utils.enum
  :members:
 
+Python dictionary deep merge
+------------------------------
+
+.. automodule:: cryptoassets.core.utils.dictutil
+ :members:
+
 HTTP event listener decorator
 ------------------------------
 

@@ -12,7 +12,7 @@ import logging
 import pytest
 
 from ..backend.bitcoind import TransactionUpdater
-from ..tools import depositupdate
+from ..tools import confirmationupdate
 
 from ..backend.pipewalletnotify import PipedWalletNotifyHandler
 from .base import CoinTestCase
@@ -155,13 +155,12 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         subprocess.call("echo bfb0ef36cdf4c7ec5f7a33ed2b90f0267f2d91a4c419bcf755cc02d6c0176ebf >> {}".format(WALLETNOTIFY_PIPE), shell=True)
 
         deadline = time.time() + 3
-        while transaction_updater.stats["network_transaction_updates"] == 0:
+        while transaction_updater.stats["deposit_updates"] == 0:
             time.sleep(0.1)
             self.assertLess(time.time(), deadline, "Transaction updater never kicked in")
 
         # Check that transaction manager did not die with an exception
         # in other thread
-        self.assertEqual(transaction_updater.stats["network_transaction_updates"], 1)
         self.assertEqual(transaction_updater.stats["deposit_updates"], 1)
         self.assertTrue(self.walletnotify_pipe.is_alive())
 
@@ -188,7 +187,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
     def test_open_transactions(self):
         """Test that we get confirmation count increase.
 
-        We stress out ``tools.depositupdate`` functionality. See CoinBackend base class for comments.
+        We stress out ``tools.confirmationupdate`` functionality. See CoinBackend base class for comments.
 
         This test will take > 15 minutes to run.
 
@@ -240,7 +239,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         while time.time() < deadline:
 
-            depositupdate.update_deposits(self.transaction_updater, 3)
+            confirmationupdate.update_deposits(self.transaction_updater, 3)
 
             # Don't hold db locked for an extended perior
             with self.app.conflict_resolver.transaction() as session:

@@ -4,10 +4,10 @@ Tools and asset management
 
 .. contents:: :local:
 
-Deposit updates
+Transaction confirmation count updates
 ---------------------------------------------------
 
-.. automodule:: cryptoassets.core.tools.depositupdate
+.. automodule:: cryptoassets.core.tools.confirmationupdate
  :members:
 
 Broadcasting outgoing transactions
@@ -15,6 +15,11 @@ Broadcasting outgoing transactions
 
 .. automodule:: cryptoassets.core.tools.broadcast
  :members:
+
+Rescan receiving addresses
+------------------------------
+
+.. automodule:: cryptoassets.core.tools.receivescan
 
 Importing existing wallet
 --------------------------

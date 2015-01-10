@@ -34,7 +34,7 @@ class CoinBackend(abc.ABC):
 
         Some daemons and walletnotify methods, namely bitcoind, only notify us back the first occurence of an incoming transactions. If we want to receive further confirmations from the transaction, we need to manually poll the transactions where our confirmation threshold is not yet met.
 
-        Set this to true and the cryptoassets helper service will start a background job (:py:mod:`cryptoassets.core.tools.depositupdate` to keep receiving updates about the confirmations).
+        Set this to true and the cryptoassets helper service will start a background job (:py:mod:`cryptoassets.core.tools.confirmationupdate` to keep receiving updates about the confirmations).
 
         :return: True or False
         """
@@ -77,12 +77,21 @@ class CoinBackend(abc.ABC):
 
         May take backend-specific optional kwargs like ``confirmations``.
 
+        This is used for :py:mod:`cryptoassets.core.tools.walletimport`.
+
         :return: Decimal
         """
 
-    def monitor_address(self, address):
-        # XXX: Remove
-        pass
+    @abc.abstractmethod
+    def list_received_by_address(self, address, extra):
+        """List received transactions arrived to an address.
+
+        :param address: As a string
+
+        :param extra: Dict for backend-specific optional kwargs like ``confirmations``.
+
+        :return: List of txids
+        """
 
     def create_transaction_updater(self, conflict_resolver, notifiers):
         tx_updater = TransactionUpdater(conflict_resolver, self, self.coin, notifiers)
