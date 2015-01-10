@@ -176,7 +176,7 @@ class Bitcoind(BitcoindDerivate):
 
     def list_received_by_address(self, address, extra={}):
         confirmations = extra.get("confirmations", 0)
-        result = self.api_call("listreceivedbyaddress", self.bitcoind_account_name, confirmations, True)
+        result = self.api_call("listreceivedbyaddress", address, confirmations, True)
         import ipdb; ipdb.set_trace()
         return result
 
@@ -241,16 +241,28 @@ class Bitcoind(BitcoindDerivate):
         :param recipients: Dict of (address, internal amount)
         """
         amounts = {}
-        for address, satoshis in recipients.items():
-            amounts[address] = float(self.to_external_amount(satoshis))
+        for address, decimals in recipients.items():
+
+            # TODO: float() is here due to how bitcoin RPC passes values
+            # Make sure conversion doesn't kill us if we lose accuracy accidentally
+            converted = float(self.to_external_amount(decimals))
+
+            accu = Decimal("0.00000001")
+            d = Decimal(converted).quantize(accu)
+            assert d == decimals.quantize(accu)
+
+            amounts[address] = converted
+            #assert Decimal(amounts[address]) == self.to_external_amount(decimals), "Got {} and {}".format(amounts[address], decimals)
 
         txid = self.api_call("sendmany", self.bitcoind_account_name, amounts, self.bitcoind_send_input_confirmations, label)
 
-        # 'amount': Decimal('0E-8'), 'timereceived': 1416583349, 'fee': Decimal('-0.00010000'), 'txid': 'bf0decbc5726e75afdf9768dbbf611ae6ba52e3b36dbd96aecb3de2728ef8ebb', 'details': [{'category': 'send', 'address': 'mhShYyZhFgAmLwjaKyN2hN3HVt78a3BrtP', 'account': 'cryptoassets', 'amount': Decimal('-0.00002100'), 'fee': Decimal('-0.00010000')}, {'category': 'receive', 'address': 'mhShYyZhFgAmLwjaKyN2hN3HVt78a3BrtP', 'account': 'cryptoassets', 'amount': Decimal('0.00002100')}], 'confirmations': 0, 'hex': '0100000001900524bfa2d0ac8a361900b54fb8eb09287c9e4585cb446e66914f0db81dd36f000000006a473044022064210bad81028559d110a71142b29ce38ff13c1d712aa200913e3300b91b9ff7022050acbf3393443796104f38dd349b5dce1a12bec7e64308c7ec9f491476e8b9cc0121026a3dead5584ed1afa7f754ce8cb027be91ef418d7ddd7085fd690ad8a8d2196effffffff021c276c00000000001976a9141e966ad7ac7570fbd1d9d977fc382a9565c6bd3188ac34080000000000001976a914152247f71eaf81783197e357907857aecdb44bcb88ac00000000', 'walletconflicts': [], 'time': 1416583349}
+        # 'amount': Decimal('0E-8'), 'timereceived': 1416583349, 'fee': Decimal('-0.00010000'), 'txid': 'bf0decbc5726e75afdf9768dbbf611ae6ba52e3b36dbd96aecb3de2728ef8ebb', 'details': [{'category': 'send', 'address': 'mhShYyZhFgAmLwjaKyN2hN3HVt78a3BrtP', 'account': 'cryptoassets', 'amount': Decimal('-0.00002100'), 'fee': Decimal('-0.00010000')}, {'category': 'receive', 'address': 'mhShYyZhFgAmLwjaKyN2hN3HVt78a3BrtP', 'account': 'cryptoassets', 'amount': Decimal('0.00002100')}], 'confirmations': 0, 'hex': '0100000001900524bfa2d0ac8a361900b54fb8eb09287c9e4585cb446e66914f0db81dd36f000000006a473044022064210bad81028559d110a71142b29ce38ff13c1d712aa200913e3300b91b9ff7022050acbf3393443796104f38dd349b5dce1a12bec7e64308c7ec9f491476e8b9cc0121026a3dead5584ed1afa7f754ce8cb027be91ef418d7ddd7085fd690ad8a8d2196effffffff021c276c00000000001976a9141e966ad7ac7570fbd1d9d977fc382a9565c6bd3188ac34080000000000001976a914152247f71eaf81783
+        # 197e357907857aecdb44bcb88ac00000000', 'walletconflicts': [], 'time': 1416583349}
+        fee = 0
         txdata = self.api_call("gettransaction", txid)
         for detail in txdata["details"]:
             if detail["category"] == "send":
-                fee = -1 * self.to_internal_amount(detail["fee"])
+                fee += -1 * self.to_internal_amount(detail["fee"])
 
         return txid, fee
 

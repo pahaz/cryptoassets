@@ -306,7 +306,7 @@ class GenericTransaction(CoinDescriptionModel):
         """
         return relationship(cls.coin_description.address_model_name,  # noqa
             primaryjoin="{}.address_id == {}.id".format(cls.__name__, cls.coin_description.address_model_name),
-            backref="addresses")
+            backref="transactions")
 
     @declared_attr
     def sending_account(cls):

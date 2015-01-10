@@ -49,17 +49,17 @@ def scan_coin(coin, conflict_resolver, event_handlers):
 
     @conflict_resolver.managed_transaction
     def _get_all_receiving_addresses(session, address_model):
-        get_all_receiving_addresses(session, address_model)
+        return get_all_receiving_addresses(session, address_model)
 
     @conflict_resolver.managed_transaction
     def _get_missed_txids(session, address_model, address, txids_in_address):
-        get_all_receiving_addresses(session, address_model, address, txids_in_address)
+        return get_all_receiving_addresses(session, address_model, address, txids_in_address)
 
     transaction_updater = TransactionUpdater(conflict_resolver, coin.backend, coin, event_handlers)
 
     # Perform one db transaction per backend API call
     missed_txids = set()
-    for address in _get_all_receiving_addresses():
+    for address in _get_all_receiving_addresses(coin.address_model):
         backend = coin.backend
         # Get all tranactions for this particular address
         received_txids = backend.list_received_by_address(address, dict(confirmations=0))
@@ -85,7 +85,7 @@ def scan(coins, conflict_resolver, event_handlers):
     """
 
     missed = 0
-    for coin in coins.values():
+    for name, coin in coins.all():
         missed += scan_coin(coin, conflict_resolver, event_handlers)
     return missed
 

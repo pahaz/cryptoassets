@@ -636,7 +636,7 @@ class CoinTestCase:
             addr_str = address.address
 
         # Then perform send to this address using raw backend, so we shouldn't get notification the incoming deposit
-        txid = self.backend.send(addr_str, dict(addr_str=self.external_send_amount))
+        txid, fees = self.backend.send(recipients={addr_str: self.external_send_amount}, label="Test broadcast")
 
         # Now ask backend until we know the tx is broadcasted
         deadline = time.time() + 30
@@ -659,4 +659,5 @@ class CoinTestCase:
         # Check that address is now credited
         with self.app.conflict_resolver.transaction() as session:
             address = session.query(Address).filter(Address.address == addr_str).first()
+            import ipdb; ipdb.set_trace()
             self.assertGreater(len(address.transactions), 0)
