@@ -140,3 +140,25 @@ class ServiceTestCase(unittest.TestCase):
             self.assertEqual(count, 1)
         finally:
             service.shutdown()
+
+    def test_run_receive_scan(self):
+        """See that we complete received transactions scan on startup."""
+
+        config = self.prepare_config()
+
+        self.service = service = Service(config, ALL_SUBSYSTEMS)
+        self.service.setup_session()
+
+        try:
+            service.start()
+
+            # My local test wallet is big...
+            deadline = time.time() + 5 * 60
+            while True:
+                if service.receive_scan_thread:
+                    if service.receive_scan_thread.complete:
+                        break
+                self.assertLess(time.time(), deadline, "oops could not rescan incoming transactions")
+
+        finally:
+            service.shutdown()

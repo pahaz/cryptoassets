@@ -54,6 +54,7 @@ class Service:
         self.incoming_transaction_runnables = {}
         self.running = False
         self.last_broadcast = None
+        self.receive_scan_thread = None
 
         self.config(config)
         self.setup()
@@ -160,8 +161,8 @@ class Service:
         receivescan.scan(self.app.coins, self.app.conflict_resolver, self.app.notifiers)
 
     def start_startup_receive_scan(self):
-        t = receivescan.BackgroundScanThread(self.app.coins, self.app.conflict_resolver, self.app.notifiers)
-        t.start()
+        self.receive_scan_thread = receivescan.BackgroundScanThread(self.app.coins, self.app.conflict_resolver, self.app.notifiers)
+        self.receive_scan_thread.start()
 
     def start(self):
         """Start cryptoassets helper service.

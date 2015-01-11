@@ -117,8 +117,10 @@ class BackgroundScanThread(threading.Thread):
         self.event_handlers = event_handlers
         self.running = False
         self.missed_txs = 0
+        self.complete = False
         threading.Thread.__init__(self, daemon=True)
 
     def run(self):
         self.running = True
         self.missed_txs += scan(self.coins, self.conflict_resolver, self.event_handlers)
+        self.complete = True

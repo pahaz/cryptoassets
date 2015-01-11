@@ -117,9 +117,18 @@ class Bitcoind(base.CoinBackend):
 
     def api_call(self, name, *args, **kwargs):
         """ """
+
+        # XXX: Create a thread-safe version of AuthServiceProxy.
+        # This is just a workaround
+        # https://github.com/petertodd/python-bitcoinlib/issues/35
+        bitcoind = AuthServiceProxy(self.url, timeout=self.timeout)
+
         try:
-            func = getattr(self.bitcoind, name)
+            func = getattr(bitcoind, name)
             result = func(*args, **kwargs)
+
+            bitcoind._AuthServiceProxy__conn.close()
+
             return result
         except ValueError as e:
             #
