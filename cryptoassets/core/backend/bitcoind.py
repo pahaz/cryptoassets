@@ -120,7 +120,8 @@ class Bitcoind(base.CoinBackend):
 
         # XXX: Create a thread-safe version of AuthServiceProxy.
         # This is just a workaround
-        # https://github.com/petertodd/python-bitcoinlib/issues/35
+        # https://github.com/petertodd/python-bitcoinlib/issues/35.
+        # Create a thread pool of AuthServiceProxy connections.
         bitcoind = AuthServiceProxy(self.url, timeout=self.timeout)
 
         try:

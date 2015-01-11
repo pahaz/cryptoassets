@@ -618,6 +618,7 @@ class CoinTestCase:
 
             self.assertGreater(account.balance, 0, "Timeouted receiving external transaction")
 
+    @pytest.mark.skipif(is_slow_test_hostile(), reason="This may take up to few minutes")
     def test_receive_scan(self):
         """Make sure we don't miss transactions even if helper service is down.
 
