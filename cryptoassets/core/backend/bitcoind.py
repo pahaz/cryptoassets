@@ -45,8 +45,8 @@ import socket
 import time
 from decimal import Decimal
 from http.client import BadStatusLine
-#from os import ConnectionRefusedError
 from collections import Counter
+import threading
 
 from zope.dottedname.resolve import resolve
 
@@ -90,7 +90,6 @@ class Bitcoind(base.CoinBackend):
 
         self.url = url
         self.timeout = int(timeout)
-        self.bitcoind = AuthServiceProxy(url, timeout=self.timeout)
         self.coin = coin
         self.default_confirmations = 3
 
@@ -105,6 +104,21 @@ class Bitcoind(base.CoinBackend):
         self.track_incoming_confirmations = True
         self.max_tracked_incoming_confirmations = 99
 
+        self.thread_connection_pool = threading.local()
+
+    def connect(self, reconnect=False):
+        """Gets or creates a per-thread connection to bitcoind.
+
+        Using AuthServiceProxy is thread-unsafe. Because ``CoinBackend`` is accessed from multiple threads, make it safe here.
+
+        https://github.com/petertodd/python-bitcoinlib/issues/35.
+        """
+        bitcoind = getattr(self.thread_connection_pool, 'bitcoind', None)
+        if bitcoind is None or reconnect:
+            self.thread_connection_pool.bitcoind = bitcoind = AuthServiceProxy(self.url, timeout=self.timeout)
+
+        return bitcoind
+
     def require_tracking_incoming_confirmations(self):
         return True
 
@@ -117,18 +131,11 @@ class Bitcoind(base.CoinBackend):
     def api_call(self, name, *args, **kwargs):
         """ """
 
-        # XXX: Create a thread-safe version of AuthServiceProxy.
-        # This is just a workaround
-        # https://github.com/petertodd/python-bitcoinlib/issues/35.
-        # Create a thread pool of AuthServiceProxy connections.
-        bitcoind = AuthServiceProxy(self.url, timeout=self.timeout)
+        bitcoind = self.connect()
 
         try:
             func = getattr(bitcoind, name)
             result = func(*args, **kwargs)
-
-            bitcoind._AuthServiceProxy__conn.close()
-
             return result
         except ValueError as e:
             #
@@ -150,7 +157,7 @@ class Bitcoind(base.CoinBackend):
             #   File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/http/client.py", line 966, in putrequest
             #     raise CannotSendRequest(self.__state)
             # http.client.CannotSendRequest: Request-sent
-            self.bitcoind = AuthServiceProxy(self.url, timeout=self.timeout)
+            self.connect(reconnect=True)
             raise
         except JSONRPCException as e:
             msg = e.error.get("message")
@@ -300,7 +307,7 @@ class ListReceivedTransactionsIterator(base.ListTransactionsIterator):
                 attemps -= 1
                 if attemps:
                     # Recreate connection. We are
-                    self.backend.bitcoind = AuthServiceProxy(self.backend.url, timeout=self.backend.timeout)
+                    self.connect(reconnect=True)
                     continue
                 else:
                     raise
