@@ -264,3 +264,14 @@ texinfo_documents = [
 
 # http://stackoverflow.com/a/9772922/315168
 autoclass_content = 'both'
+
+import sys
+from unittest.mock import MagicMock
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+            return Mock()
+
+MOCK_MODULES = ['pytest', 'redis']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
