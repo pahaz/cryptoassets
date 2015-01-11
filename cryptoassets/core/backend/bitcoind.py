@@ -31,6 +31,8 @@ Example ``bitcoin.conf``::
 
 The backend configuration takes following parameters.
 
+:param class: Always ``cryptoassets.core.backend.bitcoind.Bitcoind``
+
 :param url: Bitcoind connection URL with username and password (rpcuser and rpcassword in bitcoin config) for `AuthServiceProxy <https://github.com/jgarzik/python-bitcoinrpc>`_. Usually something like ``http://foo:bar@127.0.0.1:8332/``
 
 :param walletnotify: Dictionary of settings up walletnotify handler.

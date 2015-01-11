@@ -1,3 +1,10 @@
+"""Non-functional cryptocurrency backend doing nothing. Use for testing purposes.
+
+The backend configuration takes following parameters.
+
+:param class: Always ``cryptoassets.core.backend.null.DummyCoinBackend``
+"""
+
 import random
 from decimal import Decimal
 
@@ -5,7 +12,6 @@ from . import base
 
 
 class DummyCoinBackend(base.CoinBackend):
-    """Dummy cryptocurrency backend doing nothing for testing purposes."""
 
     def __init__(self, coin):
         self.coin = coin

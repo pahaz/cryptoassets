@@ -93,6 +93,8 @@ database
 
 Configure usd SQLAlchemy database connection.
 
+Example:
+
 .. code-block:: python
 
         "database": {
@@ -227,14 +229,48 @@ Each backend contains the following options
 
 :param max_tracked_incoming_confirmations: This applications for mined coins and backends which do not actively post confirmations updates. It tells up to how many confirmations we poll the backend for confirmation updates. For details see :py:mod:`cryptoassets.core.tools.opentransactions`.
 
-**Other options**: All backends take connection details (url, IPs) and credentials (passwords, API keys, etc.) These options are backend specific, so see the details from the :doc:`backend documentation <./backends>.
+**Other options**: All backends take connection details (url, IPs) and credentials (passwords, API keys, etc.) These options are backend specific, so see the details from the :doc:`backend <./backends>` documentation.
+
+Example:
+
+.. code-block:: python
+
+        "coins" : {
+            "btc": {
+                "backend": {
+                    "class": "cryptoassets.core.backend.bitcoind.Bitcoind",
+                    "url": "http://x:y@127.0.0.1:8607/",
+                    "walletnotify": {
+                        "class": "cryptoassets.core.backend.httpwalletnotify.HTTPWalletNotifyHandler",
+                        "ip": "127.0.0.1",
+                        "port": 28882
+                    },
+                },
+            },
+        }
 
 walletnotify
 ++++++++++++++++
 
 :doc:`Wallet notify <./backends>` configuration tells how :doc:`cryptoassets helper service <./service>` receives cryptoasset transaction updates from the cryptoassets backend (bitcoind, API service). Unless this is configured, cryptoassets service or your application won't know about incoming transactions.
 
-``walletnotify`` section must be given in under backend configuration. It's content depends on the chosen wallet notifiaction method. For more information see :doc:`qallet notification documentation <./backends>`.
+``walletnotify`` section must be given in under backend configuration. It's content depends on the chosen wallet notification method. For more information see :doc:`qallet notification documentation <./backends>`.
+
+Example:
+
+.. code-block:: python
+
+        "jesuscoin": {
+            "backend": {
+                "class": "cryptoassets.core.backend.bitcoind.Bitcoind",
+                "url": "http://x:y@127.0.0.1:8607/",
+                "walletnotify": {
+                    "class": "cryptoassets.core.backend.httpwalletnotify.HTTPWalletNotifyHandler",
+                    "ip": "127.0.0.1",
+                    "port": 28882
+                },
+            },
+        },
 
 events
 ---------------
@@ -267,6 +303,21 @@ status_server
 
 Configure mini status server which you can use to check *cryptoassets helper service* status.
 
+Example:
+
+.. code-block:: python
+
+    "database": {
+        "url": "sqlite:////tmp/payments.sqlite",
+    },
+
+    ...
+
+    "status-server": {
+        "ip": "127.0.0.1",
+        "port": 9000
+    }
+
 ip
 ++++++++++
 
@@ -276,7 +327,6 @@ port
 ++++++++++
 
 Port the status server is listening to.s
-
 
 Logging
 --------

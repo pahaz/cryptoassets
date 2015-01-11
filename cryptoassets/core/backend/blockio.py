@@ -2,7 +2,9 @@
 
 Supports Bitcoin, Dogecoin and Litecoin on `block.io <https://block.io>`_ API.
 
-Require parameters
+The backend configuration takes following parameters.
+
+:param class: Always ``cryptoassets.core.backend.blockio.BlockIo``
 
 :param api_key: block.io API key
 
