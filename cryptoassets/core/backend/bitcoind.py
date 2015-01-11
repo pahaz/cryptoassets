@@ -40,7 +40,6 @@ The backend configuration takes following parameters.
 """
 
 import logging
-import transaction
 import datetime
 import socket
 import time

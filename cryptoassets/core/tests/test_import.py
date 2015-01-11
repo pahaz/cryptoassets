@@ -1,6 +1,5 @@
 import os
 import unittest
-import transaction
 
 from ..app import CryptoAssetsApp
 from ..configure import Configurator
