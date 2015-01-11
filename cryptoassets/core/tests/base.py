@@ -84,6 +84,9 @@ class CoinTestCase:
         self.external_send_amount = Decimal("0.0001")
         self.network_fee = Decimal("0.0001")
 
+        # Looks like network fee on btctest varies so we need to have at least two different allowed fees
+        self.allowed_network_fees = []
+
         self.setup_coin()
 
         self.app.setup_session()
@@ -424,7 +427,11 @@ class CoinTestCase:
 
             fee_txs = session.query(self.Transaction).filter(self.Transaction.state == "network_fee")
             self.assertEqual(fee_txs.count(), 1)
-            self.assertEqual(fee_txs.first().amount, self.network_fee)
+
+            allowed_fees = self.allowed_network_fees + [self.network_fee]
+            fee = fee_txs.first().amount
+
+            self.assertTrue(fee in allowed_fees, "Got fee {}, allowed {}".format(fee, allowed_fees))
 
     def test_broadcast_no_transactions(self):
         """ Broadcast must not fail even we don't have any transactions. """

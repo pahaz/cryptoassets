@@ -101,6 +101,9 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         # Wait 10 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 80 * 10
 
+        # sometimes Decimal('0.00020000'), Decimal('0.00010000') depending on the day on the testnet?
+        self.allowed_network_fees = [Decimal("10000") / Decimal(10**8), Decimal("20000") / Decimal(10**8)]
+
     def xxx_test_incoming_transaction(self):
         """Check we get notification for the incoming transaction.
 
@@ -238,11 +241,14 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
             logger.info("Monitoring receiving address {} on wallet {}".format(receiving_address.address, wallet.id))
 
         # Testnet seem to take confirmations up to 60 minutes... le fuu the shitcoin
-        deadline = time.time() + 60 * 60
+        # We wait 2 hours!
+        deadline = time.time() + 120 * 60
 
         while time.time() < deadline:
 
             confirmationupdate.update_deposits(self.transaction_updater, 3)
+
+            time.sleep(30)
 
             # Don't hold db locked for an extended perior
             with self.app.conflict_resolver.transaction() as session:
@@ -264,6 +270,12 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
                         # We got more than 1 confirmation, good, we are counting!
                         break
 
-            time.sleep(30)
+                if time.time() > deadline:
+                    # Print some debug output to diagnose
+                    for tx in session.query(self.Transaction).all():
+                        logger.error(tx)
+
+                    for ntx in session.query(self.NetworkTransaction).all():
+                        logger.error(ntx)
 
             self.assertLess(time.time(), deadline, "Never got confirmations update through")
