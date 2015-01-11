@@ -347,6 +347,7 @@ class CoinTestCase:
             self.assertIsNotNone(tx.txid)
             self.assertIsNotNone(tx.processed_at)
 
+    @pytest.mark.skipif(is_slow_test_hostile(), reason="This may take up to 20 minutes")
     def test_update_broadcast_confirmation_count(self):
         """Do a broadcast and see we get updates for the confirmation count."""
 
