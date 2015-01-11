@@ -379,7 +379,7 @@ class CoinTestCase:
         deadline = time.time() + 40 * 60
         while time.time() < deadline:
 
-            confirmationupdate.update_deposits(transaction_updater, 5)
+            confirmationupdate.update_confirmations(transaction_updater, 5)
 
             time.sleep(5.0)
 
@@ -571,7 +571,7 @@ class CoinTestCase:
 
                 # Make sure confirmations are updated
                 transaction_updater = self.backend.create_transaction_updater(self.app.conflict_resolver, None)
-                confirmationupdate.update_deposits(transaction_updater, 5)
+                confirmationupdate.update_confirmations(transaction_updater, 5)
 
                 # Don't hold db locked for an extended perior
                 with self.app.conflict_resolver.transaction() as session:

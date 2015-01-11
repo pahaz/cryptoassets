@@ -246,7 +246,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         while time.time() < deadline:
 
-            confirmationupdate.update_deposits(self.transaction_updater, 3)
+            confirmationupdate.update_confirmations(self.transaction_updater, 3)
 
             time.sleep(30)
 

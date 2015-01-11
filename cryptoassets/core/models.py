@@ -188,6 +188,16 @@ class GenericAddress(CoinDescriptionModel):
         assert cls.coin_description.account_model_name
         return relationship(cls.coin_description.account_model_name, backref="addresses")
 
+    @classmethod
+    def validate(self, address):
+        """Checks that the address is valid for this asset.
+
+        Subclass should override this.
+
+        :return: True if address is valid
+        """
+        raise NotImplementedError()
+
     @declared_attr
     def __table_args__(cls):
         return (UniqueConstraint('account_id', 'address', name='_account_address_uc'),)

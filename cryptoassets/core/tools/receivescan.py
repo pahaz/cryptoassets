@@ -58,7 +58,7 @@ def scan_coin(coin, conflict_resolver, event_handlers):
 
     transaction_updater = TransactionUpdater(conflict_resolver, coin.backend, coin, event_handlers)
 
-    good_txids = _get_all_confirmed_network_transactions(coin.network_transaction_model, backend.max_tracked_incoming_confirmations)
+    good_txids = _get_all_confirmed_network_transactions(coin.network_transaction_model, coin.max_confirmation_count)
 
     all_addresses = _get_all_addresses(coin.address_model)
 

@@ -149,9 +149,11 @@ class Service:
         rescans = 0
         for name, coin in self.app.coins.all():
             if coin.backend.require_tracking_incoming_confirmations():
-                max_tracked_incoming_confirmations = coin.backend.max_tracked_incoming_confirmations
+
+                max_confirmation_count = coin.max_confirmation_count
+
                 tx_updater = coin.backend.create_transaction_updater(self.app.conflict_resolver, self.app.event_handler_registry)
-                confirmationupdate.update_deposits(tx_updater, max_tracked_incoming_confirmations)
+                confirmationupdate.update_confirmations(tx_updater, max_confirmation_count)
                 rescans += 1
 
         return rescans

@@ -102,7 +102,6 @@ class Bitcoind(base.CoinBackend):
         self.walletnotify_config = walletnotify
 
         self.track_incoming_confirmations = True
-        self.max_tracked_incoming_confirmations = 99
 
         self.thread_connection_pool = threading.local()
 

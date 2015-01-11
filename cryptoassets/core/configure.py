@@ -97,8 +97,6 @@ class Configurator:
 
         assert isinstance(instance, CoinBackend)
 
-        instance.max_tracked_incoming_confirmations = max_tracked_incoming_confirmations
-
         return instance
 
     def setup_model(self, module):
@@ -140,7 +138,9 @@ class Configurator:
             if not backend_config:
                 raise ConfigurationError("No backend config given for {}".format(name))
 
-            coin = Coin(coin_description)
+            max_confirmation_count = int(data.get("max_confirmation_count", 15))
+
+            coin = Coin(coin_description, max_confirmation_count=max_confirmation_count)
 
             backend = self.setup_backend(coin, data.get("backend"))
 

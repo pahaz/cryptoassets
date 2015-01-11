@@ -2,7 +2,7 @@
 
 Because backends do not actively report the progress of confirmation status, we poll the backend for all network transactions (deposits, broadcasts) until the confirmation threshold has been reached. For example, *bitcoind* gives you a walletnotify only for 0 and 1 confirmations. *block.io* does not have any confirmation hooks, but you can subcribe to *chain.so* real-time API to receive 0 confirmations notificatoin to an address.
 
-:py:func:`cryptoassets.core.tools.confirmationupdate.update_deposits` polls the backend. It will scan all transactions where confirmation threshold has not been reached and then ask the backend of more transaction details. Eventually all open incoming transactions exceed the confirmation threshold and we can stop polling them.
+:py:func:`cryptoassets.core.tools.confirmationupdate.update_confirmations` polls the backend. It will scan all transactions where confirmation threshold has not been reached and then ask the backend of more transaction details. Eventually all open incoming transactions exceed the confirmation threshold and we can stop polling them.
 
 The poller is set up in :py:class:`cryptoassets.core.service.main.Service`.
 
@@ -25,7 +25,7 @@ def get_open_network_transactions(session, NetworkTransaction, confirmation_thre
     return [(ntx.transaction_type, ntx.txid) for ntx in ntxs]
 
 
-def update_deposits(transaction_updater, confirmation_threshold):
+def update_confirmations(transaction_updater, confirmation_threshold):
     """Periodically rescan all open transactions for one particular cryptocurrency.
 
     We try to keep transaction  conflicts in minimum by not batching too many backend operations per each database session.
