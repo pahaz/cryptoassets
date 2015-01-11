@@ -17,7 +17,7 @@ Introduction
 
 *cryptoassets.core* will also post more complex events in the future (cold wallet top ups, etc.).
 
-Events
+Events types
 =============
 
 *cryptoassets.core* currently sends the following events.

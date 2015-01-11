@@ -216,8 +216,10 @@ class Configurator:
 
         self.app.engine = self.setup_engine(config.get("database"))
         self.app.coins = self.setup_coins(config.get("coins"))
-        self.app.status_server = self.setup_status_server(config.get("status-server"))
-        self.app.event_handler_registry = self.setup_event_handlers(config.get("notify"))
+
+        # XXX: Backwards compatibility ... drop in some point
+        self.app.status_server = self.setup_status_server(config.get("status_server") or  config.get("status-server"))
+        self.app.event_handler_registry = self.setup_event_handlers(config.get("events"))
 
         self.config = config
 

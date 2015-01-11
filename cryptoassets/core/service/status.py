@@ -202,7 +202,7 @@ class StatusHTTPServer(threading.Thread):
                 """
 
                 # Allow upstream web server to tell in which location our pages are
-                prefix = self.headers.get('X-Status-Server-Location', "")
+                prefix = self.headers.get('X-status_server-Location', "")
 
                 def link(href, name):
                     print("<a href='{}{}'>[ {} ]</a> ".format(prefix, href, name), file=writer)
@@ -220,7 +220,7 @@ class StatusHTTPServer(threading.Thread):
                 """Handle responses to status pages."""
 
                 # Allow upstream web server to tell in which location our pages are
-                prefix = self.headers.get('X-Status-Server-Location', "")
+                prefix = self.headers.get('X-status_server-Location', "")
 
                 # What pages we serve
                 paths = {

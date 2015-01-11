@@ -1,5 +1,5 @@
 
-def txupdate(transaction, network_transaction, transaction_type, txid, account, address, amount, credited, **extra):
+def txupdate(coin_name, transaction, network_transaction, transaction_type, txid, account, address, amount, credited, **extra):
     """txupdate event reports the confirmation changes of incoming transaction (deposit) or outgoing transaction (broadcasted).
 
     This event is fired for each transaction, when its ``confirmations`` changes. One network transaction may contain several deposit or broadcast transactions and they all trigger the event.
@@ -22,8 +22,9 @@ def txupdate(transaction, network_transaction, transaction_type, txid, account, 
 
     :param extra: Any cryptoasset specific data as dict, e.g. ``dict(confirmations=0)`` in the case of mined coins
 
-    :return: tuple "txupdate", data
+    :return: Event data as dict()
     """
+    assert type(coin_name) == str
     assert type(address) == str
     assert type(account) == int, "Expected account id as int, got {}".format(account)
     assert type(transaction) == int
@@ -33,4 +34,4 @@ def txupdate(transaction, network_transaction, transaction_type, txid, account, 
     assert amount > 0
     data = dict(transaction=transaction, network_transaction=network_transaction, txid=txid, account=account, address=address, amount=amount, credited=credited)
     data.update(extra)
-    return "txupdate", data
+    return data

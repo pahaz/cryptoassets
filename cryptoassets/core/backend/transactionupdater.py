@@ -239,7 +239,7 @@ class TransactionUpdater:
 
                     self.stats["deposit_updates"] += 1
 
-                    event_name, event = events.txupdate(network_transaction=ntx.id, transaction_type=ntx.transaction_type, txid=txid, transaction=transaction_id, account=account_id, address=address, amount=amount, confirmations=confirmations, credited=True)
+                    event = events.txupdate(coin_name=self.coin.name, network_transaction=ntx.id, transaction_type=ntx.transaction_type, txid=txid, transaction=transaction_id, account=account_id, address=address, amount=amount, confirmations=confirmations, credited=True)
                     txupdate_events.append(event)
 
             else:
@@ -252,7 +252,7 @@ class TransactionUpdater:
 
                     logger.debug("Received broadcast update for transaction %d", t.id)
 
-                    event_name, event = events.txupdate(network_transaction=ntx.id, transaction_type=ntx.transaction_type, txid=txid, transaction=t.id, account=t.sending_account.id, address=t.address.address, amount=t.amount, confirmations=confirmations, credited=None)
+                    event = events.txupdate(coin_name=self.coin.name, network_transaction=ntx.id, transaction_type=ntx.transaction_type, txid=txid, transaction=t.id, account=t.sending_account.id, address=t.address.address, amount=t.amount, confirmations=confirmations, credited=None)
                     txupdate_events.append(event)
 
                     self.stats["broadcast_updates"] += 1

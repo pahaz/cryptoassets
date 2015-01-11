@@ -24,8 +24,8 @@ Besides providing a daemon for communications additional helping commands are av
 
 * Rescan wallet for missed transations
 
-cryptoassetshelper
-------------------
+cryptoassets-helper-service
+-----------------------------
 
 This command is the service helper process. It must be running on the background for your cryptoassets application to function properly.
 
@@ -40,6 +40,26 @@ Running the service with Django
 +++++++++++++++++++++++++++++++++++++++++++
 
 If you are running a `Django <https://www.djangoproject.com/>`_ application, a special `Django management command is provided by cryptoassets.django library <https://bitbucket.org/miohtama/cryptoassets.django>`_.
+
+Status server
++++++++++++++++++++++++++++++++++++++++++++
+
+*Cryptoassets helper service* comes with a built-in mini status server. You can use this to
+
+* Diagnose to see that *cryptoassets helper service* process is alive and runnign well
+
+* Debug incoming and outgoing transaction issues
+
+By default the status server listens to http://localhost:18881. See :doc:`configuration <./config>` how to include a status server in cryptoassets helper service.
+
+.. note::
+
+    Status server is designed only for testing and diagnostics purpose and does not scale to production use.
+
+
+.. warn::
+
+    It is not safe to expose status server to the Internet. Make sure you have authenticating proxy set up or only expose this to localhost.
 
 System service integration
 +++++++++++++++++++++++++++++++++++++++++++

@@ -182,6 +182,14 @@ Example:
             "models": "mycoin.models"
         },
 
+
+max_confirmation_count
++++++++++++++++++++++++++++
+
+This is how many confirmations ``tools.confirmationupdate`` tracks for each network transactions, both incoming and outgoing, until we consider it "closed" and stop polling backend for updates. The default value is ``15``.
+
+For more information see :py:mod:`cryptoassets.core.tools.confirmationupdate`.
+
 backend
 ++++++++++
 
@@ -205,13 +213,6 @@ walletnotify
 :doc:`Wallet notify <./backends>` configuration tells how :doc:`cryptoassets helper service <./service>` receives cryptoasset transaction updates from the cryptoassets backend (bitcoind, API service). Unless this is configured, cryptoassets service or your application won't know about incoming transactions.
 
 ``walletnotify`` section must be given in under backend configuration. It's content depends on the chosen wallet notifiaction method. For more information see :doc:`qallet notification documentation <./backends>`.
-
-tracked_confirmation_count
-+++++++++++++++++++++++++++
-
-Max confirmation count updates we write to database for this coin, until we stop writing confirmation updates and sending out ``txupdate`` events. Default is 15 confirmations.xw
-
-For more information see :py:mod:`cryptoassets.core.tools.confirmationupdate`.
 
 events
 ---------------
@@ -238,6 +239,21 @@ Example configuration
             "callback": "cryptoassets.django.incoming.handle_tx_update"
         }
     },
+
+status_server
+---------------
+
+Configure mini status server which you can use to check *cryptoassets helper service* status.
+
+ip
+++++++++++
+
+IP address the status server will be listening to. Default 127.0.0.1.
+
+port
+++++++++++
+
+Port the status server is listening to.s
 
 
 Logging

@@ -39,7 +39,7 @@ class ServiceTestCase(unittest.TestCase):
 
         # Dynamically patch in some system-wide globals,
         # so that shutting down test does not clash the next test
-        config["status-server"]["port"] = self.get_next_status_server_port()
+        config["status_server"]["port"] = self.get_next_status_server_port()
         config["coins"]["btc"]["backend"]["walletnotify"]["fname"] = "/tmp/cryptoassets-walletnotify-unittest-%d" % self.get_next_status_server_port()
 
         return config
@@ -115,11 +115,11 @@ class ServiceTestCase(unittest.TestCase):
                 self.assertLess(time.time(), deadline, "Status server did not start")
 
             for page in ("/", "/wallets", "/transactions", "/network_transactions", "/accounts", "/addresses"):
-                report = requests.get("http://localhost:{}{}".format(config["status-server"]["port"], page))
+                report = requests.get("http://localhost:{}{}".format(config["status_server"]["port"], page))
                 self.assertEqual(report.status_code, 200, "Failed page {}".format(page))
 
                 # See we handle exception in status server code
-                report = requests.get("http://localhost:{}/error".format(config["status-server"]["port"]))
+                report = requests.get("http://localhost:{}/error".format(config["status_server"]["port"]))
                 self.assertEqual(report.status_code, 500)
 
         finally:

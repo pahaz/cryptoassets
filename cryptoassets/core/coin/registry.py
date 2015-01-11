@@ -93,7 +93,7 @@ class Coin:
     Binds cryptocurrency to its backend and database models.
     """
 
-    def __init__(self, coin_description, backend=None):
+    def __init__(self, coin_description, backend=None, max_confirmation_count=15):
         """Create a binding between asset models and backend.
 
         :param coin_description: :py:class:`cryptoassets.core.coin.registry.CoinModelDescription`
@@ -110,6 +110,9 @@ class Coin:
 
         #: Lowercase acronym name of this asset
         self.name = None
+
+        #: This is how many confirmations ``tools.confirmationupdate`` tracks for each network transactions, both incoming and outgoing, until we consider it "closed" and stop polling backend for updates.
+        self.max_confirmation_count = max_confirmation_count
 
     @property
     def address_model(self):
