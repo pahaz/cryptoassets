@@ -101,7 +101,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         # Wait 10 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 80 * 10
 
-    def test_incoming_transaction(self):
+    def xxx_test_incoming_transaction(self):
         """Check we get notification for the incoming transaction.
 
         We will
@@ -116,6 +116,8 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         # Account balance should be updated
         """
+
+        # XXX: This test only works with local wallet, as other wallets lack the address used in this
 
         # XXX: Move this to py.test skip condition after Python 3.4.2 release
         # https://bitbucket.org/hpk42/pytest/issue/528/test-causes-segfault
