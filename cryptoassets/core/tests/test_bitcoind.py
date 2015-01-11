@@ -242,7 +242,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         # Testnet seem to take confirmations up to 60 minutes... le fuu the shitcoin
         # We wait 2 hours!
-        deadline = time.time() + 120 * 60
+        deadline = time.time() + 45 * 60
 
         while time.time() < deadline:
 

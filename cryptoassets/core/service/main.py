@@ -4,7 +4,10 @@ Manages asynchronous tasks for sending and receiving cryptocurrency over various
 
 * Broadcasting transactions to the cryptocurrency network asynchronously
 
-* Handle incoming transactions and write them to the database
+* Handle incoming transactions and write them to the database, calls your application via event handlers
+
+* Updates confirmation counts of open transactions
+
 """
 
 import sys
@@ -33,12 +36,20 @@ logger = logging.getLogger(__name__)
 
 
 def splash_version():
+    """Log out cryptoassets.core package version."""
     version = pkg_resources.require("cryptoassets.core")[0].version
     logger.info("cryptoassets.core version %s", version)
 
 
 class Service:
-    """Main cryptoassets helper service. """
+    """Main cryptoassets helper service.
+
+    This class runs *cryptoassets helper service* process itself and various command line utilities (*initialize-database*, etc.)
+
+    We uses `Advanced Python Scheduler <http://apscheduler.readthedocs.org/>`_ to run timed jobs (broadcasts, confirmatino updates).
+
+    Status server (:py:mod:`cryptoassets.core.service.status`) can be started for inspecting our backend connections are running well.
+    """
     def __init__(self, config, subsystems=[Subsystem.database, Subsystem.backend]):
         """
         :param config: cryptoassets configuration dictionary
@@ -60,6 +71,7 @@ class Service:
         self.setup()
 
     def config(self, config):
+        """Load configuration from Python dict."""
         self.configurator = Configurator(self.app)
         self.configurator.load_from_dict(config)
 
