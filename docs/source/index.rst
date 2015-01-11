@@ -13,7 +13,7 @@ cryptoassets.core
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    install
    gettingstarted
