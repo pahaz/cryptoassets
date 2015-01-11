@@ -453,7 +453,6 @@ class CoinTestCase:
             account = wallet.create_account("Test account")
             session.flush()
             receiving_address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
-            txid = "fakefakefakefake"
             session.flush()
             wallet.deposit(ntx, receiving_address.address, test_amount, dict(confirmations=0))
 
@@ -525,7 +524,6 @@ class CoinTestCase:
             # Commit new receiveing address to the database
 
             with self.app.conflict_resolver.transaction() as session:
-                self.wait_receiving_address_ready(wallet, receiving_address)
 
                 # Make sure we don't have any balance beforehand
                 receiving_account = session.query(self.Account).get(receiving_account.id)
@@ -622,6 +620,7 @@ class CoinTestCase:
 
         We simulate a missed transaction (backend deposit updates are not running) and then manually trigger rescan to see rescan picks up the transaction.
         """
+
         Address = self.Address
 
         # First create incoming address

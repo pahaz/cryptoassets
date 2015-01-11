@@ -9,6 +9,28 @@ from ..notify.registry import NotifierRegistry
 from .transactionupdater import TransactionUpdater
 
 
+class ListTransactionsIterator(abc.ABC):
+    """Helper to iterate all transactions in the backend.
+
+    Because different backends iterate to different directions, we abstract this away.
+
+    .. note ::
+
+        bitcoind iterates from index 0 with different batch sizes. block.io iterates from the latest transcation with fixed batch size of 100 and needs before txid parameter for the next batch.
+    """
+
+    def __init__(self, backend):
+        """
+        """
+        self.backend = backend
+
+    @abc.abstractmethod
+    def fetch_next_txids():
+        """
+        :return: List of next txids to iterate or empty list if iterating is done.
+        """
+
+
 class CoinBackend(abc.ABC):
     """ Cryptocurrency management backend.
 
@@ -59,15 +81,6 @@ class CoinBackend(abc.ABC):
         """
 
     @abc.abstractmethod
-    def scan_addresses(self, addresses):
-        """Give all known transactions to list of addresses.
-
-        :param addresses: List of address strings
-
-        :yield: Tuples of (txid, address, amount, confirmations)
-        """
-
-    @abc.abstractmethod
     def get_backend_balance(self):
         """Get full available hot wallet balance on the backend.
 
@@ -79,16 +92,12 @@ class CoinBackend(abc.ABC):
         """
 
     @abc.abstractmethod
-    def list_received_transactions(self, start, batch_size, extra):
+    def list_received_transactions(self, extra):
         """List all received transactions the backend is aware off.
-
-        :param start: First transaction to list (zer)
 
         :param extra: Dict of backend-specific optional arguments like ``dict(confirmations=0)``.
 
-        This is used for :py:mod:`cryptoassets.core.tools.receivescan`.
-
-        :return: List of txids of transactions or empty list if there is nothing left to iterate
+        :return: Instance of :py:class:`cryptoassets.core.backend.base.ListTransactionsIterator`.
         """
 
     def create_transaction_updater(self, conflict_resolver, notifiers):

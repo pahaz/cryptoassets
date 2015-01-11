@@ -14,4 +14,21 @@ coins:
             class: cryptoassets.core.backend.blockio.BlockIo
             api_key: 0266-c2b6-c2c8-ee07
             pin: foobar123
+            network: btctest
+            # walletnotify section tells how we receive
+            # transaction updates from the  the backend
+            # (new deposits to the backend wallet)
+            walletnotify:
+                class: cryptoassets.core.backend.sochainwalletnotify.SochainWalletNotifyHandler
+                pusher_app_key: e9f5cc20074501ca7395
+
+# This section tells how cryptoassets helper service will
+# notify your app from events like new incoming transactions
+# and outgoing transaction confirmatino updates
+notify:
+    # For each event, we send a HTTP webhook notification
+    # to your app. Your app should be listening HTTP at localhost:10000
+    example_app:
+        class: cryptoassets.core.notify.http.HTTPNotifier
+        url: http://localhost:10000
 

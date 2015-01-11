@@ -161,8 +161,10 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
         # Check that transaction manager did not die with an exception
         # in other thread
-        self.assertEqual(transaction_updater.stats["deposit_updates"], 1)
         self.assertTrue(self.walletnotify_pipe.is_alive())
+
+        # We get update for our deposit
+        self.assertEqual(transaction_updater.stats["deposit_updates"], 1)
 
         with self.app.conflict_resolver.transaction() as session:
             # Reload account from the database
@@ -216,7 +218,6 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         # Commit new receiveing address to the database
 
         with self.app.conflict_resolver.transaction() as session:
-            self.wait_receiving_address_ready(wallet, receiving_address)
 
             # Make sure we don't have any balance beforehand
             receiving_account = session.query(self.Account).get(receiving_account.id)

@@ -153,8 +153,8 @@ class GenericAddress(CoinDescriptionModel):
     #: The string presenting the address label in the network
     address = Column(String(127), nullable=False)
 
-    #: Human-readable label for this address. User for the transaction history listing of the user. Must be unique across the whole system.
-    label = Column(String(255), unique=True)
+    #: Human-readable label for this address. User for the transaction history listing of the user.
+    label = Column(String(255))
 
     #: Received balance of this address
     #: NOTE: Numeric Accuracy checked for Bitcoin only ATM
@@ -501,7 +501,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         """
         return self.get_or_create_account_by_name(self.coin_description.Account.NETWORK_FEE_ACCOUNT)
 
-    def create_receiving_address(self, account, label):
+    def create_receiving_address(self, account, label=None):
         """ Creates a new receiving address.
 
         All incoming transactions on this address
@@ -509,7 +509,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         :param account: GenericAccount object
 
-        :param label: Label for this address - must be human-readable, generated and unique. E.g. "Joe's wallet #2"
+        :param label: Label for this address - must be human-readable
 
         :return: GenericAddress object
         """
@@ -518,7 +518,6 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         assert session
         assert account
-        assert label
         assert account.id
 
         _address = self.backend.create_address(label=label)
@@ -530,9 +529,6 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         address.wallet = self
 
         session.add(address)
-
-        # Make sure the address is written to db before we can make any entires of received transaction on it in monitoring
-        session.flush()
 
         return address
 
@@ -595,8 +591,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
     def add_address(self, account, label, address):
         """ Adds an external address under this wallet, under this account.
 
-        This is for the cases where the address already exists in the existing backend wallet,
-        but our database does not know about its existince.
+        There shouldn't be reason to call this directly, unless it is for testing purposes.
 
         :param account: Account instance
 
@@ -611,11 +606,6 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         address_obj.account = account
         address_obj.label = label
         session.add(address_obj)
-        # Make sure the address is written to db
-        # before we can make any entires of received
-        # transaction on it in monitoring
-        session.flush()
-        self.backend.monitor_address(address_obj)
         return address_obj
 
     def get_accounts(self):

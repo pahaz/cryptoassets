@@ -87,7 +87,7 @@ Install Python SQLite driver (in the virtual environment)::
 
 Create the database tables::
 
-    cryptoassets-initialize-database
+    cryptoassets-initialize-database example.config.yaml
 
 Running the example
 ---------------------
@@ -98,10 +98,12 @@ Running the example application::
 
     python example.py
 
-You can receive and send testnet coins, but the actual sending and receiving is handled by the :doc:`helper service <./service>`. Thus, nothing comes in or goes out before you start the helper process::
+You can receive and send testnet coins, but the actual sending and receiving is handled by the :doc:`helper service <./service>`. Thus, nothing comes in or goes out to your application before you start the helper process::
 
     # Run this command in another terminal
     cryptoassets-helper-service
+
+Now you can send or receive Bitcoins within your application.
 
 After completing the example
 ===============================

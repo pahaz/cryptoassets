@@ -5,15 +5,19 @@ from decimal import Decimal
 
 from cryptoassets.core.app import CryptoAssetsApp
 from cryptoassets.core.app import Subsystem
-from cryptoassets.core.configuration import Configurator
+from cryptoassets.core.configure import Configurator
 
 from cryptoassets.core.utils.httpeventlistener import simple_http_event_listener
 
-assets_app = CryptoAssetsApp(Subsystem.database)
+assets_app = CryptoAssetsApp()
 
 # This will load the configuration file for the cryptoassets framework
 configurer = Configurator(assets_app)
-configurer.load_yaml_file("cryptoassets-settings.yaml")
+configurer.load_yaml_file("example.config.yaml")
+
+# This will set up SQLAlchemy database connections, as loaded from
+# config. It's also make assets_app.conflict_resolver available for us
+assets_app.setup_session()
 
 
 # This function will be run in its own background thread,
@@ -22,7 +26,7 @@ configurer.load_yaml_file("cryptoassets-settings.yaml")
 # process
 @simple_http_event_listener(configurer.config)
 def handle_cryptoassets_event(event_name, data):
-    if event_name == "txupdate":
+    if event_name == "txupdate" and data["transaction_type"] == "deposit":
         address = data["address"]
         confirmations = data["confirmations"]
         txid = data["txid"]
@@ -49,6 +53,10 @@ def get_wallet_and_account(session):
 
     account = wallet.get_or_create_account_by_name("my account")
 
+    # If we don't have any receiving addresses, create a default one
+    if len(account.receiving_addresses) == 0:
+        wallet.create_receiving_address(account)
+
     return wallet, account
 
 
@@ -56,19 +64,21 @@ def get_wallet_and_account(session):
 # in sidea managed transaction function.
 #
 # Use ConflictResolevr.managed_transaction decoreator your function gets an extra
-# session argument as the first argument. This is the SQLAlchemy
-# database session you should use to
-# manipulate the database. In the case of a database
-# transaction conflict, ConflictResolver
-# will rollback and try again.
+# ``session`` argument as the first argument. This is the SQLAlchemy
+# database session you should use to  manipulate the database.
+#
+# In the case of a database transaction conflict, ConflictResolver
+# will rollback code in your function and retry again.
 #
 # For more information see
+# http://cryptoassetscore.readthedocs.org/en/latest/api/utils.html#transaction-conflict-resolver
+#
 @assets_app.conflict_resolver.managed_transaction
 def create_receiving_address(session):
     """Create new receiving address on the default wallet and account."""
     wallet, my_account = get_wallet_and_account(session)
     #: All addresses must have unique label (makes accounting easier)
-    wallet.create_receiving_address(my_account, label="")
+    wallet.create_receiving_address(my_account)
 
 
 @assets_app.conflict_resolver.managed_transaction
@@ -93,18 +103,26 @@ def send():
     send_to(address, amount)
 
 
-@assets_app.managed_transaction
+@assets_app.conflict_resolver.managed_transaction
 def print_status(session):
-
+    """
+    """
     wallet, account = get_wallet_and_account(session)
+
+    # Get hold of classes we use for modelling Bitcoin
+    # These are instances of
+    #
+    Address = assets_app.coins.get("btc").address_model
+    Transaction = assets_app.coins.get("btc").transaction_model
+
     print("Welcome to cryptoassets example app")
     print("")
     print("You have the following addresses receiving addresses:")
-    for address in assets_app.session.query(wallet.Address).filter_by(account == account):
+    for address in session.query(Address).filter_by(account == account):
         print("{}: total received {} BTC", address.address, address.balance)
     print("")
     print("We know about the following transactions:")
-    for tx in assets_app.session.query(wallet.Transaction):
+    for tx in session.query(Transaction):
         if tx.state in ("pending", "broadcasted"):
             print("Outgoing tx #{} {} to {} network txid {} amount {} BTC".format(
                 tx.id, tx.state, tx.txid, tx.address, tx.amount))
@@ -126,12 +144,12 @@ running = True
 while running:
 
     print_status()
-    command = raw_input("Give your command [1-3]")
-    if command == 1:
+    command = raw_input("Give your command [1-3]:")
+    if command == "1":
         create_receiving_address()
-    elif command == 2:
+    elif command == "2":
         send()
-    elif command == 3:
+    elif command == "3":
         running = False
     else:
         print("Unknown command!")

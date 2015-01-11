@@ -54,7 +54,7 @@ from zope.dottedname.resolve import resolve
 from bitcoinrpc.authproxy import AuthServiceProxy
 from bitcoinrpc.authproxy import JSONRPCException
 
-from .base import CoinBackend
+from . import base
 
 from .pipewalletnotify import PipedWalletNotifyHandler
 from .transactionupdater import TransactionUpdater
@@ -69,12 +69,8 @@ class BitcoindJSONError(Exception):
     pass
 
 
-class BitcoindDerivate(CoinBackend):
-    """ Bitcoind or another altcoin using bitcoind-like JSON-RPC. """
-
-
-class Bitcoind(BitcoindDerivate):
-    """Backend for the original bitcoind (BTC) itself.
+class Bitcoind(base.CoinBackend):
+    """Backend for the original bitcoind or its derivates over stock JSON-RPC API.
 
     Created upon https://github.com/4tar/python-bitcoinrpc/tree/p34-compatablity
 
@@ -174,12 +170,6 @@ class Bitcoind(BitcoindDerivate):
         result = self.api_call("getnewaddress", self.bitcoind_account_name)
         return result
 
-    def list_received_by_address(self, address, extra={}):
-        confirmations = extra.get("confirmations", 0)
-        result = self.api_call("listreceivedbyaddress", address, confirmations, True)
-        import ipdb; ipdb.set_trace()
-        return result
-
     def refresh_account(self, account):
         """Update the balances of an account.
         """
@@ -206,40 +196,11 @@ class Bitcoind(BitcoindDerivate):
 
         return _convert_to_satoshi(result)
 
-    def list_received_transactions(self, start, limit, extra={}):
-        """Iterate through all transactions.
+    def list_received_transactions(self, extra={}):
+        """Iterate through all received transactions known by backend.
 
-        Have some special handling in place in the case of API failures.
         """
-
-        confirmations = extra.get("confirmations", 0)
-
-        now = time.time()
-        attemps = 4
-
-        out = []
-
-        while attemps:
-
-            logger.debug("listtransactions attempts #%d %s %s %s", attemps, self.bitcoind_account_name, limit, start)
-
-            try:
-                result = self.api_call("listtransactions", self.bitcoind_account_name, limit, start)
-                out = [res["txid"] for res in result if res["category"] == "receive"]
-                return out
-            except KeyboardInterrupt:
-                raise
-            except:
-                # http://bitcoin.stackexchange.com/questions/32839/bitcoind-json-rpc-interface-timeouts-under-unit-tests
-                logger.error("listtransactions timeout failure after %f seconds", time.time() - now)
-                attemps -= 1
-                if attemps:
-                    # Recreate connection. We are
-                    self.bitcoind = AuthServiceProxy(self.url, timeout=self.timeout)
-                    continue
-                else:
-                    raise
-        return out
+        return ListReceivedTransactionsIterator(self, extra)
 
     def get_transaction(self, txid):
         """ """
@@ -292,3 +253,46 @@ class BadWalletNotify(Exception):
     pass
 
 
+class ListReceivedTransactionsIterator(base.ListTransactionsIterator):
+
+    def __init__(self, backend, extra):
+        self.backend = backend
+        self.start = 0
+        self.batch_size = 100
+        self.extra = extra
+
+    def fetch_next_txids(self):
+        """
+        :return: List of next txids to iterate or empty list if iterating is done.
+        """
+        confirmations = self.extra.get("confirmations", 0)
+
+        now = time.time()
+        attemps = 4
+
+        out = []
+
+        while attemps:
+
+            logger.debug("listtransactions attempts #%d %s %d-%d", attemps, self.backend.bitcoind_account_name, self.start, self.start + self.batch_size)
+
+            try:
+                result = self.backend.api_call("listtransactions", self.backend.bitcoind_account_name, self.batch_size, self.start)
+
+                out = [res["txid"] for res in result if res["category"] == "receive"]
+
+                self.start += self.batch_size
+                return out
+            except KeyboardInterrupt:
+                raise
+            except:
+                # http://bitcoin.stackexchange.com/questions/32839/bitcoind-json-rpc-interface-timeouts-under-unit-tests
+                logger.error("listtransactions timeout failure after %f seconds", time.time() - now)
+                attemps -= 1
+                if attemps:
+                    # Recreate connection. We are
+                    self.bitcoind = AuthServiceProxy(self.url, timeout=self.timeout)
+                    continue
+                else:
+                    raise
+        return out

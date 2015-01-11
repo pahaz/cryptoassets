@@ -29,11 +29,11 @@ def get_all_confirmed_network_transactions(session, NetworkTransaction, confirma
 
 
 def is_interesting_transaction(txdata, all_addresses):
-    """Check if the transaction contains any sending or receiving"""
-    return any([(detail["address"] in all_addresses) for detail in txdata["details"]])
+    """Check if the transaction contains any deposits to our addresses."""
+    return any([(detail["category"] == "receive" and detail["address"] in all_addresses) for detail in txdata["details"]])
 
 
-def scan_coin(coin, conflict_resolver, event_handlers, batch_size=100):
+def scan_coin(coin, conflict_resolver, event_handlers):
     """Go through for all received transactions reported by a backend and see if our database is missing any.
 
     :param coin: Instance of `cryptoassets.core.coin.registry.Coin`
@@ -53,8 +53,6 @@ def scan_coin(coin, conflict_resolver, event_handlers, batch_size=100):
     def _get_all_confirmed_network_transactions(session, network_transaction_model, confirmation_threshold):
         return get_all_confirmed_network_transactions(session, network_transaction_model, confirmation_threshold)
 
-    start = 0
-    batch_size = batch_size
     backend = coin.backend
     found_missed = 0
 
@@ -64,12 +62,9 @@ def scan_coin(coin, conflict_resolver, event_handlers, batch_size=100):
 
     all_addresses = _get_all_addresses(coin.address_model)
 
-    def get_batch():
-        logger.debug("Scanning incoming transactions %d to %d", start, start+batch_size)
-        txs = backend.list_received_transactions(start, batch_size)
-        return txs
+    transaction_iterator = backend.list_received_transactions()
 
-    txs = get_batch()
+    txs = transaction_iterator.fetch_next_txids()
 
     while txs:
 
@@ -87,11 +82,10 @@ def scan_coin(coin, conflict_resolver, event_handlers, batch_size=100):
                 continue
 
             # Otherwise let's update this transaction just in case
-            transaction_updater.handle_wallet_notify(txid)
+            transaction_updater.update_network_transaction_confirmations("deposit", txid, txdata)
             found_missed += 1
 
-        start += batch_size
-        txs = get_batch()
+        txs = transaction_iterator.fetch_next_txids()
 
     return found_missed
 

@@ -18,3 +18,4 @@ Contents:
    service
    backend
    utils
+   coins

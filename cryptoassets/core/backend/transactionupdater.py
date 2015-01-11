@@ -97,8 +97,6 @@ class TransactionUpdater:
 
             account, transaction = wallet.deposit(ntx, address, amount, extra)
 
-            self.stats["deposit_updates"] += 1
-
             confirmations = transaction.confirmations
 
             logger.info("Wallet notify account %d, address %s, amount %s, tx confirmations %d", account.id, address, amount, confirmations)

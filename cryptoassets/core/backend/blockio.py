@@ -2,22 +2,28 @@
 
 Supports Bitcoin, Dogecoin and Litecoin on `block.io <https://block.io>`_ API.
 
-For incoming transactions it uses `SoChain <https://chain.so>`_ service.
+Require parameters
 
-For the usage instructions see :py:mod:`cryptoassets.tests.test_block_io`.
+:param api_key: block.io API key
+
+:param password: block.io password
+
+:param network: one of ``btc``, ``btctest``, ``doge``, ``dogetest``, see `chain.so <https://chain.so>`_ for full list
+
+You must use :py:mod:`cryptoassets.core.backend.sochainwalletnotify` as ``walletnotify`` for incoming transactions for now.
 """
 
 
 import logging
-from collections import Counter
 from decimal import Decimal
+import datetime
 
 import requests
 from slugify import slugify
 
 from block_io import BlockIo as _BlockIo
 
-from .base import CoinBackend
+from . import base
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +45,7 @@ def _transform_txdata_to_bitcoind_format(inp):
     return output
 
 
-class BlockIo(CoinBackend):
+class BlockIo(base.CoinBackend):
     """Block.io API."""
 
     def __init__(self, coin, api_key, pin, network=None, walletnotify=None):
@@ -47,11 +53,10 @@ class BlockIo(CoinBackend):
         :param wallet_notify: Wallet notify configuration
         """
 
-        CoinBackend.__init__(self)
+        base.CoinBackend.__init__(self)
 
         self.coin = coin
         self.block_io = _BlockIo(api_key, pin, 2)
-        self.monitor = None
 
         assert network, "Please give argument network as one of chain.so networks: btc, btctest, doge, dogetest"
 
@@ -78,24 +83,6 @@ class BlockIo(CoinBackend):
         address = result["data"]["address"]
 
         return address
-
-    def monitor_address(self, address):
-        """ Add address object to the receiving transaction monitoring list.
-
-        :param address: address object
-        """
-        assert address.account
-        assert address.address
-        if self.monitor:
-            self.monitor.subscribe_to_address(address.address)
-
-    def monitor_transaction(self, transaction):
-        """ Add a transaction id on the receiving transaction monitoring list.
-        """
-        assert transaction.id
-        assert transaction.txid
-        if self.monitor:
-            self.monitor.subscribe_to_transaction(transaction.txid)
 
     def get_balances(self, addresses):
         """ Get balances on multiple addresses.
@@ -151,40 +138,41 @@ class BlockIo(CoinBackend):
         data = _transform_txdata_to_bitcoind_format(data)
         return data
 
-    def get_received_by_address(self, address):
+    def list_received_transactions(self, extra={}):
+        """ """
+        return ListReceivedTransactionsIterator(self)
+
+
+class ListReceivedTransactionsIterator(base.ListTransactionsIterator):
+    """Receive a batch of receive transactiosn from block.io API.
+
+    https://block.io/api/simple/python
+    """
+    def __init__(self, backend):
+        self.backend = backend
+        self.before_tx = None
+        self.last_timestamp = None
+
+    def fetch_next_txids(self):
         """
-        At the moment this uses `chain.so Get Received Tx API <https://chain.so/api#get-received-tx>`_ to enumerate received transactions per address.
+        :return: List of next txids to iterate or empty list if iterating is done.
         """
+        logger.info("Asking block.io for new received transaction batch, before_tx %s (%s)", self.before_tx, datetime.datetime.fromtimestamp(self.last_timestamp) if self.last_timestamp else "-")
 
+        if self.before_tx:
+            result = self.backend.block_io.get_transactions(type="received", before_tx=self.before_tx)
+        else:
+            result = self.backend.block_io.get_transactions(type="received")
 
-    def scan_addresses(self, addresses):
-        """Give all known transactions to list of addresses.
+        txs = result["data"]["txs"]
 
-        :param addresses: List of address strings
+        # Confirmed oldest timestamp is the last
+        for tx in txs:
+            logger.debug("Tx txid:%s timestamp %s", tx["txid"], datetime.datetime.fromtimestamp(tx["time"]))
 
-        :yield: Tuples of (txid, address, amount, confirmations)
-        """
+        if txs:
+            # The last txid to keep us iterating
+            self.before_tx = txs[-1]["txid"]
+            self.last_timestamp = txs[-1]["time"]
 
-        # List type
-        assert hasattr(addresses, '__iter__'), "Take a list of addresses, not a single address"
-
-        resp = self.block_io.get_transactions(type="received", addresses=",".join(addresses))
-
-        # logger.debug("Got addr %s resp: %s", addresses, resp)
-
-        for txdata in resp["data"]["txs"]:
-
-            # Each transaction can have the same input/output several times
-            # sum them up
-            received = Counter()
-            for entry in txdata["amounts_received"]:
-                address = entry["recipient"]
-                amount = self.to_internal_amount(entry["amount"])
-                received[address] += amount
-
-            assert amount > 0, "Could not parse amount from {}".format(txdata)
-
-            for address, amount in received.items():
-                # wallet.receive() will get wallet and account lock for us
-                yield txdata["txid"], address, amount, txdata["confirmations"]
-
+        return [tx["txid"] for tx in txs]

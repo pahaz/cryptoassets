@@ -48,7 +48,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'cryptoassets.core'
-copyright = '2014, cryptoasset authors'
+copyright = '2015 Mikko Ohtamaa'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -201,7 +201,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
   ('index', 'cryptoassetscore.tex', 'cryptoassets.core Documentation',
-   'cryptoasset authors', 'manual'),
+   'Mikko', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
