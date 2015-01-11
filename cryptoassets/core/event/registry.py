@@ -5,8 +5,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class NotifierRegistry:
-    """Maintain list of active notifiers.
+class EventHandlerRegistry:
+    """Maintain list of active event_handler_registry.
     """
 
     def __init__(self):
@@ -17,7 +17,7 @@ class NotifierRegistry:
 
         :param name: Any name you can refer later
 
-        :param notifier: Instance of :py:class:`cryptocurrency.core.notifiers.base.Notifier`.
+        :param notifier: Instance of :py:class:`cryptocurrency.core.event_handler_registry.base.Notifier`.
         """
         self.registry[name] = notifier
 
@@ -27,7 +27,7 @@ class NotifierRegistry:
     def clear(self):
         self.registry.clear()
 
-    def notify(self, event_name, data):
+    def trigger(self, event_name, data):
         """Post an event to all listeners.
         """
         handlers = self.get_all()

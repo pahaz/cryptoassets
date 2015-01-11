@@ -114,7 +114,7 @@ class Service:
             assert type(name) == str
             assert isinstance(coin, Coin)
             backend = coin.backend
-            runnable = backend.setup_incoming_transactions(self.app.conflict_resolver, self.app.notifiers)
+            runnable = backend.setup_incoming_transactions(self.app.conflict_resolver, self.app.event_handler_registry)
             if runnable:
                 logger.info("Setting up incoming transaction notifications for %s using %s", coin, runnable.__class__)
                 assert isinstance(runnable, IncomingTransactionRunnable)
@@ -150,7 +150,7 @@ class Service:
         for name, coin in self.app.coins.all():
             if coin.backend.require_tracking_incoming_confirmations():
                 max_tracked_incoming_confirmations = coin.backend.max_tracked_incoming_confirmations
-                tx_updater = coin.backend.create_transaction_updater(self.app.conflict_resolver, self.app.notifiers)
+                tx_updater = coin.backend.create_transaction_updater(self.app.conflict_resolver, self.app.event_handler_registry)
                 confirmationupdate.update_deposits(tx_updater, max_tracked_incoming_confirmations)
                 rescans += 1
 
@@ -158,10 +158,10 @@ class Service:
 
     def scan_received(self):
         """Scan through all received transactions, see if we missed some through walletnotify."""
-        receivescan.scan(self.app.coins, self.app.conflict_resolver, self.app.notifiers)
+        receivescan.scan(self.app.coins, self.app.conflict_resolver, self.app.event_handler_registry)
 
     def start_startup_receive_scan(self):
-        self.receive_scan_thread = receivescan.BackgroundScanThread(self.app.coins, self.app.conflict_resolver, self.app.notifiers)
+        self.receive_scan_thread = receivescan.BackgroundScanThread(self.app.coins, self.app.conflict_resolver, self.app.event_handler_registry)
         self.receive_scan_thread.start()
 
     def start(self):
@@ -217,14 +217,14 @@ def scan_received():
     defaultlogging.setup_stdout_logging()
     splash_version()
     config = parse_config_argv()
-    service = Service(config, (Subsystem.database, Subsystem.backend, Subsystem.notifiers))
+    service = Service(config, (Subsystem.database, Subsystem.backend, Subsystem.event_handler_registry))
     service.scan_received()
 
 
 def helper():
     config = parse_config_argv()
     Configurator.load_standalone_from_dict(config)
-    service = Service(config, (Subsystem.database, Subsystem.status_server, Subsystem.backend, Subsystem.notifiers))
+    service = Service(config, (Subsystem.database, Subsystem.status_server, Subsystem.backend, Subsystem.event_handler_registry))
     service.start()
     while True:
         time.sleep(1)

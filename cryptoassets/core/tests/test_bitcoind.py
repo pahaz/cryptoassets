@@ -35,7 +35,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
     def refresh_account_balance(self, wallet, account):
         """ """
-        transaction_updater = self.backend.create_transaction_updater(self.app.conflict_resolver, self.app.notifiers)
+        transaction_updater = self.backend.create_transaction_updater(self.app.conflict_resolver, self.app.event_handler_registry)
 
         # We should find at least one transaction topping up our testnet wallet
         found = transaction_updater.rescan_all()
@@ -49,7 +49,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_receiving(self, wallet):
 
-        self.transaction_updater = self.backend.create_transaction_updater(self.app.conflict_resolver, self.app.notifiers)
+        self.transaction_updater = self.backend.create_transaction_updater(self.app.conflict_resolver, self.app.event_handler_registry)
 
         self.walletnotify_pipe = PipedWalletNotifyHandler(self.transaction_updater, WALLETNOTIFY_PIPE)
 

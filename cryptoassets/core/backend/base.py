@@ -5,7 +5,7 @@ import abc
 from zope.dottedname.resolve import resolve
 
 from ..utils.conflictresolver import ConflictResolver
-from ..notify.registry import NotifierRegistry
+from ..event.registry import EventHandlerRegistry
 from .transactionupdater import TransactionUpdater
 
 
@@ -100,27 +100,27 @@ class CoinBackend(abc.ABC):
         :return: Instance of :py:class:`cryptoassets.core.backend.base.ListTransactionsIterator`.
         """
 
-    def create_transaction_updater(self, conflict_resolver, notifiers):
-        tx_updater = TransactionUpdater(conflict_resolver, self, self.coin, notifiers)
+    def create_transaction_updater(self, conflict_resolver, event_handler_registry):
+        tx_updater = TransactionUpdater(conflict_resolver, self, self.coin, event_handler_registry)
         return tx_updater
 
-    def setup_incoming_transactions(self, conflict_resolver, notifiers):
+    def setup_incoming_transactions(self, conflict_resolver, event_handler_registry):
         """Configure the incoming transaction notifies from backend.
 
         The configuration for wallet notifies have been given to the backend earlier in the backend constructor. Now we read this configure, resolve the walletnotify handler class and instiate it.
 
-        We'll hook into backend by creating ``cryptoassets.core.backend.transactionupdater.TransactionUpdater`` instance, which gets the list of notifiers it needs to call on upcoming transaction.
+        We'll hook into backend by creating ``cryptoassets.core.backend.transactionupdater.TransactionUpdater`` instance, which gets the list of event_handler_registry it needs to call on upcoming transaction.
 
         :param conflict_resolver: cryptoassets.core.utils.conflictresolver.ConflictResolver instance which is used to manage transactions
 
-        :param notifiers: :param notifiers: :py:class`cryptoassets.core.notify.registry.NotifierRegistry` instance or None if we don't want to notify of new transactions and just update the database
+        :param event_handler_registry: :param event_handler_registry: :py:class`cryptoassets.core.event.registry.EventHandlerRegistry` instance or None if we don't want to notify of new transactions and just update the database
 
         :return: Instance of :py:class:`cryptoassets.core.backend.base.IncomingTransactionRunnable`
         """
 
         assert conflict_resolver, "Cannot setup incoming transactions without transaction conflict resolver in place"
         assert isinstance(conflict_resolver, ConflictResolver)
-        assert isinstance(notifiers, NotifierRegistry) or notifiers is None
+        assert isinstance(event_handler_registry, EventHandlerRegistry) or event_handler_registry is None
 
         config = self.walletnotify_config
 
@@ -129,7 +129,7 @@ class CoinBackend(abc.ABC):
 
         config = config.copy()
 
-        transaction_updater = self.create_transaction_updater(conflict_resolver, notifiers)
+        transaction_updater = self.create_transaction_updater(conflict_resolver, event_handler_registry)
 
         klass = config.pop("class")
         provider = resolve(klass)

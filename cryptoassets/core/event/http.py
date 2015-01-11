@@ -4,12 +4,12 @@ import requests
 import logging
 import json
 
-from .base import Notifier
+from .base import EventHandler
 
 logger = logging.getLogger(__name__)
 
 
-class HTTPNotifier(Notifier):
+class HTTPEventHandler(EventHandler):
     """Do a HTTP post on new event.
 
     """

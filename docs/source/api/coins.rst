@@ -24,7 +24,7 @@ Dogecoin
 Litecoin
 --------------------------------
 
-.. automodule:: cryptoassets.core.coin.applebyte.litecoin
+.. automodule:: cryptoassets.core.coin.litecoin.models
     :members:
 
 AppleByte

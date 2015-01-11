@@ -2,13 +2,13 @@
 """
 import logging
 
-from .base import Notifier
+from .base import EventHandler
 from zope.dottedname.resolve import resolve
 
 logger = logging.getLogger(__name__)
 
 
-class InProcessNotifier(Notifier):
+class InProcessEventHandler(EventHandler):
     """Do a in-process Python callback for incoming transaction notifications.
 
     """

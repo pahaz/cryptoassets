@@ -31,7 +31,7 @@ class Subsystem(AutoNumber):
     incoming_transactions = ()
 
     #: Post notifications
-    notifiers = ()
+    event_handler_registry = ()
 
 
 ALL_SUBSYSTEMS = Subsystem.__members__.values()
@@ -55,7 +55,7 @@ class CryptoAssetsApp:
         self.coins = {}
 
         #: Dict of notify handlers
-        self.notifiers = {}
+        self.event_handler_registry = {}
 
         #: TODO: Make this more explicity?
         self.session = DBSession

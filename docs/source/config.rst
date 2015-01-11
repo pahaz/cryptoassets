@@ -234,7 +234,7 @@ Example configuration
     # Use this special handler to convert cryptoassets notifications to Django signals.
     "events": {
         "django": {
-            "class": "cryptoassets.core.notify.python.InProcessNotifier",
+            "class": "cryptoassets.core.event.python.InProcessNotifier",
             "callback": "cryptoassets.django.incoming.handle_tx_update"
         }
     },

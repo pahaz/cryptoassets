@@ -1,7 +1,7 @@
 import abc
 
 
-class Notifier(abc.ABC):
+class EventHandler(abc.ABC):
     """Post information about new receivent payments and transactions across processes.
     """
 

@@ -40,7 +40,7 @@ def scan_coin(coin, conflict_resolver, event_handlers):
 
     :param conflict_resolver: Instance of `cryptoassets.core.utils.conflictresolver.ConflictResolver`
 
-    :param event_handlers: Instance of `cryptoassets.core.notify.registry.NotifierRegistry`
+    :param event_handlers: Instance of `cryptoassets.core.event.registry.EventHandlerRegistry`
 
     :param batch_size: How many transaction we list from the backend at a time.
     """
@@ -97,7 +97,7 @@ def scan(coins, conflict_resolver, event_handlers):
 
     :param conflict_resolver: Instance of :py:class:`cryptoassets.core.utils.conflictresolver.ConflictResolver`.
 
-    :param event_handlers: Instance of :py:class:`cryptoassets.core.notify.registry.NotifierRegistry`.
+    :param event_handlers: Instance of :py:class:`cryptoassets.core.event.registry.EventHandlerRegistry`.
 
     :return: Number of missed txids processed for all coins
     """

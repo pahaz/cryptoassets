@@ -59,25 +59,25 @@ Model classes
 Below are the base classes for models. All cryptoassets have the same API as described these models.
 
 Account
-++++++++++++
+~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: cryptoassets.core.models.GenericAccount
  :members:
 
 Address
-++++++++++++
+~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: cryptoassets.core.models.GenericAddress
  :members:
 
 Transaction
-++++++++++++++
+~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: cryptoassets.core.models.GenericTransaction
  :members:
 
 NetworkTransaction
-+++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: cryptoassets.core.models.GenericNetworkTransaction
  :members:
@@ -86,7 +86,7 @@ NetworkTransaction
  :members:
 
 Wallet
-++++++++++++
+~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: cryptoassets.core.models.GenericWallet
  :members:

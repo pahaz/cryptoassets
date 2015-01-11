@@ -29,6 +29,6 @@ notify:
     # For each event, we send a HTTP webhook notification
     # to your app. Your app should be listening HTTP at localhost:10000
     example_app:
-        class: cryptoassets.core.notify.http.HTTPNotifier
+        class: cryptoassets.core.event.http.HTTPNotifier
         url: http://localhost:10000
 

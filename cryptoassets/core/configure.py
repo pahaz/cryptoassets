@@ -20,8 +20,8 @@ from .backend.base import CoinBackend
 
 from .coin import registry as coin_registry
 
-from .notify.registry import NotifierRegistry
-from .notify.base import Notifier
+from .event.registry import EventHandlerRegistry
+from .event.base import EventHandler
 
 from .service import status
 from .app import Subsystem
@@ -150,31 +150,31 @@ class Configurator:
 
         return coin_registry
 
-    def setup_notify(self, notifiers):
+    def setup_event_handlers(self, event_handler_registry):
         """Read notification settings.
 
         Example notifier format::
 
             {
                 "shell": {
-                    "class": "cryptoassets.core.notifiers.shell.ShellNotifier",
+                    "class": "cryptoassets.core.event_handler_registry.shell.ShellNotifier",
                     "script": "/usr/bin/local/new-payment.sh"
                 }
             }
 
         """
 
-        # Do not enable notifiers
-        if not self.app.is_enabled(Subsystem.notifiers):
+        # Do not enable event_handler_registry
+        if not self.app.is_enabled(Subsystem.event_handler_registry):
             return
 
-        notifier_registry = NotifierRegistry()
+        notifier_registry = EventHandlerRegistry()
 
-        if not notifiers:
-            # Notifiers not configured
+        if not event_handler_registry:
+            # event_handler_registry not configured
             return
 
-        for name, data in notifiers.items():
+        for name, data in event_handler_registry.items():
             data = data.copy()  # No mutate in place
             klass = data.pop("class")
             provider = resolve(klass)
@@ -187,7 +187,7 @@ class Configurator:
                 # TypeError: __init__() got an unexpected keyword argument 'network'
                 raise ConfigurationError("Could not initialize notifier {} with options {}".format(klass, data)) from te
 
-            assert isinstance(instance, Notifier)
+            assert isinstance(instance, EventHandler)
             notifier_registry.register(name, instance)
 
         return notifier_registry
@@ -217,7 +217,7 @@ class Configurator:
         self.app.engine = self.setup_engine(config.get("database"))
         self.app.coins = self.setup_coins(config.get("coins"))
         self.app.status_server = self.setup_status_server(config.get("status-server"))
-        self.app.notifiers = self.setup_notify(config.get("notify"))
+        self.app.event_handler_registry = self.setup_event_handlers(config.get("notify"))
 
         self.config = config
 

@@ -59,7 +59,7 @@ from .pipewalletnotify import PipedWalletNotifyHandler
 from .transactionupdater import TransactionUpdater
 
 from ..coin.registry import Coin
-from ..notify.registry import NotifierRegistry
+from ..event.registry import EventHandlerRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +115,11 @@ class Bitcoind(base.CoinBackend):
         """
         bitcoind = getattr(self.thread_connection_pool, 'bitcoind', None)
         if bitcoind is None or reconnect:
+
+            if bitcoind:
+                # XXX: Try to close the existing TCP/IP connection
+                logger.warning("Had to reconnect to bitcoind")
+
             self.thread_connection_pool.bitcoind = bitcoind = AuthServiceProxy(self.url, timeout=self.timeout)
 
         return bitcoind
@@ -157,6 +162,8 @@ class Bitcoind(base.CoinBackend):
             #   File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/http/client.py", line 966, in putrequest
             #     raise CannotSendRequest(self.__state)
             # http.client.CannotSendRequest: Request-sent
+
+            # After error AuthConnetionProxy is in an invalid state. Reset it.
             self.connect(reconnect=True)
             raise
         except JSONRPCException as e:

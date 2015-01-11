@@ -26,7 +26,7 @@ Events
 
     In the future the scope of the events will be expanded: cold wallet top ups, network issues, etc.
 
-.. automodule:: cryptoassets.core.notify.events
+.. automodule:: cryptoassets.core.event.events
  :members:
 
 Event handlers
@@ -43,19 +43,19 @@ Event handlers tell how *cryptoassets.core* will post the event to your applicat
 HTTP webhook
 ----------------
 
-.. automodule:: cryptoassets.core.notify.http
+.. automodule:: cryptoassets.core.event.http
  :members:
 
 In-process Python
 --------------------
 
-.. automodule:: cryptoassets.core.notify.python
+.. automodule:: cryptoassets.core.event.python
  :members:
 
 Shell script
 --------------------
 
-.. automodule:: cryptoassets.core.notify.script
+.. automodule:: cryptoassets.core.event.script
  :members:
 
 Incoming transaction confirmation updates

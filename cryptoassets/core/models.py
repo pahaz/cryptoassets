@@ -1020,7 +1020,7 @@ class GenericConfirmationNetworkTransaction(GenericNetworkTransaction):
     """
     __abstract__ = True
 
-    #: How many miner confirmations this tx has received. The value is ``-1`` until the transaction is succesfully broadcasted, after which is it ``0`.
+    #: How many miner confirmations this tx has received. The value is ``-1`` until the transaction is succesfully broadcasted, after which is it ``0``
     confirmations = Column(Integer, nullable=False, default=-1)
 
     #: How many confirmations to wait until the transaction is set as confirmed.

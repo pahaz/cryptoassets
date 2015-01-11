@@ -136,7 +136,7 @@ def simple_http_event_listener(config, daemon=True):
         # Get first HTTP event handling entty from the config and grab it's IP and URL there
         host = port = None
         for data in notify_config.values():
-            if data["class"] == "cryptoassets.core.notify.http.HTTPNotifier":
+            if data["class"] == "cryptoassets.core.event.http.HTTPEventHandler":
                 url = urllib.parse.urlparse(data["url"])
                 port = url.port
                 host = url.hostname

@@ -31,7 +31,7 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         if logger.level < logging.WARN:
             enableTrace(True)
 
-        self.incoming_transactions_runnable = self.backend.setup_incoming_transactions(self.app.conflict_resolver, self.app.notifiers)
+        self.incoming_transactions_runnable = self.backend.setup_incoming_transactions(self.app.conflict_resolver, self.app.event_handler_registry)
 
         self.incoming_transactions_runnable.start()
 

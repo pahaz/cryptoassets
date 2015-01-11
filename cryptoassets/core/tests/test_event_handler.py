@@ -43,7 +43,7 @@ class ScriptNotificationTestCase(unittest.TestCase):
 
     def setUp(self):
 
-        self.app = CryptoAssetsApp([Subsystem.notifiers])
+        self.app = CryptoAssetsApp([Subsystem.event_handler_registry])
         self.configurator = Configurator(self.app)
 
         # Create a test script
@@ -61,14 +61,14 @@ class ScriptNotificationTestCase(unittest.TestCase):
         """
         config = {
             "test_script": {
-                "class": "cryptoassets.core.notify.script.ScriptNotifier",
+                "class": "cryptoassets.core.event.script.ScriptEventHandler",
                 "script": SAMPLE_SCRIPT_PATH,
                 "log_output": True
             }
         }
-        notifiers = self.configurator.setup_notify(config)
+        event_handler_registry = self.configurator.setup_event_handlers(config)
 
-        notifiers.notify("foobar", {"test": "abc"})
+        event_handler_registry.trigger("foobar", {"test": "abc"})
 
         with io.open("/tmp/cryptoassets-test_notifier", "rt") as f:
             data = json.load(f)
@@ -88,7 +88,7 @@ class PythonNotificationTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        self.app = CryptoAssetsApp([Subsystem.notifiers])
+        self.app = CryptoAssetsApp([Subsystem.event_handler_registry])
         self.configurator = Configurator(self.app)
 
     def tearDown(self):
@@ -99,13 +99,13 @@ class PythonNotificationTestCase(unittest.TestCase):
         """
         config = {
             "test_python": {
-                "class": "cryptoassets.core.notify.python.InProcessNotifier",
-                "callback": "cryptoassets.core.tests.test_notify.global_recording_callback",
+                "class": "cryptoassets.core.event.python.InProcessEventHandler",
+                "callback": "cryptoassets.core.tests.test_event_handler.global_recording_callback",
             }
         }
-        notifiers = self.configurator.setup_notify(config)
+        event_handler_registry = self.configurator.setup_event_handlers(config)
 
-        notifiers.notify("foobar", {"test": "abc"})
+        event_handler_registry.trigger("foobar", {"test": "abc"})
 
         self.assertEqual(_cb_data["test"], "abc")
 
@@ -147,7 +147,7 @@ class HTTPNotificationTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        self.app = CryptoAssetsApp([Subsystem.notifiers])
+        self.app = CryptoAssetsApp([Subsystem.event_handler_registry])
         self.configurator = Configurator(self.app)
 
     def tearDown(self):
@@ -159,11 +159,11 @@ class HTTPNotificationTestCase(unittest.TestCase):
 
         config = {
             "test_script": {
-                "class": "cryptoassets.core.notify.http.HTTPNotifier",
+                "class": "cryptoassets.core.event.http.HTTPEventHandler",
                 "url": "http://localhost:10000"
             }
         }
-        notifiers = self.configurator.setup_notify(config)
+        event_handler_registry = self.configurator.setup_event_handlers(config)
 
         server = TestServer()
         try:
@@ -175,7 +175,7 @@ class HTTPNotificationTestCase(unittest.TestCase):
                 time.sleep(0.1)
                 self.assertLess(time.time(), deadline, "TestServer never become ready")
 
-            notifiers.notify("foobar", {"test": "abc"})
+            event_handler_registry.trigger("foobar", {"test": "abc"})
         finally:
             server.stop()
 

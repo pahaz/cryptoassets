@@ -69,7 +69,7 @@ class CoinTestCase:
         testwarnings.begone()
         testlogging.setup()
 
-        self.app = CryptoAssetsApp([Subsystem.database, Subsystem.backend, Subsystem.notifiers, Subsystem.incoming_transactions])
+        self.app = CryptoAssetsApp([Subsystem.database, Subsystem.backend, Subsystem.event_handler_registry, Subsystem.incoming_transactions])
         self.configurator = Configurator(self.app)
 
         session = self.app.session

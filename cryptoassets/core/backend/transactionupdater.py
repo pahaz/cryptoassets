@@ -5,8 +5,8 @@ import logging
 from sqlalchemy.orm.session import Session
 
 from ..coin.registry import Coin
-from ..notify.registry import NotifierRegistry
-from ..notify import events
+from ..event.registry import EventHandlerRegistry
+from ..event import events
 
 from ..utils.conflictresolver import ConflictResolver
 
@@ -33,7 +33,7 @@ class TransactionUpdater:
     TransactionUpdater is generally run inside :py:class:`cryptoassets.core.service.main.Server` process, as this process is responsible for all incoming transaction updates. No web or other front end should try to make their own updates.
     """
 
-    def __init__(self, conflict_resolver, backend, coin, notifiers):
+    def __init__(self, conflict_resolver, backend, coin, event_handler_registry):
         """
         :param conflict_resolver: :py:class:`cryptoassets.core.utils.conflictresolver.ConflictResolver`
 
@@ -41,7 +41,7 @@ class TransactionUpdater:
 
         :param coin: :py:class:`cryptoasets.core.coin.registry.Coin` instance
 
-        :param notifiers: :py:class`cryptoassets.core.notify.registry.NotifierRegistry` instance
+        :param event_handler_registry: :py:class`cryptoassets.core.event.registry.EventHandlerRegistry` instance
         """
         assert isinstance(coin, Coin)
         assert isinstance(conflict_resolver, ConflictResolver)
@@ -56,12 +56,12 @@ class TransactionUpdater:
         #: UTC timestamp when we got the last transaction notification
         self.last_wallet_notify = None
 
-        if notifiers:
-            assert isinstance(notifiers, NotifierRegistry)
-            #: Notifiers registry we are going to inform about transaction status updates
-            self.notifiers = notifiers
+        if event_handler_registry:
+            assert isinstance(event_handler_registry, EventHandlerRegistry)
+            #: event_handler_registry registry we are going to inform about transaction status updates
+            self.event_handler_registry = event_handler_registry
         else:
-            self.notifiers = None
+            self.event_handler_registry = None
 
         #: Diagnostics and bookkeeping statistics
         self.stats = Counter(network_transaction_updates=0, deposit_updates=0, broadcast_updates=0)
@@ -174,7 +174,7 @@ class TransactionUpdater:
 
         For broadcasts, updates the confirmation count of outbound transactions.
 
-        Relevant event handlers are fired (:py:attr:`cryptoassets.core.transactionupdater.TransactionUpdater.notifiers`)
+        Relevant event handlers are fired (:py:attr:`cryptoassets.core.transactionupdater.TransactionUpdater.event_handler_registry`)
 
         :param transaction_type: "deposit" or "broadcast". Note that we might have two ntx's for one real network transaction, as we are sending bitcoins to ourselves.
 
@@ -264,11 +264,11 @@ class TransactionUpdater:
         if txupdate_events:
 
             # Fire event handlers outside the db transaction
-            notifier_count = len(self.notifiers.get_all()) if self.notifiers else 0
-            logger.info("Posting txupdate notify for %d notifiers, current transaction updater stats %s", notifier_count, self.stats)
-            if self.notifiers:
+            notifier_count = len(self.event_handler_registry.get_all()) if self.event_handler_registry else 0
+            logger.info("Posting txupdate notify for %d event_handler_registry, current transaction updater stats %s", notifier_count, self.stats)
+            if self.event_handler_registry:
                 for e in txupdate_events:
-                    self.notifiers.notify("txupdate", e)
+                    self.event_handler_registry.trigger("txupdate", e)
 
         return ntx_id, txupdate_events
 

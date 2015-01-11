@@ -5,7 +5,7 @@ import json
 import subprocess
 import os
 
-from .base import Notifier
+from .base import EventHandler
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ class ScriptNotificationFailed(Exception):
     """Script executed for the notification returned non-zero exit code."""
 
 
-class ScriptNotifier(Notifier):
+class ScriptEventHandler(EventHandler):
     """Execute an UNIX command on a new event.
 
     Blocks the execution until the executed command returns.
