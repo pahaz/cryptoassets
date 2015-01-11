@@ -14,7 +14,6 @@ requests==2.4.3
 six==1.8.0
 websocket-client==0.21.0
 zope.deprecation==4.1.1
-zope.sqlalchemy==0.7.5
 zope.dottedname==4.0.1
 rainbow-logging-handler==2.2.2
 

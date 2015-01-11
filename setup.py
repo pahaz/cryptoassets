@@ -19,13 +19,19 @@ setup(name='cryptoassets.core',
       version='0.0',
       description='Bitcoin, cryptocurrency and cryptoassets API, database models and accounting library',
       long_description=README + '\n\n' + CHANGES,
+      # https://packaging.python.org/en/latest/distributing.html#classifiers
       classifiers=[
+        'Development Status :: 4 - Beta',
         "Programming Language :: Python",
-        "Framework :: Pyramid",
-        "Topic :: Internet :: WWW/HTTP",
-        "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
+        'Intended Audience :: Developers',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3',
+        'License :: OSI Approved :: MIT License',
+        'Topic :: Security :: Cryptography',
+        'Intended Audience :: Financial and Insurance Industry'
+
         ],
-      author='Cryptoassets library authors',
+      author='Mikko Ohtamaa',
       author_email='mikko@opensourcehacker.com',
       url='https://bitbucket.org/miohtama/cryptoassets',
       keywords='bitcoin litecoin dogecoin sqlalchemy',
