@@ -3,73 +3,97 @@
 """
 
 import threading
+import logging
 
 from ..backend.transactionupdater import TransactionUpdater
 
 
-def get_all_receiving_addresses(session, Address):
-    """Collect addresses we need to rescn."""
-
-    out = []
-    addresses = session.query(Address).filter(Address.account != None)  # noqa
-    for addr in addresses:
-        out.append(addr.address)
-
-    return out
+logger = logging.getLogger(__name__)
 
 
-def get_missed_txids(session, address_model, address, txids_in_address):
-    """Check if our database is missing any received transaction
+def get_all_addresses(session, Address):
+    """Get the deposit transactions we are aware off."""
+    addresses = session.query(Address).values(Address.address)
+    return set([address.address for address in addresses])
 
-    :param txids: List of txids arried to this address
 
-    :return: set of transaction txids we don't have accounting for this addres
+def get_all_confirmed_network_transactions(session, NetworkTransaction, confirmation_threshold):
+    """Give list of network transactions we know we have reached good confirmation level and thus are not interested to ask them from the backend again.
+
+    Note that same ``txid`` may be reported twice in the list.
     """
-    Address = address_model
 
-    address_obj = session.query(Address).filter(Address.address == address, Address.account != None).first()  # noqa
-
-    if not address_obj:
-        # Cannot update received txs for addresses we are not tracking in our database.
-        # Should not happen unless backend is shared between wallets.
-        return
-
-    address_txids = [t.txids for t in address.transactions]
-
-    missed_txids = set()
-
-    for txid in txids_in_address:
-        if txid not in address_txids:
-            missed_txids.append(txid)
-
-    return missed_txids
+    # TODO: optimize
+    ntxs = session.query(NetworkTransaction).filter(NetworkTransaction.confirmations >= confirmation_threshold).values("txid")
+    return set([ntx.txid for ntx in ntxs])
 
 
-def scan_coin(coin, conflict_resolver, event_handlers):
+def is_interesting_transaction(txdata, all_addresses):
+    """Check if the transaction contains any sending or receiving"""
+    return any([(detail["address"] in all_addresses) for detail in txdata["details"]])
 
-    @conflict_resolver.managed_transaction
-    def _get_all_receiving_addresses(session, address_model):
-        return get_all_receiving_addresses(session, address_model)
+
+def scan_coin(coin, conflict_resolver, event_handlers, batch_size=100):
+    """Go through for all received transactions reported by a backend and see if our database is missing any.
+
+    :param coin: Instance of `cryptoassets.core.coin.registry.Coin`
+
+    :param conflict_resolver: Instance of `cryptoassets.core.utils.conflictresolver.ConflictResolver`
+
+    :param event_handlers: Instance of `cryptoassets.core.notify.registry.NotifierRegistry`
+
+    :param batch_size: How many transaction we list from the backend at a time.
+    """
 
     @conflict_resolver.managed_transaction
-    def _get_missed_txids(session, address_model, address, txids_in_address):
-        return get_all_receiving_addresses(session, address_model, address, txids_in_address)
+    def _get_all_addresses(session, addres_model):
+        return get_all_addresses(session, addres_model)
+
+    @conflict_resolver.managed_transaction
+    def _get_all_confirmed_network_transactions(session, network_transaction_model, confirmation_threshold):
+        return get_all_confirmed_network_transactions(session, network_transaction_model, confirmation_threshold)
+
+    start = 0
+    batch_size = batch_size
+    backend = coin.backend
+    found_missed = 0
 
     transaction_updater = TransactionUpdater(conflict_resolver, coin.backend, coin, event_handlers)
 
-    # Perform one db transaction per backend API call
-    missed_txids = set()
-    for address in _get_all_receiving_addresses(coin.address_model):
-        backend = coin.backend
-        # Get all tranactions for this particular address
-        received_txids = backend.list_received_by_address(address, dict(confirmations=0))
-        missed_txids |= _get_missed_txids(coin.address_model, address, received_txids)
+    good_txids = _get_all_confirmed_network_transactions(coin.network_transaction_model, backend.max_tracked_incoming_confirmations)
 
-    # Perform one db transaction per backend API call
-    for txid in missed_txids:
-        transaction_updater.handle_wallet_notify(txid)
+    all_addresses = _get_all_addresses(coin.address_model)
 
-    return len(missed_txids)
+    def get_batch():
+        logger.debug("Scanning incoming transactions %d to %d", start, start+batch_size)
+        txs = backend.list_received_transactions(start, batch_size)
+        return txs
+
+    txs = get_batch()
+
+    while txs:
+
+        for txid in txs:
+
+            # We know this transaction has plentiful confirmations on our database, we are not interested about it
+            if txid in good_txids:
+                continue
+
+            txdata = backend.get_transaction(txid)
+
+            # Backend reported this transaction, but it did not concern any of our addresses
+            # (Shoud not happen unless you share the backend wallet with other services)
+            if not is_interesting_transaction(txdata, all_addresses):
+                continue
+
+            # Otherwise let's update this transaction just in case
+            transaction_updater.handle_wallet_notify(txid)
+            found_missed += 1
+
+        start += batch_size
+        txs = get_batch()
+
+    return found_missed
 
 
 def scan(coins, conflict_resolver, event_handlers):

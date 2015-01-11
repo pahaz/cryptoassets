@@ -206,28 +206,40 @@ class Bitcoind(BitcoindDerivate):
 
         return _convert_to_satoshi(result)
 
-    def list_transactions(self, start, limit):
-        """
+    def list_received_transactions(self, start, limit, extra={}):
+        """Iterate through all transactions.
+
+        Have some special handling in place in the case of API failures.
         """
 
-        # http://bitcoin.stackexchange.com/questions/32839/bitcoind-json-rpc-interface-timeouts-under-unit-tests
+        confirmations = extra.get("confirmations", 0)
+
         now = time.time()
         attemps = 4
+
+        out = []
+
         while attemps:
 
-            logger.info("listtransactions attempts #%d %s %s %s", attemps, self.bitcoind_account_name, limit, start)
+            logger.debug("listtransactions attempts #%d %s %s %s", attemps, self.bitcoind_account_name, limit, start)
+
             try:
                 result = self.api_call("listtransactions", self.bitcoind_account_name, limit, start)
-                return result
+                out = [res["txid"] for res in result if res["category"] == "receive"]
+                return out
+            except KeyboardInterrupt:
+                raise
             except:
+                # http://bitcoin.stackexchange.com/questions/32839/bitcoind-json-rpc-interface-timeouts-under-unit-tests
                 logger.error("listtransactions timeout failure after %f seconds", time.time() - now)
                 attemps -= 1
                 if attemps:
-                    # Recreate connection
-                    self.bitcoind = AuthServiceProxy(self.url)
+                    # Recreate connection. We are
+                    self.bitcoind = AuthServiceProxy(self.url, timeout=self.timeout)
                     continue
                 else:
                     raise
+        return out
 
     def get_transaction(self, txid):
         """ """

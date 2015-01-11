@@ -646,18 +646,10 @@ class CoinTestCase:
                 break
             self.assertLess(time.time(), deadline)
 
-        t = receivescan.BackgroundScanThread(self.app.coins, self.app.conflict_resolver, None)
-        t.start()
-
-        # Now ask backend until we know the tx is broadcasted
-        deadline = time.time() + 30
-        while True:
-            if t.missed_txs >= 0:
-                break
-            self.assertLess(time.time(), deadline)
+        missed = receivescan.scan(self.app.coins, self.app.conflict_resolver, None)
+        self.assertEqual(missed, 1)
 
         # Check that address is now credited
         with self.app.conflict_resolver.transaction() as session:
             address = session.query(Address).filter(Address.address == addr_str).first()
-            import ipdb; ipdb.set_trace()
             self.assertGreater(len(address.transactions), 0)

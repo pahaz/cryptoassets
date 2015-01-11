@@ -1,8 +1,4 @@
-"""
-
-    Base classes for cryptocurrency backend.
-
-"""
+"""Base classes for cryptocurrency backend."""
 
 import abc
 
@@ -83,14 +79,16 @@ class CoinBackend(abc.ABC):
         """
 
     @abc.abstractmethod
-    def list_received_by_address(self, address, extra):
-        """List received transactions arrived to an address.
+    def list_received_transactions(self, start, batch_size, extra):
+        """List all received transactions the backend is aware off.
 
-        :param address: As a string
+        :param start: First transaction to list (zer)
 
-        :param extra: Dict for backend-specific optional kwargs like ``confirmations``.
+        :param extra: Dict of backend-specific optional arguments like ``dict(confirmations=0)``.
 
-        :return: List of txids
+        This is used for :py:mod:`cryptoassets.core.tools.receivescan`.
+
+        :return: List of txids of transactions or empty list if there is nothing left to iterate
         """
 
     def create_transaction_updater(self, conflict_resolver, notifiers):
