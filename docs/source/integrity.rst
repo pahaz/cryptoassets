@@ -38,11 +38,20 @@ The production *cryptoassets.core* always runs its database transactions on `ser
 
 Serializable transaction isolation simply prevents all kind of race conditions. Alternative would be writing application level locking code, which is prone to errors, as it incumbers more cognitive overhead for the developers themselves. Better let the database developers take care of the locking, as they have liven their life by solving concurrency issues and they are expert on it.
 
-However the developers most deal with conflicting transaction rollbacks. *cryptoassets.core* provides tools to handle this in idomatic Python way.
-
 More information
 
 * `PostgreSQL transaction isolation levels <http://www.postgresql.org/docs/devel/static/transaction-iso.html>`_
+
+Transaction conflict handling
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*cryptoassets.core* provides tools to handle serialized transaction rollbacks in idomatic Python way.
+
+:py:mod:`cryptoassets.core.utils.conflictresolver` is an utility class extensively used through *cryptoassets.core*. It's :py:meth:`cryptoassets.core.utils.conflictresolver.ConflictResolver.managed_transaction` function decorator allows one easily write Python pieces of code
+
+* Where serialized transaction is initialized.
+
+* The code is re-run in the case of transaction conflicts - e.g. other process or thread edited data when this code was being run.
 
 Conflict tests
 ~~~~~~~~~~~~~~~~
@@ -50,7 +59,7 @@ Conflict tests
 Unit test suite provides a test case for testing out different transaction conflict cases and their resolution. If you are unsure Python database driver can handle transaction conflicts, this is a good smoke test to find out.
 
 .. automodule:: cryptoassets.core.tests.test_conflictresolver
- :members:
+ :members: PostgreSQLConflictResolverTestCase
 
 Data integrity on failed broadcasts
 ----------------------------------------------------------------------

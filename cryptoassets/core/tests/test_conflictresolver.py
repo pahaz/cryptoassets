@@ -107,8 +107,6 @@ class PostgreSQLConflictResolverTestCase(unittest.TestCase):
         return self.Session()
 
     def setUp(self):
-        """
-        """
 
         testwarnings.begone()
 
@@ -137,7 +135,7 @@ class PostgreSQLConflictResolverTestCase(unittest.TestCase):
         session.commit()
 
     def test_conflict(self):
-        """Run database to a transaction conflict and see what it spits out."""
+        """Run database to a transaction conflict and see what exception it spits out, and make sure we know this is the exception we expect."""
 
         def session_factory():
             return self.open_session()
@@ -159,7 +157,7 @@ class PostgreSQLConflictResolverTestCase(unittest.TestCase):
         self.assertTrue(ConflictResolver.is_retryable_exception(failure), "Got exception {}".format(failure))
 
     def test_conflict_resolved(self):
-        """Use conflict resolver to resolve conflict between two transactions."""
+        """Use conflict resolver to resolve conflict between two transactions and see code retry is correctly run."""
 
         def session_factory():
             return self.open_session()
@@ -192,7 +190,7 @@ class PostgreSQLConflictResolverTestCase(unittest.TestCase):
         self.assertEqual(errors, 0)
 
     def test_conflict_some_other_exception(self):
-        """See that unknown exceptions are correctly reraised."""
+        """See that unknown exceptions are correctly reraised by managed_transaction."""
 
         def session_factory():
             return self.open_session()
@@ -207,7 +205,7 @@ class PostgreSQLConflictResolverTestCase(unittest.TestCase):
         self.assertEqual(c.stats["errors"], 1)
 
     def test_give_up(self):
-        """See that the conflict resolver gives up after using all attempts."""
+        """See that the conflict resolver gives up after using given number of attempts to replay transactions."""
 
         def session_factory():
             return self.open_session()
@@ -232,3 +230,4 @@ class PostgreSQLConflictResolverTestCase(unittest.TestCase):
 
         unresolved = sum([t1.conflict_resolver.stats["unresolved"], t2.conflict_resolver.stats["unresolved"], t3.conflict_resolver.stats["unresolved"]])
         self.assertEqual(unresolved, 1)
+

@@ -186,6 +186,24 @@ Example:
             "models": "mycoin.models"
         },
 
+testnet
++++++++++
+
+Set to ``true`` (Python ``True``) if the coin backend is connected to a testnet.
+
+This may affect address validation in the future. Currently this information is not utilized.
+
+Example:
+
+.. code-block:: python
+
+        "jesuscoin": {
+            "backend": {
+                "class": "cryptoassets.core.backend.bitcoind.Bitcoind",
+                "url": "http://x:y@127.0.0.1:8607/",
+            },
+            "testnet": True
+        },
 
 max_confirmation_count
 +++++++++++++++++++++++++++

@@ -57,7 +57,7 @@ By default the status server listens to http://localhost:18881. See :doc:`config
     Status server is designed only for testing and diagnostics purpose and does not scale to production use.
 
 
-.. warn::
+.. warning::
 
     It is not safe to expose status server to the Internet. Make sure you have authenticating proxy set up or only expose this to localhost.
 
