@@ -119,7 +119,6 @@ class Service:
         """Start incoming transaction handlers.
         """
 
-        assert self.app.session
         assert self.app.conflict_resolver
 
         for name, coin, in self.app.coins.all():

@@ -56,8 +56,7 @@ class CryptoAssetsApp:
         #: Dict of notify handlers
         self.event_handler_registry = {}
 
-        #: TODO: Make this more explicity?
-        self.session = DBSession
+        self.session = None
 
         #: Configured status server
         #: See notes in cryptoassets.core.service.main.Service
