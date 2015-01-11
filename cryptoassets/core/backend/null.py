@@ -31,3 +31,6 @@ class DummyCoinBackend(base.CoinBackend):
 
     def require_tracking_incoming_confirmations(self):
         return False
+
+    def list_received_transactions(self, extra={}):
+        raise NotImplementedError()
