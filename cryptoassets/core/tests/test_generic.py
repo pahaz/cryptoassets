@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from ..app import CryptoAssetsApp
 from ..configure import Configurator
+from ..models import BadAddress
 
 from . import testwarnings
 from . import testlogging
@@ -23,7 +24,7 @@ class GenericWalletTestCase(unittest.TestCase):
         self.configurator = Configurator(self.app)
 
         echo = "VERBOSE_TEST" in os.environ
-        overrides = {"database":{"echo": echo}}
+        overrides = {"database": {"echo": echo}}
 
         test_config = os.path.join(os.path.dirname(__file__), "null.config.yaml")
         self.assertTrue(os.path.exists(test_config), "Did not found {}".format(test_config))
@@ -46,6 +47,23 @@ class GenericWalletTestCase(unittest.TestCase):
             wallet = wallet_class.get_or_create_by_name("foobar", session)
             session.flush()
             self.assertEqual(wallet.id, 1)
+
+    def test_send_to_bad_address(self):
+        """Try to send to bad address.
+        """
+
+        with self.app.conflict_resolver.transaction() as session:
+            wallet_class = self.app.coins.get("btc").wallet_model
+
+            wallet = wallet_class.get_or_create_by_name("foobar", session)
+            session.flush()
+            self.assertEqual(wallet.id, 1)
+
+            account1 = wallet.get_or_create_account_by_name("account1")
+            session.flush()
+
+            with self.assertRaises(BadAddress):
+                wallet.send_external(account1, "foobar", 0.1, "foobar")
 
     def test_get_deposits(self):
         """Create internal, incoming transactions and broadcasted transactions and see we can tell deposits apart."""

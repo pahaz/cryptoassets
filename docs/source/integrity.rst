@@ -44,6 +44,14 @@ More information
 
 * `PostgreSQL transaction isolation levels <http://www.postgresql.org/docs/devel/static/transaction-iso.html>`_
 
+Conflict tests
+~~~~~~~~~~~~~~~~
+
+Unit test suite provides a test case for testing out different transaction conflict cases and their resolution. If you are unsure Python database driver can handle transaction conflicts, this is a good smoke test to find out.
+
+.. automodule:: cryptoassets.core.tests.test_conflictresolver
+ :members:
+
 Data integrity on failed broadcasts
 ----------------------------------------------------------------------
 

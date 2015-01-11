@@ -56,6 +56,10 @@ class SameAccount(Exception):
     """
 
 
+class BadAddress(Exception):
+    """Cannot send to invalid address."""
+
+
 class TableName:
     """Mix-in class to create database tables based on the coin description. """
 
@@ -187,16 +191,6 @@ class GenericAddress(CoinDescriptionModel):
         """
         assert cls.coin_description.account_model_name
         return relationship(cls.coin_description.account_model_name, backref="addresses")
-
-    @classmethod
-    def validate(self, address):
-        """Checks that the address is valid for this asset.
-
-        Subclass should override this.
-
-        :return: True if address is valid
-        """
-        raise NotImplementedError()
 
     @declared_attr
     def __table_args__(cls):
@@ -566,7 +560,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         return _address
 
-    def send(self, from_account, receiving_address, amount, label, force_external=False):
+    def send(self, from_account, receiving_address, amount, label, force_external=False, testnet=False):
         """Send the amount of cryptocurrency to the target address.
 
         If the address is hosted in the same wallet do the internal send with :py:meth:`cryptoassets.core.models.GenericWallet.send_internal`,  otherwise go through the public blockchain with :py:meth:`cryptoassets.core.models.GenericWallet.send_external`.
@@ -578,6 +572,8 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         :param amount: Instance of `Decimal`
 
         :param label: Recorded text to the sending wallet
+
+        :param testnet: Assume the address is testnet address. Currently not used, but might affect address validation in the future.
 
         :param force_external: Set to true to force the transaction go through the network even if the target address is in our system.
 
@@ -764,7 +760,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         return transaction
 
-    def send_external(self, from_account, to_address, amount, label):
+    def send_external(self, from_account, to_address, amount, label, testnet=False):
         """Create a new external transaction and put it to the transaction queue.
 
         When you send cryptocurrency out from the wallet, the transaction is put to the outgoing queue. Only after you broadcast has been performed (:py:mod:`cryptoassets.core.tools.broadcast`) the transaction is send out to the network. This is to guarantee the system responsiveness and fault-tolerance, so that outgoing transactions are created even if we have temporarily lost the connection with the cryptocurrency network. Broadcasting is usually handled by *cryptoassets helper service*.
@@ -777,12 +773,17 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         :param label: Recorded to the sending wallet history
 
+        :param testnet: to_address is a testnet address
+
         :return: Instance of :py:class:`cryptoassets.core.models.GenericTransaction`
         """
         session = Session.object_session(self)
 
         assert session
         assert from_account.wallet == self
+
+        if not self.coin_description.address_validator.validate_address(to_address, testnet):
+            raise BadAddress("Cannot send to address {}".format(to_address))
 
         # TODO: Currently we don't allow
         # negative withdrawals on external sends

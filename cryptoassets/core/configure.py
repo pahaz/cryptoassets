@@ -140,7 +140,9 @@ class Configurator:
 
             max_confirmation_count = int(data.get("max_confirmation_count", 15))
 
-            coin = Coin(coin_description, max_confirmation_count=max_confirmation_count)
+            testnet = data.get("testnet") in ("true", True)
+
+            coin = Coin(coin_description, max_confirmation_count=max_confirmation_count, testnet=testnet)
 
             backend = self.setup_backend(coin, data.get("backend"))
 

@@ -2,7 +2,7 @@
 
 from cryptoassets.core import models
 from cryptoassets.core.coin.registry import CoinModelDescription
-
+from cryptoassets.core.coin.validate import HashAddresValidator
 
 coin_description = CoinModelDescription(
     coin_name="doge",
@@ -10,7 +10,8 @@ coin_description = CoinModelDescription(
     address_model_name="cryptoassets.core.coin.dogecoin.models.DogecoinAddress",
     account_model_name="cryptoassets.core.coin.dogecoin.models.DogecoinAccount",
     transaction_model_name="cryptoassets.core.coin.dogecoin.models.DogecoinTransaction",
-    network_transaction_model_name="cryptoassets.core.coin.dogecoin.models.DogecoinNetworkTransaction")
+    network_transaction_model_name="cryptoassets.core.coin.dogecoin.models.DogecoinNetworkTransaction",
+    address_validator=HashAddresValidator())
 
 
 class DogecoinAccount(models.GenericAccount):

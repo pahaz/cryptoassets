@@ -90,3 +90,9 @@ Wallet
 
 .. autoclass:: cryptoassets.core.models.GenericWallet
  :members:
+
+Validation
+----------------
+
+.. automodule:: cryptoassets.core.coin.validate
+ :members:

@@ -2,7 +2,7 @@
 
 from cryptoassets.core import models
 from cryptoassets.core.coin.registry import CoinModelDescription
-
+from cryptoassets.core.coin.validate import HashAddresValidator
 
 coin_description = CoinModelDescription(
     coin_name="ltc",
@@ -10,7 +10,8 @@ coin_description = CoinModelDescription(
     address_model_name="cryptoassets.core.coin.litecoin.models.LitecoinAddress",
     account_model_name="cryptoassets.core.coin.litecoin.models.LitecoinAccount",
     transaction_model_name="cryptoassets.core.coin.litecoin.models.LitecoinTransaction",
-    network_transaction_model_name="cryptoassets.core.coin.litecoin.models.LitecoinNetworkTransaction")
+    network_transaction_model_name="cryptoassets.core.coin.litecoin.models.LitecoinNetworkTransaction",
+    address_validator=HashAddresValidator())
 
 
 class LitecoinAccount(models.GenericAccount):

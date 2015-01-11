@@ -11,7 +11,7 @@ class CoinModelDescription:
     The instance of this class is used by :py:class:`cryptoassets.core.models.CoinDescriptionModel` to build the model relatinoships and foreign keys between the tables of one cryptoasset.
     """
 
-    def __init__(self, coin_name, wallet_model_name, address_model_name, account_model_name, transaction_model_name, network_transaction_model_name):
+    def __init__(self, coin_name, wallet_model_name, address_model_name, account_model_name, transaction_model_name, network_transaction_model_name, address_validator):
         """Create the description with fully dotted paths to Python classes.
 
         :param coin_name: Name of this coin, lowercase acronym
@@ -24,6 +24,7 @@ class CoinModelDescription:
         self.account_model_name = account_model_name
         self.transaction_model_name = transaction_model_name
         self.network_transaction_model_name = network_transaction_model_name
+        self.address_validator = address_validator
 
         # Direct model class reference. Available after Python modules are loaded and Cryptoassets App session initialized
         self._Wallet = None
@@ -91,12 +92,16 @@ class Coin:
     """Describe one cryptocurrency setup.
 
     Binds cryptocurrency to its backend and database models.
+
+    We also carry a flag if we are running in testnet or not. This affects address validation.
     """
 
-    def __init__(self, coin_description, backend=None, max_confirmation_count=15):
+    def __init__(self, coin_description, backend=None, max_confirmation_count=15, testnet=False):
         """Create a binding between asset models and backend.
 
         :param coin_description: :py:class:`cryptoassets.core.coin.registry.CoinModelDescription`
+
+        :param testnet: Are we running a testnet node or real node.
 
         :param backend: :py:class:`cryptoassets.core.backend.base.CoinBackend`
         """
@@ -113,6 +118,8 @@ class Coin:
 
         #: This is how many confirmations ``tools.confirmationupdate`` tracks for each network transactions, both incoming and outgoing, until we consider it "closed" and stop polling backend for updates.
         self.max_confirmation_count = max_confirmation_count
+
+        self.testnet = testnet
 
     @property
     def address_model(self):
@@ -153,6 +160,13 @@ class Coin:
         Subclass of :py:class:`cryptoassets.core.models.GenericWallet`.
         """
         return self.coin_description.NetworkTransaction
+
+    def validate_address(self, address):
+        """Check the address validy against current network.
+
+        :return: True if given address is valid.
+        """
+        return self.coin_description.address_validator.validate_address(address, self.testnet)
 
 
 class CoinRegistry:

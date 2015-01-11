@@ -58,24 +58,28 @@ You can give your settings as Python dictionary:
             "echo": True,
         },
 
-        # What cryptocurrencies we are configuring to the database
-        "models": {
-            "btc": "cryptoassets.core.coin.bitcoin.models"
-        },
-
         # Locally running bitcoind in testnet
-        "backends": {
+        "coins": {
             "btc": {
-                "class": "cryptoassets.core.backend.bitcoind.Bitcoind",
-                "url": "http://foo:bar@127.0.0.1:8332/",
-                # Cryptoassets helper process will use this UNIX named pipe to communicate
-                # with bitcoind
-                "walletnotify": {
-                    "class": "cryptoassets.core.backend.httpwalletnotify.HTTPWalletNotifyHandler",
-                    "ip": "127.0.0.1"
-                    "port": 28882
+                "backend": {
+                    "class": "cryptoassets.core.backend.bitcoind.Bitcoind",
+                    "url": "http://x:y@127.0.0.1:9999/",
+
+                    # bitcoind has 60 seconds to get back to us
+                    "timeout": 60,
+
+                    # Cryptoassets helper process will use this UNIX named pipe to communicate
+                    # with bitcoind
+                    "walletnotify": {
+                        "class": "cryptoassets.core.backend.httpwalletnotify.HTTPWalletNotifyHandler",
+                        "ip": "127.0.0.1",
+                        "port": 28882
+                   },
                 },
-            }
+
+                # We run in testnet mode
+                "testnet": True
+            },
         },
     }
 
