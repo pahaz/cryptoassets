@@ -2,7 +2,6 @@
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import scoped_session
 
-from .models import DBSession
 from .models import Base
 
 from .utils.enum import AutoNumber

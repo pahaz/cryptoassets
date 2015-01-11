@@ -26,10 +26,6 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 from sqlalchemy.schema import UniqueConstraint
-from zope.sqlalchemy import ZopeTransactionExtension
-
-# Create a thread-local DB session constructor
-DBSession = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 
 Base = declarative_base()
 

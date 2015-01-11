@@ -6,7 +6,6 @@ from sqlalchemy import create_engine
 
 import pytest
 
-from ..models import DBSession
 from ..models import Base
 
 from ..backend.blockchain import BlockChain
