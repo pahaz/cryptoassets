@@ -157,6 +157,10 @@ class ListReceivedTransactionsIterator(base.ListTransactionsIterator):
         """
         :return: List of next txids to iterate or empty list if iterating is done.
         """
+
+        # block.io bug with before_tx
+        return []
+
         logger.info("Asking block.io for new received transaction batch, before_tx %s (%s)", self.before_tx, datetime.datetime.fromtimestamp(self.last_timestamp) if self.last_timestamp else "-")
 
         if self.before_tx:
