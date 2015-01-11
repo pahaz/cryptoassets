@@ -102,7 +102,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         self.external_receiving_timeout = 80 * 10
 
         # sometimes Decimal('0.00020000'), Decimal('0.00010000') depending on the day on the testnet?
-        self.allowed_network_fees = [Decimal("10000") / Decimal(10**8), Decimal("20000") / Decimal(10**8)]
+        self.allowed_network_fees = [Decimal(0.00040000), Decimal("10000") / Decimal(10**8), Decimal("20000") / Decimal(10**8)]
 
     def xxx_test_incoming_transaction(self):
         """Check we get notification for the incoming transaction.
