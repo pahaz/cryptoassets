@@ -3,7 +3,7 @@
 # Cryptoassets.core configuration for example application
 
 database:
-  url: sqlite:////tmp/cryptoassets.test.sqlite
+  url: sqlite:////tmp/cryptoassets.example.sqlite
 
 # What services we use to run talk to the cryptocurrency networks.
 # This will configure us to use pre-defined block.io API service

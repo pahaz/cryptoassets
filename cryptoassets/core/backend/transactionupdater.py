@@ -132,15 +132,23 @@ class TransactionUpdater:
         return transactions
 
     def verify_amount(self, transaction_type, txdata, address, amount):
-        """Check that transaction amounts have not somehow changed between confirmations."""
+        """Check that transaction amounts have not somehow changed between confirmations.
+
+        It gets tricky here because bitcoind reports its internal stuff and has negative amounts for send transactions, versus what you see in blockchain and other services is only receiving outputs. We place some temporary workaround we hope to get rid of later.
+        """
 
         total = 0
+
+        # set by block.io to make sure we don't do bitcoind mappings
+        if txdata.get("only_receive"):
+            transaction_type = "deposit"
 
         # This transaction has new confirmations
         for detail in txdata["details"]:
 
             if detail["category"] != _detail_categories[transaction_type]:
-                # Don't crash when we are self-sending into back to our wallet
+                # Don't crash when we are self-sending into back to our wallet.
+                # This will filter out "send" and "receive" both inside the same tx
                 continue
 
             if detail["address"] == address:
@@ -151,6 +159,9 @@ class TransactionUpdater:
                 else:
                     assert detail["amount"] < 0
                     total += -self.backend.to_internal_amount(detail["amount"])
+
+        if total != amount:
+            logger.warning("verify_amount() failed. Expected: %s got: %s", amount, total)
 
         return total == amount
 
@@ -205,7 +216,7 @@ class TransactionUpdater:
 
             # Verify transaction data looks good compared what we have recorded earlier in the database
             for tx in ntx.transactions:
-                assert self.verify_amount(ntx.transaction_type, txdata, tx.address.address, tx.amount)
+                assert self.verify_amount(ntx.transaction_type, txdata, tx.address.address, tx.amount), "The total amount of txid {} for address {} did not match. Expected: {}. Txdata: {}".format(txid, tx.address.address, tx.amount, txdata)
 
             if ntx.transaction_type == "deposit":
 

@@ -63,7 +63,8 @@ class Configurator:
         self.app.transaction_retries = transaction_retries
 
         echo = configuration.get("echo") in (True, "true")
-        return engine_from_config(configuration, prefix="", echo=echo, isolation_level="SERIALIZABLE")
+        engine = engine_from_config(configuration, prefix="", echo=echo, isolation_level="SERIALIZABLE")
+        return engine
 
     def setup_backend(self, coin, data):
         """Setup backends.

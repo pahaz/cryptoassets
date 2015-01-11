@@ -50,11 +50,13 @@ def get_wallet_and_account(session):
     # Within a wallet there are several accounts, which can be
     # user accounts or automated accounts (like escrow).
     wallet = WalletClass.get_or_create_by_name("default wallet", session)
+    session.flush()
 
     account = wallet.get_or_create_account_by_name("my account")
+    session.flush()
 
     # If we don't have any receiving addresses, create a default one
-    if len(account.receiving_addresses) == 0:
+    if len(account.addresses) == 0:
         wallet.create_receiving_address(account)
 
     return wallet, account
@@ -118,6 +120,7 @@ def print_status(session):
     print("Welcome to cryptoassets example app")
     print("")
     print("You have the following addresses receiving addresses:")
+
     for address in session.query(Address).filter_by(account == account):
         print("{}: total received {} BTC", address.address, address.balance)
     print("")

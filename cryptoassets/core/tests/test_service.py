@@ -126,7 +126,7 @@ class ServiceTestCase(unittest.TestCase):
 
             service.shutdown()
 
-    def test_scan_open_transactions(self):
+    def test_poll_network_transaction_confirmations(self):
         """See that the service broadcasts transactions when created."""
 
         config = self.prepare_config()
@@ -136,7 +136,7 @@ class ServiceTestCase(unittest.TestCase):
 
         try:
             service.start()
-            count = service.scan_open_transactions()
+            count = service.poll_network_transaction_confirmations()
             self.assertEqual(count, 1)
         finally:
             service.shutdown()

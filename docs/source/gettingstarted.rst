@@ -53,6 +53,10 @@ It uses pre-created account on `block.io <https://en.bitcoin.it/wiki/Testnet>`_ 
 Application code
 -------------------
 
+.. note ::
+
+    The example is only for Linux and OSX at the moment. The authors do not have availability of Microsoft development environments to ensure Microsoft Windows compatibility.
+
 Here is an example walkthrough how to set up a command line application.
 
 To run this example::
@@ -104,6 +108,8 @@ You can receive and send testnet coins, but the actual sending and receiving is 
     cryptoassets-helper-service
 
 Now you can send or receive Bitcoins within your application.
+
+If you want to reset the application just delete the database file ``/tmp/cryptoassets.test.sqlite``.
 
 After completing the example
 ===============================

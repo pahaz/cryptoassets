@@ -2,9 +2,6 @@ import abc
 import os
 import time
 import logging
-import sys
-import warnings
-import logging
 from decimal import Decimal
 
 import requests
@@ -13,7 +10,6 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
 from sqlalchemy import pool
-from sqlalchemy.orm.session import Session
 
 from ..models import NotEnoughAccountBalance
 from ..models import SameAccount
@@ -53,7 +49,7 @@ def has_inet():
 
 def has_local_bitcoind():
     """Use this to disable some tests in CI enviroment where 15 minute deadline applies."""
-    return not "CI" in os.environ
+    return "CI" not in os.environ
 
 
 def is_slow_test_hostile():
@@ -178,7 +174,7 @@ class CoinTestCase:
             account = wallet.create_account("Test account")
             session.flush()
             wallet.create_receiving_address(account, "Test address {}".format(time.time()))
-
+            session.flush()
             self.assertEqual(wallet.get_receiving_addresses().count(), 1)
 
             # The second wallet should not affect the addresses on the first one
@@ -191,6 +187,7 @@ class CoinTestCase:
             account = wallet2.create_account("Test account")
             session.flush()
             wallet2.create_receiving_address(account, "Test address {}".format(time.time()))
+            session.flush()
 
             self.assertEqual(wallet.get_accounts().count(), 1)
             self.assertEqual(wallet.get_receiving_addresses().count(), 1)
@@ -201,6 +198,7 @@ class CoinTestCase:
             account2 = wallet2.create_account("Test account 2")
             session.flush()
             wallet2.create_receiving_address(account2, "Test address {}".format(time.time()))
+            session.flush()
 
             self.assertEqual(wallet.get_receiving_addresses().count(), 1)
             self.assertEqual(wallet2.get_receiving_addresses().count(), 2)
@@ -291,11 +289,15 @@ class CoinTestCase:
 
                 account = wallet.create_account("Test account")
                 session.flush()
+
                 address = wallet.create_receiving_address(account, "Test address {}".format(time.time()))
-                self.assertEqual(session.query(self.Address.id).count(), 1)
+
+            with self.app.conflict_resolver.transaction() as session:
+                self.assertEqual(session.query(self.Address).count(), 1)
+
+            with self.app.conflict_resolver.transaction() as session:
 
                 wallet.add_address(account, "Test import {}".format(time.time()), address.address)
-
                 # Should not be reached
                 self.assertEqual(session.query(self.Address.id).count(), 1)
 
@@ -517,6 +519,7 @@ class CoinTestCase:
                 session.flush()
                 receiving_address = wallet.create_receiving_address(receiving_account, "Test receiving address {}".format(time.time()))
 
+                session.flush()
                 # See that the created address was properly committed
                 self.assertGreater(wallet.get_receiving_addresses().count(), 0)
                 self.setup_receiving(wallet)

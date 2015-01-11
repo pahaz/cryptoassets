@@ -40,8 +40,12 @@ def _transform_txdata_to_bitcoind_format(inp):
     output["confirmations"] = inp["confirmations"]
     output["txid"] = inp["txid"]
     output["details"] = []
+
     for op in inp["outputs"]:
         output["details"].append(dict(category="receive", address=op["address"], amount=Decimal(op["value"])))
+
+    output["only_receive"] = True
+
     return output
 
 

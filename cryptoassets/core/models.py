@@ -181,9 +181,9 @@ class GenericAddress(CoinDescriptionModel):
     #: If account is set to nul then this is an external address
     @declared_attr
     def account(cls):
-        """ The associated account for this class.
+        """The owner account of this receiving addresses.
 
-        NULL if this is an external address.
+        This is None if the address is not a receiving addresses, but only exists in the network, outside our system.
         """
         assert cls.coin_description.account_model_name
         return relationship(cls.coin_description.account_model_name, backref="addresses")
@@ -486,6 +486,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
     def get_or_create_account_by_name(self, name):
         session = Session.object_session(self)
+
         instance = session.query(self.coin_description.Account).filter_by(name=name).first()
         if not instance:
             instance = self.create_account(name)

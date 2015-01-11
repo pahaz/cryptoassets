@@ -291,7 +291,7 @@ class ListReceivedTransactionsIterator(base.ListTransactionsIterator):
                 attemps -= 1
                 if attemps:
                     # Recreate connection. We are
-                    self.bitcoind = AuthServiceProxy(self.url, timeout=self.timeout)
+                    self.backend.bitcoind = AuthServiceProxy(self.backend.url, timeout=self.backend.timeout)
                     continue
                 else:
                     raise
