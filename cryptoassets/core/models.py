@@ -132,6 +132,9 @@ class GenericAccount(CoinDescriptionModel, CoinBackend):
     def wallet(cls):
         return relationship(cls.coin_description.wallet_model_name, backref="accounts")
 
+    def __str__(self):
+        return "ACC:{} name:{} bal:{} wallet:{}".format(self.id, self.name, self.balance, self.wallet.id if self.wallet else "-")
+
 
 class GenericAddress(CoinDescriptionModel):
     """ The base class for cryptocurrency addresses.
@@ -354,7 +357,8 @@ class GenericTransaction(CoinDescriptionModel):
         return None
 
     def __str__(self):
-        return "TX:{} state:{} txid:{} sending acco:{} receiving acco:{} confirms:{}".format(self.id, self.state, self.txid, self.sending_account and self.sending_account.id, self.receiving_account and self.receiving_account.id, getattr(self, "confirmations", "-"))
+        # TODO: Move confirmations part to subclass
+        return "TX:{} state:{} txid:{} sending acco:{} receiving acco:{} amount:{}, confirms:{}".format(self.id, self.state, self.txid, self.sending_account and self.sending_account.id, self.receiving_account and self.receiving_account.id, self.amount, getattr(self, "confirmations", "-"))
 
 
 class GenericConfirmationTransaction(GenericTransaction):

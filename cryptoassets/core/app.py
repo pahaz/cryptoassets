@@ -113,3 +113,20 @@ class CryptoAssetsApp:
             raise RuntimeError("Database subsystem was not enabled")
 
         Base.metadata.create_all(self.engine)
+
+    def clear_tables(self):
+        """Delete all data in the database, but leaving tables intact.
+
+        Useful to get clean state in unit testing.
+
+        .. warning ::
+
+            No questions asked. Don't dare to call outside testing or your data is really gone.
+        """
+        for name, coin in self.coins.all():
+            with self.conflict_resolver.transaction() as session:
+                session.query(coin.wallet_model).delete()
+                session.query(coin.transaction_model).delete()
+                session.query(coin.network_transaction_model).delete()
+                session.query(coin.account_model).delete()
+                session.query(coin.address_model).delete()

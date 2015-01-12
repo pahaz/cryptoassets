@@ -61,6 +61,13 @@ Unit test suite provides a test case for testing out different transaction confl
 .. automodule:: cryptoassets.core.tests.test_conflictresolver
  :members: PostgreSQLConflictResolverTestCase
 
+Data separation
+----------------------------------------------------------------------
+
+Each cryptoasset gets it own set of database tables. This sets some static-typing like limits making it less likely for a developer to accidentally mix and match wrong currencies.
+
+Having own set of tables is future-proof path: when cryptocurrencies themselves develop and get new features, you can migrate the cryptocurrency specific tables to support these features.
+
 Data integrity on failed broadcasts
 ----------------------------------------------------------------------
 

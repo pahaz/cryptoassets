@@ -1,11 +1,13 @@
 cryptoassets.core
 ==================
 
+.. image:: https://readthedocs.org/projects/cryptoassetscore/badge/?version=latest
+    :target: http://cryptoassetscore.readthedocs.org/en/latest/
+
 .. image:: https://drone.io/bitbucket.org/miohtama/cryptoassets/status.png
     :target: https://drone.io/bitbucket.org/miohtama/cryptoassets/latest
 
-.. image:: https://readthedocs.org/projects/cryptoassetscore/badge/?version=latest
-    :target: http://cryptoassetscore.readthedocs.org/en/latest/
+.. image:: https://codecov.io/bitbucket/miohtama/cryptoassets/coverage.svg?branch=master :target: https://codecov.io/bitbucket/miohtama/cryptoassets?branch=master
 
 .. image:: https://pypip.in/download/cryptoassets.core/badge.png
     :target: https://pypi.python.org/pypi//pytest-cov/
@@ -69,7 +71,7 @@ Cryptocurrencies and assets
 
 * `Applebyte <http://cryptoassetscore.readthedocs.org/en/latest/coins.html#applebyte>`_
 
-It is easy to add support for any cryptocurrency.
+It is easy to `add support for any cryptocurrency <http://cryptoassetscore.readthedocs.org/en/latest/extend.html>`_.
 
 Databases
 ++++++++++++++++++++

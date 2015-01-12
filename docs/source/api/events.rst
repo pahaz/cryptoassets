@@ -17,6 +17,8 @@ Introduction
 
 *cryptoassets.core* will also post more complex events in the future (cold wallet top ups, etc.).
 
+Also see :doc:`event handling configuration </config>`.
+
 Events types
 =============
 

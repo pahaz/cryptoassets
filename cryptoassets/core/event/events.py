@@ -6,6 +6,8 @@ def txupdate(coin_name, transaction, network_transaction, transaction_type, txid
 
     When the incoming transaction is first seen in the network, but it is not yet confirmed, confirmations is 0. Evaluate the risk of `double spending <https://en.bitcoin.it/wiki/Double-spending>`_ for these kind of transactions in your application context.
 
+    :param coin_name: Lowercase acronym name for this asset
+
     :param transaction: Id of :py:class:`cryptoasset.core.models.GenericTransaction` instance
 
     :param network_transaction: Id of :py:class:`cryptoasset.core.models.GenericNetworkTransaction` instance
