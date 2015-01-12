@@ -1,5 +1,14 @@
-"""Run a script on a notification.
+"""Send events to your application as HTTP POST request.
+
+The HTTP POST contains two fields, ``event_name`` (string) and ``data`` (JSON).
+
+Configuration options
+
+:param class: Always ``cryptoassets.core.event.http.HTTPEventHandler``.
+
+:param url: Do a HTTP POST to this URL on a new event. Example: ``http://localhost:30000`.
 """
+
 import requests
 import logging
 import json
@@ -10,14 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 class HTTPEventHandler(EventHandler):
-    """Do a HTTP post on new event.
-
-    """
 
     def __init__(self, url):
-        """
-        :param url: Do a HTTP POST to this URL on a new event. The HTTP POST contains two fields, ``event_name`` (string) and ``data`` (JSON).
-        """
         self.url = url
 
     def trigger(self, event_name, data):

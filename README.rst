@@ -7,20 +7,32 @@ cryptoassets.core
 .. image:: https://readthedocs.org/projects/cryptoassetscore/badge/?version=latest
     :target: http://cryptoassetscore.readthedocs.org/en/latest/
 
+.. image:: https://pypip.in/download/cryptoassets.core/badge.png
+    :target: https://pypi.python.org/pypi//pytest-cov/
+    :alt: Downloads
+
+.. image:: https://pypip.in/version/cryptoassets.core/badge.png
+    :target: https://pypi.python.org/pypi/pytest-cov/
+    :alt: Latest Version
+
+.. image:: https://pypip.in/license/cryptoassets.core/badge.png
+    :target: https://pypi.python.org/pypi/pytest-cov/
+    :alt: License
+
 .. contents:: :local:
 
-A Python library for building Bitcoin and cryptocurrency service. Provide Bitcoin, cryptocurrency and cryptoassets APIs, database models and accounting.
+*cryptoassets.core* is a Python framework for building Bitcoin, other cryptocurrency (altcoin) and cryptoassets services. Use cases include eCommerce, exhanges, wallets and payments.
 
 Benefits
 ----------------------------------------------------------------------
 
-* Easy: Documented user-friendly APIs
+* `Easy <http://cryptoassetscore.readthedocs.org/en/latest/gettingstarted.html>`_: Documented user-friendly APIs
 
-* Extensible: Any cryptocurrency and cryptoassets support
+* `Extensible <http://cryptoassetscore.readthedocs.org/en/latest/extend.html>`_: Any cryptocurrency and cryptoassets support
 
-* Safe: Secure and high data integrity
+* `Safe <http://cryptoassetscore.readthedocs.org/en/latest/integrity.html>`_: Secure and high data integrity
 
-* Lock-in free: Vendor independent and platform agnostics
+* `Lock-in free <http://cryptoassetscore.readthedocs.org/en/latest/backends.html>`_: Vendor independent and platform agnostics
 
 * Customizable: Override any part of the framework
 
@@ -49,13 +61,13 @@ Supported environments
 Cryptocurrencies and assets
 ++++++++++++++++++++++++++++++
 
-* Bitcoin
+* `Bitcoin <http://cryptoassetscore.readthedocs.org/en/latest/coins.html#bitcoin>`_
 
-* Dogecoin
+* `Dogecoin <http://cryptoassetscore.readthedocs.org/en/latest/coins.html#dogecoin>`_
 
-* Litecoin
+* `Litecoin <http://cryptoassetscore.readthedocs.org/en/latest/coins.html#litecoin>`_
 
-* AppleByte
+* `Applebyte <http://cryptoassetscore.readthedocs.org/en/latest/coins.html#applebyte>`_
 
 It is easy to add support for any cryptocurrency.
 
@@ -79,11 +91,11 @@ Daemons and wallet services
 
 Example daemons and services include:
 
-* *bitcoind* and bitcoind-compatible altcoins (Dogecoin, Litecoin, etc.)
+* `bitcoind <http://cryptoassetscore.readthedocs.org/en/latest/backends.html#module-cryptoassets.core.backend.bitcoind>`_ and bitcoind-compatible altcoins (Dogecoin, Litecoin, etc.)
 
-* `block.io <https://block.io>`_ (Bitcoin, Dogecoin, Litecoin)
+* `block.io <http://cryptoassetscore.readthedocs.org/en/latest/backends.html#module-cryptoassets.core.backend.blockio>`_ (Bitcoin, Dogecoin, Litecoin)
 
-* `blockchain.info <http://blockchain.info>`_ (Bitcoin)
+* `blockchain.info <http://cryptoassetscore.readthedocs.org/en/latest/backends.html#module-cryptoassets.core.backend.blockchain>`_ (Bitcoin)
 
 Python frameworks
 +++++++++++++++++++++++++++
@@ -92,12 +104,11 @@ You can integrate *cryptoassets.core* on
 
 * Pyramid
 
-* Django (see `cryptoassets.django package for Django integration <https://bitbucket.org/miohtama/cryptoassets.django>`_)
+* Django (see `Django integration <https://bitbucket.org/miohtama/cryptoassets.django>`_)
 
 * Flask
 
 ... and any other Python application where `SQLAlchemy can be run <http://www.sqlalchemy.org/>`_.
-
 
 Source
 --------

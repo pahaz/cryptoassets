@@ -101,6 +101,11 @@ class CoinBackend(abc.ABC):
         """
 
     def create_transaction_updater(self, conflict_resolver, event_handler_registry):
+        """Create transaction updater to handle database writes with this backend.
+
+        Creates :py:class:`cryptoassets.core.backend.transactionupdater.TransactionUpdater` instance.
+        This TransactionUpdater is bound to this backend and provides safe APIs for doing broadcast and deposit updates.
+        """
         tx_updater = TransactionUpdater(conflict_resolver, self, self.coin, event_handler_registry)
         return tx_updater
 

@@ -15,6 +15,10 @@ Introduction
 
 * You can override almost any part of the system with your own class or subclass
 
+.. note ::
+
+    Currently the architecture is heavily geared towards mined coins. This will change in the future and class hiearchy is abstracted so that traits like mining (block confirmations) go into their own class tree. Alternatively, consensus based coins (Ripple, Stellar) get their own corresponding base classes.
+
 Adding new cryptocurrency model
 ---------------------------------
 

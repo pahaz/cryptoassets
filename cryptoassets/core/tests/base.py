@@ -60,8 +60,10 @@ def is_slow_test_hostile():
 class CoinTestCase:
     """Abstract base class for all cryptocurrency backend tests.
 
-    Inherit form this test case, implement backend abstract method and run the test case.
-    If all test passes, the backend is compatible with ``cryptoassets.core``.
+    This verifies that a cryptocurrency backend works against cryptoassets.core models API.
+
+    Inherit from this test case, implement backend abstract methods and run the test case.
+    If all test passes, the backend is compatible with *cryptoassets.core*.
     """
 
     def setUp(self):
@@ -664,3 +666,96 @@ class CoinTestCase:
         with self.app.conflict_resolver.transaction() as session:
             address = session.query(Address).filter(Address.address == addr_str).first()
             self.assertGreater(len(address.transactions), 0)
+
+    @pytest.mark.skipif(is_slow_test_hostile(), reason="May take > 20 minutes")
+    def test_confirmation_updates(self):
+        """Test that we get confirmation count increase for an incoming transaction.
+
+        We stress out ``tools.confirmationupdate`` functionality. See CoinBackend base class for comments.
+
+        This test will take > 15 minutes to run.
+
+        Bitcoin testnet block rate is SLOW and we need to wait at least 2 blocks.
+
+        http://blockexplorer.com/testnet
+        """
+
+        self.Transaction.confirmation_count = 3
+
+        self.setup_balance()
+
+        transaction_updater = self.backend.create_transaction_updater(self.app.conflict_resolver, None)
+
+        with self.app.conflict_resolver.transaction() as session:
+
+            # Reload objects from db for this transaction
+            wallet = session.query(self.Wallet).get(1)
+            account = session.query(self.Account).get(1)
+
+            # Create account for receiving the tx
+            receiving_account = wallet.create_account("Test receiving account {}".format(time.time()))
+            session.flush()
+            receiving_address = wallet.create_receiving_address(receiving_account, "Test receiving address {}".format(time.time()))
+
+            self.setup_receiving(wallet)
+
+        # Commit new receiveing address to the database
+
+        with self.app.conflict_resolver.transaction() as session:
+
+            # Make sure we don't have any balance beforehand
+            receiving_account = session.query(self.Account).get(receiving_account.id)
+            self.assertEqual(receiving_account.balance, 0, "Receiving account got some balance already before sending")
+
+            logger.info("Sending from account %d to %s amount %f", account.id, receiving_address.address, self.external_send_amount)
+            tx = wallet.send(account, receiving_address.address, self.external_send_amount, "Test send", force_external=True)
+            session.flush()
+
+            broadcasted_count, tx_fees = self.broadcast(wallet)
+
+            self.assertEqual(broadcasted_count, 1)
+            receiving_address_id = receiving_address.id
+
+            # Wait until backend notifies us the transaction has been received
+            logger.info("Monitoring receiving address {} on wallet {}".format(receiving_address.address, wallet.id))
+
+        # Testnet seem to take confirmations up to 60 minutes... le fuu the shitcoin
+        # We wait 2 hours!
+        deadline = time.time() + 45 * 60
+
+        while time.time() < deadline:
+
+            confirmationupdate.update_confirmations(transaction_updater, 3)
+
+            time.sleep(30)
+
+            # Don't hold db locked for an extended perior
+            with self.app.conflict_resolver.transaction() as session:
+                wallet = session.query(self.Wallet).get(1)
+                address = session.query(self.Address).get(receiving_address_id)
+                account = address.account
+
+                txs = wallet.get_deposit_transactions()
+
+                logger.info("Checking out addr {} incoming txs {}".format(address.address, txs.count()))
+                for tx in txs:
+                    logger.debug(tx)
+
+                # The transaction is confirmed and the account is credited
+                # and we have no longer pending incoming transaction
+                if txs.count() > 0:
+                    assert txs.count() < 2
+                    tx = txs[0]
+                    if tx.confirmations >= 2:
+                        # We got more than 1 confirmation, good, we are counting!
+                        break
+
+                if time.time() > deadline:
+                    # Print some debug output to diagnose
+                    for tx in session.query(self.Transaction).all():
+                        logger.error(tx)
+
+                    for ntx in session.query(self.NetworkTransaction).all():
+                        logger.error(ntx)
+
+            self.assertLess(time.time(), deadline, "Never got confirmations update through")

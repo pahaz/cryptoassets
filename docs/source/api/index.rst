@@ -19,3 +19,4 @@ Contents:
    backend
    utils
    coins
+   tests

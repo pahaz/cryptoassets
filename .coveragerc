@@ -15,4 +15,6 @@ omit =
     venv/*
     cryptoassets/__init__.py
     cryptoassets/core/tests/*
+    cryptoassets/core/backend/base.py
+    cryptoassets/core/event/base.py
     setup.py

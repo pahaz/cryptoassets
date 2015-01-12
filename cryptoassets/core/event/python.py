@@ -1,4 +1,13 @@
-"""In-process Python notifications for transaction updates.
+"""In-process Python event handling.
+
+Run Python function each time event occures. This assumes you have your Python application code in the same virtualenv as *cryptoassets.core* is. The code is executed directly within :doc:`cryptoassets helper service </service>` process.
+
+Configuration options
+
+:param class: Always ``cryptoassets.core.event.python.InProcessEventHandler``.
+
+:param callback: A dotted name to Python callback function fn(event_name, data) which will be called upon a notification. ``event_name`` is a string, ``data`` is a dict.
+
 """
 import logging
 
@@ -9,13 +18,9 @@ logger = logging.getLogger(__name__)
 
 
 class InProcessEventHandler(EventHandler):
-    """Do a in-process Python callback for incoming transaction notifications.
-
-    """
 
     def __init__(self, callback):
         """
-        :param callback: A dotted name to Python callback function fn(event_name, data) which will be called upon a notification. ``event_name`` is a string, ``data`` is a dict.
         """
         self.callback_dotted_name = callback
 

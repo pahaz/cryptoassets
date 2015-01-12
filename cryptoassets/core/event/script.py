@@ -1,5 +1,25 @@
 """Run a script on a notification.
+
+Execute an UNIX command on a new event.
+
+Blocks the execution until the executed command returns.
+
+The following environment variables are set for the script::
+
+    CRYPTOASSETS_EVENT_NAME="event name as a string"
+    CRYPTOASSETS_EVENT_DATA="JSON encoded data"
+
+If the executed command returns non-zero status, this notification handler raises ``ShellNotificationFailed``.
+
+Configuration options
+
+:param class: Always ``cryptoassets.core.event.script.ScriptEventHandler``.
+
+:param script: Executed shell command
+
+:param log_output: If true send the output from the executed command to cryptoassets logs on INFO log level
 """
+
 import logging
 import json
 import subprocess
@@ -15,26 +35,10 @@ class ScriptNotificationFailed(Exception):
 
 
 class ScriptEventHandler(EventHandler):
-    """Execute an UNIX command on a new event.
-
-    Blocks the execution until the executed command returns.
-
-    The following environment variables are set for the script::
-
-        CRYPTOASSETS_EVENT_NAME="event name as a string"
-        CRYPTOASSETS_EVENT_DATA="JSON encoded data"
-
-    If the executed command returns non-zero status, this notification handler raises ``ShellNotificationFailed``.
-    """
 
     def __init__(self, script, log_output=False):
-        """
-        :param script: Executed shell command
-
-        :param log_output: If true send the output from the executed command to cryptoassets logs on INFO log level
-        """
         self.script = script
-        self.log_output = log_output
+        self.log_output = log_output in ("true", True)
 
     def trigger(self, event_name, data):
         assert type(event_name) == str

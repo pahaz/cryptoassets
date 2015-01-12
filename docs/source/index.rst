@@ -6,15 +6,18 @@
 cryptoassets.core
 =============================================
 
+.. image:: _static/logo.png
+    :align: center
+
+.. centered:: The ultimate solution to build cryptoassets services
+
+
 *cryptoassets.core* is Bitcoin, cryptocurrency and cryptoassets database and accounting library for Python.
-
-`Project homepage <https://bitbucket.org/miohtama/cryptoassets>`_.
-
-Contents:
 
 .. toctree::
    :maxdepth: 1
 
+   community
    install
    gettingstarted
    service
