@@ -14,7 +14,7 @@ source "$HOME/test-env"
 
 # Run tests using py.test test runner
 echo "Running tests"
-py.test-3.4 --timeout=3600 --durations=10 -cov cryptoassets  --cov-report xml cryptoassets
+py.test-3.4 --timeout=3600 --durations=10 --cov cryptoassets  --cov-report xml cryptoassets
 echo "Done with tests"
 
 # Update data to codecov.io
