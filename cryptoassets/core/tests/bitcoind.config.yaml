@@ -12,4 +12,4 @@ coins:
             url: http://foo:bar@127.0.0.1:8332/
             walletnotify:
                 class: cryptoassets.core.backend.pipewalletnotify.PipedWalletNotifyHandler
-                fname: /tmp/cryptoassets-unittest-walletnotify
+                fname: /tmp/cryptoassets-unittest-walletnotify-pipe

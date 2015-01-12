@@ -192,7 +192,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
 
     @pytest.mark.skipif(is_slow_test_hostile(), reason="Running send + receive loop may take > 20 minutes")
     def test_open_transactions(self):
-        """Test that we get confirmation count increase.
+        """Test that we get confirmation count increase for an incoming transaction.
 
         We stress out ``tools.confirmationupdate`` functionality. See CoinBackend base class for comments.
 
@@ -255,6 +255,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
                 wallet = session.query(self.Wallet).get(1)
                 address = session.query(self.Address).get(receiving_address_id)
                 account = address.account
+
                 txs = wallet.get_deposit_transactions()
 
                 logger.info("Checking out addr {} incoming txs {}".format(address.address, txs.count()))
