@@ -78,8 +78,6 @@ def scan_coin(coin, conflict_resolver, event_handlers):
             if txid in good_txids:
                 continue
 
-            # txdata = backend.get_transaction(txid)
-
             # Backend reported this transaction, but it did not concern any of our addresses
             # (Shoud not happen unless you share the backend wallet with other services)
             if not is_interesting_transaction(txdata, all_addresses):

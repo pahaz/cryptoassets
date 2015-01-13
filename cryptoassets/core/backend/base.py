@@ -146,10 +146,22 @@ class ListTransactionsIterator(abc.ABC):
 
     @abc.abstractmethod
     def fetch_next_txids():
-        """
+        """Get next batch of transactions.
+
+        txdata must be dict bitcoind-like format::
+
+            {
+                confirmations: 0,
+                txid: "xxx",
+                "details": {
+                    "category": "received",
+                    "amount": Decimal(1),
+                    "address": "foobar"
+                }
+            }
+
         :return: List of next (txid, txdata) paits to iterate or empty list if iterating is done.
         """
-
 
 
 class IncomingTransactionRunnable(abc.ABC):
