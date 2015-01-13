@@ -7,6 +7,8 @@ Security and data integrity
 Introduction
 -------------
 
+*cryptoassets.core* is built following `defensive programming principles <http://en.wikipedia.org/wiki/Defensive_programming>`_ to mitigate developer human error, data integrity and security issues.
+
 When dealing with financial transactions, `especially ones which cannot be reversed <http://blog.stakeventures.com/articles/2012/03/07/the-may-scale-of-money-hardness-and-bitcoin>`_, it is imperative that one gets its transaction handling correctly. *cryptoassets.core* provides tools and methods, so that even inexperienced developers do not shoot themselves into a foot when writing cryptoassets code.
 
 This includes mitigation against
@@ -101,7 +103,7 @@ E.g.
 
 *Cryptoassets helper service* will poll all transactions where the transaction confirmation count is below a :doc:`threshold value <./config>`. If you miss confirmation notification *cryptoassets.core* will simple keep polling the transaction again and again until it manages to update the confirmation count.
 
-Migrations
-------------
+Choosing your database
+------------------..----
 
-`MySQL InnoDB engine is known not to be migration safe <http://blog.ionelmc.ro/2014/12/28/terrible-choices-mysql/>`_. *cryptoassets.core* recommends avoiding MySQL databases for financial applications.
+`MySQL InnoDB engine is known for various prone-to-human-error issues <http://blog.ionelmc.ro/2014/12/28/terrible-choices-mysql/>`_, sacrifing predictability and data integrity for legacy compatibility and performance. It is recommended you use *cryptoassets.core* on PostgreSQL insallation unless you have considerable MySQL experience.

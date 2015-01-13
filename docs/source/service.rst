@@ -27,14 +27,14 @@ Besides providing a daemon for communications additional helping commands are av
 cryptoassets-helper-service
 -----------------------------
 
-This command is the service helper process. It must be running on the background for your cryptoassets application to function properly.
+This command is the service helper process. The service process must be running on the background for your application to receive external deposit transactions and broadcast outgoing transctions.
 
 Running the service with Python project
 +++++++++++++++++++++++++++++++++++++++++++
 
 After installing *cryptoassets.core* to your virtualenv you should be able to run the cryptoassets helper service as following::
 
-    cryptoassethelper <your YAML config file>
+    cryptoassets-helper-service <your YAML config file>
 
 Running the service with Django
 +++++++++++++++++++++++++++++++++++++++++++
@@ -44,7 +44,7 @@ If you are running a `Django <https://www.djangoproject.com/>`_ application, a s
 Status server
 +++++++++++++++++++++++++++++++++++++++++++
 
-*Cryptoassets helper service* comes with a built-in mini status server. You can use this to
+* Cryptoassets helper service* comes with a built-in mini status server. You can use this to
 
 * Diagnose to see that *cryptoassets helper service* process is alive and runnign well
 

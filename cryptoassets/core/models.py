@@ -147,6 +147,11 @@ class GenericAddress(CoinDescriptionModel):
 
     We can know about receiving addresses which are addresses without our system where somebody can deposit cryptocurrency. We also know about outgoing addresses where somebody has sent cryptocurrency from our system. For outgoing addresses ``wallet`` reference is null.
 
+    .. warning::
+
+        Some backends (block.io) enforce that receiving address labels must be unique across the system. Other's don't.
+        Just bear this in mind when creating address labels. E.g. suffix them with a timetamp to make them more unique.
+
     """
     __abstract__ = True
 
@@ -159,7 +164,7 @@ class GenericAddress(CoinDescriptionModel):
     #: Human-readable label for this address. User for the transaction history listing of the user.
     label = Column(String(255))
 
-    #: Received balance of this address
+    #: Received balance of this address. Only *confirmed* deposits count, filtered by GenericConfirmationTransaction.confirmations. For getting other balances, check ``get_balance_by_confirmations()``.
     #: NOTE: Numeric Accuracy checked for Bitcoin only ATM
     balance = Column(Numeric(21, 8), default=0, nullable=False)
     created_at = Column(DateTime, default=_now)
@@ -190,6 +195,51 @@ class GenericAddress(CoinDescriptionModel):
         """
         assert cls.coin_description.account_model_name
         return relationship(cls.coin_description.account_model_name, backref="addresses")
+
+    def get_received_transactions(self, external=True, internal=True):
+        """Get all transactions this address have received, both internal and external deposits."""
+        session = Session.object_session(self)
+        Transaction = self.coin_description.Transaction
+
+        q_internal = session.query(Transaction).filter(Transaction.sending_account != None, Transaction.receiving_account == self)  # noqa
+
+        q_external = session.query(Transaction).filter(Transaction.network_transaction != None, Transaction.address == self)  # noqa
+
+        if internal and external:
+            return q_internal.union(q_external)
+        elif internal:
+            return q_internal
+        elif external:
+            return q_external
+        else:
+            return None
+
+    def get_balance_by_confirmations(self, confirmations=0, include_internal=True):
+        """Calculates address's received balance of all arrived incoming transactions where confirmation count threshold is met.
+
+        By default confirmations is zero, so we get unconfirmed balance.
+
+        .. note ::
+
+            This is all time received balance, not balance left after spending.
+
+        TODO: Move to its own subclass
+
+        :param confirmations: Confirmation count as threshold
+        """
+        total = 0
+
+        for t in self.get_received_transactions():
+            if t.network_transaction:
+                if t.network_transaction.confirmations >= confirmations:
+                    total += t.amount
+            elif t.state == "internal":
+                assert t.receiving_account == self
+                total += t.amount
+            else:
+                raise RuntimeError("Cannot handle tx {}".format(t))
+
+        return total
 
     @declared_attr
     def __table_args__(cls):
@@ -743,7 +793,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
 
         if not allow_negative_balance:
             if from_account.balance < amount:
-                raise NotEnoughAccountBalance()
+                raise NotEnoughAccountBalance("Cannot send, needs {} account balance is {}", amount, from_account.balance)
 
         transaction = self.coin_description.Transaction()
         transaction.sending_account = from_account

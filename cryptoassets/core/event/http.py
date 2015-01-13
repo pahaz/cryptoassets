@@ -6,7 +6,7 @@ Configuration options
 
 :param class: Always ``cryptoassets.core.event.http.HTTPEventHandler``.
 
-:param url: Do a HTTP POST to this URL on a new event. Example: ``http://localhost:30000``.
+:param url: Do a HTTP POST to this URL on a new event. Example: ``http://localhost:30000`.
 """
 
 import requests

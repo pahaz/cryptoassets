@@ -34,11 +34,26 @@ Create a virtualenv
 
 ``cryptoassets.core`` is distributed as a Python package. Follow the Python community best practices and `create a virtualenv <https://packaging.python.org/en/latest/installing.html#virtual-environments>`_ where you to install the package and its dependencies.
 
-OSX::
+OSX
+++++
 
     mkdir myproject
     cd myproject
-    python3.4 -m venv venv
+    virtualenv python3.4 -m venv venv
+    source venv/bin/activate
+
+Ubuntu / Debian
++++++++++++++++++++
+
+First get a virtualenv which is not old and horribly broken, like the one in the system default installation::
+
+    sudo pip install -U virtualenv
+
+This creates ``/usr/local/bin/virtualenv``. Then::
+
+    mkdir myproject
+    cd myproject
+    virtualenv -p python3.4 venv
     source venv/bin/activate
 
 Installing cryptoassets package
