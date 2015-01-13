@@ -62,19 +62,23 @@ def scan_coin(coin, conflict_resolver, event_handlers):
 
     all_addresses = _get_all_addresses(coin.address_model)
 
+    logger.info("Rescanning %s: %d addresses, %d good known txid", coin.name, len(all_addresses), len(good_txids))
+
     transaction_iterator = backend.list_received_transactions()
 
     txs = transaction_iterator.fetch_next_txids()
 
+    done = 0
+
     while txs:
 
-        for txid in txs:
+        for txid, txdata in txs:
 
             # We know this transaction has plentiful confirmations on our database, we are not interested about it
             if txid in good_txids:
                 continue
 
-            txdata = backend.get_transaction(txid)
+            # txdata = backend.get_transaction(txid)
 
             # Backend reported this transaction, but it did not concern any of our addresses
             # (Shoud not happen unless you share the backend wallet with other services)
@@ -84,6 +88,10 @@ def scan_coin(coin, conflict_resolver, event_handlers):
             # Otherwise let's update this transaction just in case
             transaction_updater.update_network_transaction_confirmations("deposit", txid, txdata)
             found_missed += 1
+
+        done += len(txs)
+
+        logger.info("Rescanned transactions up to %d", done)
 
         txs = transaction_iterator.fetch_next_txids()
 

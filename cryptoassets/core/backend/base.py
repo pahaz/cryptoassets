@@ -9,28 +9,6 @@ from ..event.registry import EventHandlerRegistry
 from .transactionupdater import TransactionUpdater
 
 
-class ListTransactionsIterator(abc.ABC):
-    """Helper to iterate all transactions in the backend.
-
-    Because different backends iterate to different directions, we abstract this away.
-
-    .. note ::
-
-        bitcoind iterates from index 0 with different batch sizes. block.io iterates from the latest transcation with fixed batch size of 100 and needs before txid parameter for the next batch.
-    """
-
-    def __init__(self, backend):
-        """
-        """
-        self.backend = backend
-
-    @abc.abstractmethod
-    def fetch_next_txids():
-        """
-        :return: List of next txids to iterate or empty list if iterating is done.
-        """
-
-
 class CoinBackend(abc.ABC):
     """ Cryptocurrency management backend.
 
@@ -149,6 +127,29 @@ class CoinBackend(abc.ABC):
             raise RuntimeError("Could not initialize backend {} with options {}".format(klass, config)) from te
 
         return handler
+
+
+class ListTransactionsIterator(abc.ABC):
+    """Helper to iterate all transactions in the backend.
+
+    Because different backends iterate to different directions, we abstract this away.
+
+    .. note ::
+
+        bitcoind iterates from index 0 with different batch sizes. block.io iterates from the latest transcation with fixed batch size of 100 and needs before txid parameter for the next batch.
+    """
+
+    def __init__(self, backend):
+        """
+        """
+        self.backend = backend
+
+    @abc.abstractmethod
+    def fetch_next_txids():
+        """
+        :return: List of next (txid, txdata) paits to iterate or empty list if iterating is done.
+        """
+
 
 
 class IncomingTransactionRunnable(abc.ABC):

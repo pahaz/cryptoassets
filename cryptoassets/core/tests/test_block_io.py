@@ -91,10 +91,6 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
 
         self.assertTrue(self.is_address_monitored(wallet, receiving_address), "The receiving address didn't become monitored {}".format(receiving_address.address))
 
-    def test_receive_scan(self):
-        # XXX: bug in block.io
-        return
-
 
 class BlockIoDogeTestCase(BlockIoBTCTestCase):
 
@@ -104,7 +100,7 @@ class BlockIoDogeTestCase(BlockIoBTCTestCase):
         self.assertTrue(os.path.exists(test_config), "Did not found {}".format(test_config))
         self.configurator.load_yaml_file(test_config)
 
-        coin = self.app.coins.get("btc")
+        coin = self.app.coins.get("doge")
         self.backend = coin.backend
 
         self.Address = coin.address_model
@@ -123,8 +119,3 @@ class BlockIoDogeTestCase(BlockIoBTCTestCase):
 
         # Wait 3 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 60 * 5
-
-    def test_receive_scan(self):
-        # XXX: bug in block.io
-        return
-

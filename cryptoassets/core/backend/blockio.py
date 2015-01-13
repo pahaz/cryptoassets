@@ -158,14 +158,34 @@ class ListReceivedTransactionsIterator(base.ListTransactionsIterator):
         self.backend = backend
         self.before_tx = None
         self.last_timestamp = None
+        self.finished = False
+
+    def _format_bitcoind_like(self, result):
+        """Grab data from block.io response and format received details bitcoind like.
+
+        https://block.io/api/v2/get_transactions/?api_key=923f-e3e9-a580-dfb2&type=received
+        """
+        out = {}
+        out["confirmations"] = result["confirmations"]
+        out["txid"] = result["txid"]
+
+        details = []
+        for received in result["amounts_received"]:
+            details.append(dict(category="receive", address=received["recipient"], amount=received["amount"]))
+
+        # See top comment
+        out["only_receive"] = True
+
+        out["details"] = details
+        return out
 
     def fetch_next_txids(self):
         """
         :return: List of next txids to iterate or empty list if iterating is done.
         """
 
-        # block.io bug with before_tx
-        return []
+        if self.finished:
+            return []
 
         logger.info("Asking block.io for new received transaction batch, before_tx %s (%s)", self.before_tx, datetime.datetime.fromtimestamp(self.last_timestamp) if self.last_timestamp else "-")
 
@@ -181,8 +201,15 @@ class ListReceivedTransactionsIterator(base.ListTransactionsIterator):
             logger.debug("Tx txid:%s timestamp %s", tx["txid"], datetime.datetime.fromtimestamp(tx["time"]))
 
         if txs:
+
+            # workaround
+            # <moo-_-> kindoge: there is still subtle bug in the last bug fix
+            # <moo-_-> https://block.io/api/v2/get_transactions/?api_key=0266-c2b6-c2c8-ee07&type=received&before_tx=d30a7d054c11718a6ce9ca6c9a5a95575e8cc7fb27f38f4427a65a02df4ba427
+            if self.before_tx == txs[-1]["txid"]:
+                self.finished = True
+
             # The last txid to keep us iterating
             self.before_tx = txs[-1]["txid"]
             self.last_timestamp = txs[-1]["time"]
 
-        return [tx["txid"] for tx in txs]
+        return [(tx["txid"], self._format_bitcoind_like(tx)) for tx in txs]

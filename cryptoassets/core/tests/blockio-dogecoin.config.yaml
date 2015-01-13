@@ -6,7 +6,7 @@ database:
 
 # Locally running bitcoind in testnet
 coins:
-    btc:
+    doge:
         backend:
             class: cryptoassets.core.backend.blockio.BlockIo
             # These are TESTNET credentials, nothing to lose here

@@ -285,6 +285,9 @@ class ListReceivedTransactionsIterator(base.ListTransactionsIterator):
         self.batch_size = 100
         self.extra = extra
 
+    def _get_data(self, txid):
+        return self.backend.get_transaction(txid)
+
     def fetch_next_txids(self):
         """
         :return: List of next txids to iterate or empty list if iterating is done.
@@ -303,7 +306,7 @@ class ListReceivedTransactionsIterator(base.ListTransactionsIterator):
             try:
                 result = self.backend.api_call("listtransactions", self.backend.bitcoind_account_name, self.batch_size, self.start)
 
-                out = [res["txid"] for res in result if res["category"] == "receive"]
+                out = [(res["txid"], self._get_data(res["txid"])) for res in result if res["category"] == "receive"]
 
                 self.start += self.batch_size
                 return out

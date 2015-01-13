@@ -40,7 +40,7 @@ Running a single test::
 
     py.test -k "BitcoindTestCase.test_send_internal" cryptoassets
 
-Running a single test with verbose Python logging output to stdout (useful for network error tracing)::
+Running a single test with verbose Python logging output to stdout (useful for pinning down *why* the test fails)::
 
     VERBOSE_TEST=1 py.test -k "BitcoindTestCase.test_send_internal" cryptoassets
 
