@@ -99,7 +99,7 @@ class BitcoindTestCase(CoinTestCase, unittest.TestCase):
         else:
             self.network_fee = Decimal("10000") / Decimal(10**8)
         # Wait 10 minutes for 1 confimation from the BTC TESTNET
-        self.external_receiving_timeout = 80 * 10
+        self.external_receiving_timeout = 60 * 20
 
         # sometimes Decimal('0.00020000'), Decimal('0.00010000') depending on the day on the testnet?
         self.allowed_network_fees = [Decimal(0.00040000), Decimal("10000") / Decimal(10**8), Decimal("20000") / Decimal(10**8)]

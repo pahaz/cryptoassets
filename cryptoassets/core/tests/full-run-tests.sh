@@ -14,6 +14,7 @@ source "$HOME/test-env"
 
 # Run tests using py.test test runner
 echo "Running tests"
+# http://stackoverflow.com/a/13496073/315168
 py.test-3.4 -rsx --timeout=3600 --durations=10 --cov cryptoassets  --cov-report xml cryptoassets
 echo "Done with tests"
 
