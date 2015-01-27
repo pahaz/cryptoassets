@@ -222,6 +222,9 @@ class TransactionUpdater:
             else:
                 raise AssertionError("Unknown network transaction type {}".format(transaction_type))
 
+            # Make sure we don't think we are updating deposit, when in fact, we are updating broadcast
+            assert transaction_type == ntx.transaction_type, "Got confused with network transaction {}".format(ntx)
+
             # Confirmations have not changed, nothing to do
             if not created:
                 if ntx.confirmations == txdata["confirmations"]:
@@ -232,15 +235,16 @@ class TransactionUpdater:
 
             logger.info("Updating network transaction %d, type %s, state %s, txid %s, confirmations to %s", ntx.id, ntx.transaction_type, ntx.state, ntx.txid, ntx.confirmations)
 
-            # Verify transaction data looks good compared what we have recorded earlier in the database
-            for tx in ntx.transactions:
-
-                # XXX: verify_amount() fails with multisig transactions?
-                # https://chain.so/tx/BTC/40ad00b473f2cc9f33a84779eb22b8d233ef47b35a2afec77e2fff805af60084
-                if not self.verify_amount(ntx.transaction_type, txdata, tx.address.address, tx.amount):
-                    logger.warn("The total amount of txid %s, type %s, for address %s did not match. Expected: %s. Txdata: %s", txid, ntx.transaction_type, tx.address.address, tx.amount, txdata)
-
             if ntx.transaction_type == "deposit":
+
+                # Verify transaction data looks good compared what we have recorded earlier in the database
+                for tx in ntx.transactions:
+
+                    # XXX: verify_amount() fails with multisig transactions?
+                    # https://chain.so/tx/BTC/40ad00b473f2cc9f33a84779eb22b8d233ef47b35a2afec77e2fff805af60084
+                    if not self.verify_amount(ntx.transaction_type, txdata, tx.address.address, tx.amount):
+                        logger.warn("The total amount of txid %s, type %s, for address %s did not match. Expected: %s. Txdata: %s", txid, ntx.transaction_type, tx.address.address, tx.amount, txdata)
+
 
                 # Sum together received per address
                 addresses = Counter()  # address -> amount mapping

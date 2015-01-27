@@ -184,12 +184,6 @@ class SochainWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
         channel = self.pusher.subscribe(pusher_channel)
         channel.bind('balance_update', self.on_balance_updated)
 
-    def update_address_with_transaction(self, txid, address, amount, confirmations):
-        """SoChain notified that there is new balance on an address."""
-
-        # TODO: Get rid of global sessions, transaction manager
-        tx_id, credited = self.transaction_updater.handle_address_receive(txid, address, amount, confirmations)
-
     def on_balance_updated(self, data):
         """ chain.so tells us there should be a new transaction.
 
