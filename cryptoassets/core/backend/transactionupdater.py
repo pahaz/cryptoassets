@@ -90,7 +90,7 @@ class TransactionUpdater:
 
         if address_obj:
 
-            assert address.account, "Tried to _update_deposit() on non-deposit address. Depositing to: {}, address object is {}, label {}".format(address, address_obj, address_obj.label)
+            assert address_obj.account, "Tried to _update_deposit() on non-deposit address. Depositing to: {}, address object is {}, label {}".format(address, address_obj, address_obj.label)
 
             wallet = address_obj.account.wallet
 
