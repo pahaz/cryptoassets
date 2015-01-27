@@ -89,6 +89,9 @@ class TransactionUpdater:
         address_obj = session.query(Address).filter(Address.address == address).first()  # noqa
 
         if address_obj:
+
+            assert address.account, "Tried to _update_deposit() on non-deposit address. Depositing to: {}, address object is {}, label {}".format(address, address_obj, address_obj.label)
+
             wallet = address_obj.account.wallet
 
             # Credit the account
