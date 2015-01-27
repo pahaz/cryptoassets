@@ -222,6 +222,8 @@ class TransactionUpdater:
             else:
                 raise AssertionError("Unknown network transaction type {}".format(transaction_type))
 
+            assert ntx.txid == txid, "Corrupted txid in the look-up process"
+
             # Make sure we don't think we are updating deposit, when in fact, we are updating broadcast
             assert transaction_type == ntx.transaction_type, "Got confused with network transaction {}, asserted it is {}".format(ntx, transaction_type)
 
