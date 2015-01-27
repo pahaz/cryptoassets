@@ -216,7 +216,7 @@ class TransactionUpdater:
 
             # Verify transaction data looks good compared what we have recorded earlier in the database
             for tx in ntx.transactions:
-                assert self.verify_amount(ntx.transaction_type, txdata, tx.address.address, tx.amount), "The total amount of txid {} for address {} did not match. Expected: {}. Txdata: {}".format(txid, tx.address.address, tx.amount, txdata)
+                assert self.verify_amount(ntx.transaction_type, txdata, tx.address.address, tx.amount), "The total amount of txid {}, type {}, for address {} did not match. Expected: {}. Txdata: {}".format(txid, ntx.transaction_type, tx.address.address, tx.amount, txdata)
 
             if ntx.transaction_type == "deposit":
 
