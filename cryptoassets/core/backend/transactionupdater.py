@@ -216,7 +216,11 @@ class TransactionUpdater:
 
             # Verify transaction data looks good compared what we have recorded earlier in the database
             for tx in ntx.transactions:
-                assert self.verify_amount(ntx.transaction_type, txdata, tx.address.address, tx.amount), "The total amount of txid {}, type {}, for address {} did not match. Expected: {}. Txdata: {}".format(txid, ntx.transaction_type, tx.address.address, tx.amount, txdata)
+
+                # XXX: verify_amount() fails with multisig transactions?
+                # https://chain.so/tx/BTC/40ad00b473f2cc9f33a84779eb22b8d233ef47b35a2afec77e2fff805af60084
+                if not self.verify_amount(ntx.transaction_type, txdata, tx.address.address, tx.amount):
+                    logger.warn("The total amount of txid %s, type %s, for address %s did not match. Expected: %s. Txdata: %s", txid, ntx.transaction_type, tx.address.address, tx.amount, txdata)
 
             if ntx.transaction_type == "deposit":
 
