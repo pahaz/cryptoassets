@@ -223,7 +223,7 @@ class TransactionUpdater:
                 raise AssertionError("Unknown network transaction type {}".format(transaction_type))
 
             # Make sure we don't think we are updating deposit, when in fact, we are updating broadcast
-            assert transaction_type == ntx.transaction_type, "Got confused with network transaction {}".format(ntx)
+            assert transaction_type == ntx.transaction_type, "Got confused with network transaction {}, asserted it is {}".format(ntx, transaction_type)
 
             # Confirmations have not changed, nothing to do
             if not created:
