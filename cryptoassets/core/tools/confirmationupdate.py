@@ -60,7 +60,7 @@ def update_confirmations(transaction_updater, confirmation_threshold):
     for transaction_type, txid in open_ntxs:
         assert txid
         txdata = backend.get_transaction(txid)
-        logger.info("Updating confirmations for %s type %s", txid, transaction_type)
+        logger.debug("Updating confirmations for %s type %s", txid, transaction_type)
         _, txupdate_events = transaction_updater.update_network_transaction_confirmations(transaction_type, txid, txdata)
         total_txupdate_events += len(txupdate_events)
 

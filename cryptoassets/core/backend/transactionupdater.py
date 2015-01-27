@@ -203,6 +203,9 @@ class TransactionUpdater:
         :return: Tuple (new or existing network transaction id, fired txupdate events as a list)
         """
 
+        assert txid
+        assert txdata
+
         @self.conflict_resolver.managed_transaction
         def handle_ntx_update(session, transaction_type, txid, txdata):
 
@@ -216,7 +219,7 @@ class TransactionUpdater:
                 session.flush()
             elif transaction_type == "broadcast":
                 # For broadcasts, we should always know about ntx beforehand as broadcasted it
-                ntx = session.query(NetworkTransaction).filter(transaction_type == "broadcast", txid == txid).first()
+                ntx = session.query(NetworkTransaction).filter_by(transaction_type="broadcast", txid=txid).first()
                 assert ntx, "Tried to update non-existing broadcast {}".format(txid)
                 created = False
             else:
@@ -246,7 +249,6 @@ class TransactionUpdater:
                     # https://chain.so/tx/BTC/40ad00b473f2cc9f33a84779eb22b8d233ef47b35a2afec77e2fff805af60084
                     if not self.verify_amount(ntx.transaction_type, txdata, tx.address.address, tx.amount):
                         logger.warn("The total amount of txid %s, type %s, for address %s did not match. Expected: %s. Txdata: %s", txid, ntx.transaction_type, tx.address.address, tx.amount, txdata)
-
 
                 # Sum together received per address
                 addresses = Counter()  # address -> amount mapping
@@ -282,6 +284,8 @@ class TransactionUpdater:
                 transactions = self._get_broadcasted_transactions(ntx)
 
                 assert len(transactions) > 0
+
+                # TODO: Reverify outgoing amounts here
 
                 for t in transactions:
 
