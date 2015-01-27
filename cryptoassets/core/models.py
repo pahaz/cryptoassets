@@ -183,7 +183,7 @@ class GenericAddress(CoinDescriptionModel):
         assert cls.coin_description.account_table_name
         return Column(Integer, ForeignKey(cls.coin_description.account_table_name + ".id"))
 
-    def is_internal(self):
+    def is_deposit(self):
         return self.account is not None
 
     #: If account is set to nul then this is an external address
@@ -244,6 +244,9 @@ class GenericAddress(CoinDescriptionModel):
     @declared_attr
     def __table_args__(cls):
         return (UniqueConstraint('account_id', 'address', name='_account_address_uc'),)
+
+    def __str__(self):
+        return "Addr:{} [{}] deposit:{} account:{} balance:{} label:{} updated:{}".format(self.id, self.address, self.is_deposit(), self.account and self.account.id or "-", self.balance, self.label, self.updated_at)
 
 
 class GenericTransaction(CoinDescriptionModel):
