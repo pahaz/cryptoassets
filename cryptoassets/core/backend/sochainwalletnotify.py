@@ -156,7 +156,9 @@ class SochainWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
             Address = wallet.coin_description.Address
             for address in addresses.filter(Address.id > last_id, Address.archived_at is not None):  # noqa
 
-                assert address.address not in self.wallets[wallet.id]["addresses"], "Tried to double monitor address {}, monitoring addresses since {}".format(address.address, last_id)
+                if address.address in self.wallets[wallet.id]["addresses"]:
+                    logger.warn("Tried to double monitor address {}, monitoring addresses since {}".format(address.address, last_id))
+                    continue
 
                 logger.info("Found address %d:%s to be monitored", address.id, address.address)
 
