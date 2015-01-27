@@ -204,7 +204,7 @@ class TransactionUpdater:
         """
 
         @self.conflict_resolver.managed_transaction
-        def handle_ntx_update(session):
+        def handle_ntx_update(session, transaction_type, txid, txdata):
 
             txupdate_events = []
 
@@ -294,7 +294,7 @@ class TransactionUpdater:
 
             return ntx.id, txupdate_events
 
-        ntx_id, txupdate_events = handle_ntx_update()
+        ntx_id, txupdate_events = handle_ntx_update(transaction_type, txid, txdata)
 
         if txupdate_events:
 
