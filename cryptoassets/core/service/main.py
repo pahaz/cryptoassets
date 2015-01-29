@@ -14,12 +14,14 @@ import sys
 import datetime
 import logging
 import time
+import signal
 
 import pkg_resources
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from ..app import CryptoAssetsApp
 from ..app import Subsystem
+from ..app import ALL_SUBSYSTEMS
 from ..configure import Configurator
 from ..backend.base import IncomingTransactionRunnable
 from ..coin.registry import Coin
@@ -28,11 +30,14 @@ from ..tools import confirmationupdate
 from ..tools import receivescan
 from ..tools import broadcast
 
+from ..utils import danglingthreads
+
 from . import status
 from . import defaultlogging
 
 
-logger = logging.getLogger(__name__)
+#: Must be instiated after the logging configure is passed in
+logger = None
 
 
 def splash_version():
@@ -49,12 +54,15 @@ class Service:
     We uses `Advanced Python Scheduler <http://apscheduler.readthedocs.org/>`_ to run timed jobs (broadcasts, confirmatino updates).
 
     Status server (:py:mod:`cryptoassets.core.service.status`) can be started for inspecting our backend connections are running well.
+
     """
-    def __init__(self, config, subsystems=[Subsystem.database, Subsystem.backend]):
+    def __init__(self, config, subsystems=[Subsystem.database, Subsystem.backend], daemon=False):
         """
         :param config: cryptoassets configuration dictionary
 
         :param subsystems: List of subsystems needed to initialize for this process
+
+        :param daemon: Run as a service
         """
         self.app = CryptoAssetsApp(subsystems)
 
@@ -67,6 +75,11 @@ class Service:
         self.last_broadcast = None
         self.receive_scan_thread = None
 
+        # List of active running threads
+        self.threads = []
+
+        self.daemon = daemon
+
         self.config(config)
         self.setup()
 
@@ -77,6 +90,9 @@ class Service:
 
     def setup(self):
         """Start background threads and such."""
+
+        self.setup_logging()
+
         if Subsystem.broadcast in self.app.subsystems:
             self.setup_jobs()
 
@@ -88,6 +104,16 @@ class Service:
 
         # XXX: We are aliasing here, because configurator can only touch app object. Need to figure out something cleaner.
         self.status_server = self.app.status_server
+
+    def setup_logging(self):
+        global logger
+
+        if not self.daemon:
+            defaultlogging.setup_stdout_logging()
+
+        logger = logging.getLogger(__name__)
+
+        splash_version()
 
     def setup_session(self):
         """Setup database sessions and conflict resolution."""
@@ -115,6 +141,8 @@ class Service:
             logger.info("Starting status server %s with report generators %s", self.status_server, report_generator)
             self.status_server.start(report_generator)
 
+            self.threads.append(self.status_server)
+
     def setup_incoming_notifications(self):
         """Start incoming transaction handlers.
         """
@@ -131,6 +159,17 @@ class Service:
                 assert isinstance(runnable, IncomingTransactionRunnable)
                 if runnable:
                     self.incoming_transaction_runnables[name] = runnable
+                    self.threads.append(runnable)
+
+    def setup_sigterm(self):
+        """Capture SIGTERM and shutdown on it."""
+
+        def handler(signum, frame):
+            logger.info("Received SIGTERM")
+            self.running = False
+
+        # Set the signal handler and a 5-second alarm
+        signal.signal(signal.SIGTERM, handler)
 
     def poll_broadcast(self):
         """"A scheduled task to broadcast any new transactions to the bitcoin network.
@@ -177,8 +216,14 @@ class Service:
         self.receive_scan_thread = receivescan.BackgroundScanThread(self.app.coins, self.app.conflict_resolver, self.app.event_handler_registry)
         self.receive_scan_thread.start()
 
+        self.threads.append(self.receive_scan_thread)
+
     def start(self):
         """Start cryptoassets helper service.
+
+        Keep running until we get SIGTERM or CTRL+C.
+
+        :return: Process exit code
         """
         logger.info("Starting cryptoassets helper service")
         self.running = True
@@ -190,9 +235,53 @@ class Service:
         self.start_status_server()
         self.start_startup_receive_scan()
 
-    def shutdown(self):
+        self.setup_sigterm()
 
-        logger.info("Attempting shutdown of cryptoassets helper service")
+        if self.daemon:
+            # Leave cryptoassets helper service running
+            return self.run_thread_monitor()
+        else:
+            # Testing from unit tests
+            return
+
+    def run_thread_monitor(self):
+        """Run thread monitor until terminated by SIGTERM."""
+        self.running = True
+
+        while self.running:
+            if not self.check_threads():
+                logger.fatal("Shutting down due to failed thread")
+                self.shutdown(unclean=True)
+                return 2
+            time.sleep(3.0)
+
+        self.shutdown()
+
+        return 0
+
+    def check_threads(self):
+        """Check all the critical threads are running and do shutdown if any of the threads has died unexpectly.
+
+        :return: True if all threads stil alive
+        """
+
+        for thread in self.threads:
+            if not thread.is_alive():
+
+                # Assume all of our threads have thead.running attribute set False when they terminate their main loop normally
+                if getattr(thread, "running", False) is True:
+                    logger.error("Thread abnormally terminated %s", thread)
+                    return False
+
+        return True
+
+    def shutdown(self, unclean=False):
+        """Shutdown the service process.
+
+        :param unclean: True if we terminate due to exception
+        """
+
+        logger.info("Attempting shutdown of cryptoassets helper service, unclean %s", unclean)
         self.running = False
 
         for runnable in self.incoming_transaction_runnables.values():
@@ -205,6 +294,10 @@ class Service:
         if self.app.status_server:
             self.app.status_server.stop()
             self.app.status_server = None
+
+        logger.debug("Checking for dangling threads")
+        danglingthreads.check_dangling_threads()
+        logger.debug("Quit")
 
 # setuptools entry points
 
@@ -219,16 +312,14 @@ def parse_config_argv():
 
 
 def initializedb():
-    defaultlogging.setup_stdout_logging()
-    splash_version()
+
     config = parse_config_argv()
     service = Service(config, (Subsystem.database,))
     service.initialize_db()
 
 
 def scan_received():
-    defaultlogging.setup_stdout_logging()
-    splash_version()
+
     config = parse_config_argv()
     service = Service(config, (Subsystem.database, Subsystem.backend, Subsystem.event_handler_registry))
     service.scan_received()
@@ -236,8 +327,9 @@ def scan_received():
 
 def helper():
     config = parse_config_argv()
-    Configurator.load_standalone_from_dict(config)
-    service = Service(config, (Subsystem.database, Subsystem.status_server, Subsystem.backend, Subsystem.event_handler_registry))
-    service.start()
-    while True:
-        time.sleep(1)
+
+    Configurator.setup_service(config)
+
+    service = Service(config, ALL_SUBSYSTEMS, daemon=True)
+    exit_code = service.start()
+    sys.exit(exit_code)

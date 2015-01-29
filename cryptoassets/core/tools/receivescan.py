@@ -130,3 +130,4 @@ class BackgroundScanThread(threading.Thread):
         self.running = True
         self.missed_txs += scan(self.coins, self.conflict_resolver, self.event_handlers)
         self.complete = True
+        self.running = False

@@ -24,7 +24,7 @@ from ..tools import receivescan
 
 from . import testlogging
 from . import testwarnings
-from . import danglingthreads
+from ..utils import danglingthreads
 
 
 logger = logging.getLogger(__name__)

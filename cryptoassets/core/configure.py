@@ -5,6 +5,8 @@ Setup SQLAlchemy, backends, etc. based on individual dictionaries or YAML syntax
 
 import io
 import inspect
+import logging
+import logging.config
 
 import yaml
 
@@ -27,6 +29,9 @@ from .service import status
 from .app import Subsystem
 from .utils.dictutil import merge_dict
 
+
+#: XXX: logger cannot be used in this module due to order of logger initialization?
+logger = None
 
 
 class ConfigurationError(Exception):
@@ -225,20 +230,33 @@ class Configurator:
 
         self.config = config
 
-    @staticmethod
-    def setup_logging(self, config):
-        """Setup Python loggers.
+    @classmethod
+    def setup_service_logging(cls, config):
+        """Setup Python loggers for the helper service process.
 
-        XXX: We need ways to handle service loggers and stdout loggers separately.
-
-        Note: This is not called by default, as your parent application might want to do its own Python logging setup.
+        :param config: service -> logging configure section.
         """
         if not config:
+            # Go with the stderr
             logging.basicConfig()
+        else:
+            config["version"] = 1
+            logging.config.dictConfig(config)
 
-    @staticmethod
-    def load_standalone_from_dict(config):
-        """"""
+    @classmethod
+    def setup_service(cls, config):
+        """Service process specific setup.
+
+        Reads configuration ``service`` section, ATM only interested in ``logging`` subsection.
+
+        This is run before the actual Cryptoassets application initialization. We need logging initialized beforehand so that we can print out nice ``$VERSIONNUMBER is starting`` message.
+        """
+
+        service = config.get("service", {})
+        logging = service.get("logging", None)
+        cls.setup_service_logging(logging)
+
+        return config
 
     @staticmethod
     def prepare_yaml_file(fname):

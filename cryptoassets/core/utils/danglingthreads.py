@@ -4,9 +4,9 @@ import threading
 import time
 
 
-def check_dangling_threads():
-
-    deadline = time.time() + 5
+def check_dangling_threads(timeout=15):
+    """Check if any Python threads are still alive after timeout and die with an exception if so."""
+    deadline = time.time() + timeout
     while threading.active_count() > 1 and time.time() < deadline:
         time.sleep(1)
 

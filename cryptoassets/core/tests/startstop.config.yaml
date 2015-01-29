@@ -1,0 +1,51 @@
+---
+# Cryptoassets.core configuration for running bitcoind unit tests
+
+database:
+  url: sqlite:////tmp/cryptoassets-service-test.sqlite
+
+
+coins:
+    btc:
+        backend:
+            class: cryptoassets.core.backend.bitcoind.Bitcoind
+            url: http://foo:bar@127.0.0.1:8332/
+            walletnotify:
+                class: cryptoassets.core.backend.pipewalletnotify.PipedWalletNotifyHandler
+                fname: /tmp/cryptoassets-unittest-walletnotify-pipe
+
+status_server:
+    ip: 127.0.0.1
+    port: 18881
+
+
+# Emulate event capture as /bin/true dummy command
+events:
+    dummy:
+        class: cryptoassets.core.event.script.ScriptEventHandler
+        script: true
+
+service:
+    logging:
+        version: 1
+        formatters:
+            verbose:
+                format: '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
+
+        handlers:
+            file:
+                level: DEBUG
+                class: logging.FileHandler
+                filename: /tmp/cryptoassets-startstop-test.log
+                formatter: verbose
+            console:
+                level: DEBUG
+                class: logging.StreamHandler
+                formatter: verbose
+                stream: ext://sys.stdout
+
+        root:
+            handlers:
+                - file
+                - console
+            level: DEBUG

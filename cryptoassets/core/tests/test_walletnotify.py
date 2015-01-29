@@ -14,7 +14,7 @@ from ..backend.rediswalletnotify import RedisWalletNotifyHandler
 
 from . import testlogging
 from . import testwarnings
-from . import danglingthreads
+from ..utils import danglingthreads
 
 WALLETNOTIFY_PIPE = "/tmp/cryptoassets-unittest-walletnotify-pipe"
 

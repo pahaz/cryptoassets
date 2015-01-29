@@ -10,7 +10,7 @@ from ..models import _now
 
 from .base import CoinTestCase
 from .base import has_inet
-from . import danglingthreads
+from ..utils import danglingthreads
 
 logger = logging.getLogger(__name__)
 

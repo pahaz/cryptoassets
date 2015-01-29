@@ -19,7 +19,7 @@ from ..configure import Configurator
 
 from . import testlogging
 from . import testwarnings
-from . import danglingthreads
+from ..utils import danglingthreads
 
 
 testlogging.setup()

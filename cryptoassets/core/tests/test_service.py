@@ -5,6 +5,7 @@ import os
 import unittest
 import time
 import logging
+import subprocess
 
 import requests
 
@@ -20,6 +21,9 @@ from . import testwarnings
 
 
 _status_server_port = 18881
+
+
+logger = logging.getLogger()
 
 
 class ServiceTestCase(unittest.TestCase):
@@ -162,3 +166,58 @@ class ServiceTestCase(unittest.TestCase):
 
         finally:
             service.shutdown()
+
+
+class StartupShutdownTestCase(unittest.TestCase):
+    """Check that we start the service process and terminate it correctly. """
+
+    def setUp(self):
+        testlogging.setup()
+        testwarnings.begone()
+        self.test_config = os.path.join(os.path.dirname(__file__), "startstop.config.yaml")
+
+        self.log_file = "/tmp/cryptoassets-startstop-test.log"
+
+        if os.path.exists(self.log_file):
+            os.unlink(self.log_file)
+
+    def test_start_stop(self):
+        """Start the service and stop it with SIGTERM signal."""
+
+        # Initialize database
+        logger.debug("Running initializedb")
+        proc = subprocess.Popen(["cryptoassets-initialize-database", self.test_config], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        proc.wait()
+        self.assertEqual(proc.returncode, 0)
+
+        # Start helper service
+        logger.debug("Starting helper service")
+        proc = subprocess.Popen(["cryptoassets-helper-service", self.test_config], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        logger.debug("Running test service as pid %d", proc.pid)
+
+        time.sleep(10)
+
+        # See that we get log output
+        self.assertTrue(os.path.exists(self.log_file))
+
+        # See that we are still up after launch
+        proc.poll()
+
+        if proc.returncode:
+            print("STDOUT:", proc.stdout.read().decode("utf-8"))
+            print("STDERR:", proc.stderr.read().decode("utf-8"))
+
+        self.assertIsNone(proc.returncode, "Helper service terminated itself, return code {}".format(proc.returncode))
+
+        proc.terminate()
+        time.sleep(16)
+
+        proc.poll()
+
+        if proc.returncode is None:
+            print("STDOUT:", proc.stdout.read().decode("utf-8"))
+            print("STDERR:", proc.stderr.read().decode("utf-8"))
+
+        self.assertEqual(proc.returncode, 0, "Service was still running after SIGTERM and timeout")
