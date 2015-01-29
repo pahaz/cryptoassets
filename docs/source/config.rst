@@ -328,12 +328,45 @@ port
 
 Port the status server is listening to.s
 
-Logging
+service
 --------
 
-*cryptoassets.core* uses `standard Python logging <https://docs.python.org/3/library/logging.html>`_.
+Cryptoassets helper service process specific configuration. These sections only concern *cryptoassets helper service* process itself, not any framework calls you make inside your own Python application.
+
+Example:
+
+.. code-block:: yaml
+
+    service:
+        logging:
+            formatters:
+                verbose:
+                    format: '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
+
+            handlers:
+                file:
+                    level: DEBUG
+                    class: logging.FileHandler
+                    filename: /tmp/cryptoassets-startstop-test.log
+                    formatter: verbose
+                console:
+                    level: DEBUG
+                    class: logging.StreamHandler
+                    formatter: verbose
+                    stream: ext://sys.stdout
+
+            root:
+                handlers:
+                    - file
+                    - console
+                level: DEBUG
+
+logging
++++++++++
+
+Configure logging for *cryptoassets helper service*. Loggers are not configured if you import and call *cryptoassets.core* framework from your application.
+
+*cryptoassets.core* uses `standard Python logging <https://docs.python.org/3/library/logging.html>`_ mechanism.
 
 For logging within your application when calling :doc:`model methods <api/models>` configure logging with `Python logging configuration <https://docs.python.org/3/howto/logging.html#configuring-logging>`_.
-
-For configuring logging for *cryptoassets helper service* please wait for upcoming updates.
 

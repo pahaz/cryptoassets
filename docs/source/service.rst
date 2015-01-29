@@ -66,6 +66,18 @@ System service integration
 
 To have automatic start/stop and other functionality for cryptoassets helper service, use something akin *systemd* or `supervisord <http://supervisord.org/>`_.
 
+Send ``SIGTERM`` signal to the service for graceful shutdown. Give the service 45 seconds to gracefully shutdown its own threads until sending ``SIGKILL`` if the service has not terminated itself.
+
+The clean shutdown is indicated by exit code ``0``.
+
+In the case of any of the service threads dying the service will shutdown itself with exit code ``2``.
+
+:doc:`You can configure logging using Python logging best practices <./config>`.
+
+.. note ::
+
+    Further system exit codes coming in upcoming releases.
+
 cryptoassets-initialize-database
 ---------------------------------
 
