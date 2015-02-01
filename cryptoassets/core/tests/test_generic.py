@@ -65,6 +65,25 @@ class GenericWalletTestCase(unittest.TestCase):
             with self.assertRaises(BadAddress):
                 wallet.send_external(account1, "foobar", 0.1, "foobar")
 
+    def test_automatic_address_label(self):
+        """Check that we can generate address labels correctly."""
+
+        with self.app.conflict_resolver.transaction() as session:
+            wallet_class = self.app.coins.get("btc").wallet_model
+
+            wallet = wallet_class.get_or_create_by_name("foobar", session)
+            session.flush()
+            self.assertEqual(wallet.id, 1)
+
+            account1 = wallet.get_or_create_account_by_name("account1")
+            session.flush()
+
+            wallet.create_receiving_address(account1, automatic_label=True)
+            session.flush()
+
+            address2 = wallet.create_receiving_address(account1, automatic_label=True)
+            self.assertTrue("#2" in address2.label)
+
     def test_get_deposits(self):
         """Create internal, incoming transactions and broadcasted transactions and see we can tell deposits apart."""
 

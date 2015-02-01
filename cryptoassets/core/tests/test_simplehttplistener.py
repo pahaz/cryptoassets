@@ -24,7 +24,7 @@ class SimpleHTTPEventListenerTestCase(unittest.TestCase):
         """
 
         config = {
-            "notify": {
+            "events": {
                 "test_script": {
                     "class": "cryptoassets.core.event.http.HTTPEventHandler",
                     "url": "http://localhost:10001"

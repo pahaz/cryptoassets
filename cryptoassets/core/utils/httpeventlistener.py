@@ -128,10 +128,10 @@ def simple_http_event_listener(config, daemon=True):
         assert type(config) == dict
 
         # Exract status server address from the configuration
-        notify_config = config.get("notify")
+        notify_config = config.get("events")
 
         if not notify_config:
-            raise RuntimeError("Could not get the configuration for HTTP event server")
+            raise RuntimeError("Could not get the configuration for cryptoassets service process events")
 
         # Get first HTTP event handling entty from the config and grab it's IP and URL there
         host = port = None
@@ -143,8 +143,10 @@ def simple_http_event_listener(config, daemon=True):
 
                 assert url.path in ("/", ""), "Simple HTTP Event listener doesn't support URLs with paths, your path was {}".format(url.path)
 
-        if not host:
-            raise RuntimeError("Could not find HTTP event server configuration in cryptoassets config")
+                break
+
+        else:
+            raise RuntimeError("Could not find cryptoassets.core.event.http.HTTPEventHandler configuration in cryptoassets config")
 
         server = SimpleHTTPEventListenerThread(host, port, func)
         server.daemon = daemon

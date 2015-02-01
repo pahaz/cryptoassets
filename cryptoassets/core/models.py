@@ -132,6 +132,19 @@ class GenericAccount(CoinDescriptionModel, CoinBackend):
     def wallet(cls):
         return relationship(cls.coin_description.wallet_model_name, backref="accounts")
 
+    def pick_next_receiving_address_label(self):
+        """Generates a new receiving address label which is not taken yet.
+
+        Some services, like block.io, requires all receiving addresses to have an unique label. We use this helper function in the situations where it is not meaningful to hand-generate labels every time.
+
+        Generated labels are not user-readable, they are only useful for admin and accounting purposes.
+        """
+        session = Session.object_session(self)
+
+        Address = self.coin_description.Address
+        addresses = session.query(Address).filter(Address.account == self)
+        return "Receiving address #{} for account #{}".format(addresses.count()+1, self.id)
+
     def __str__(self):
         return "ACC:{} name:{} bal:{} wallet:{}".format(self.id, self.name, self.balance, self.wallet.id if self.wallet else "-")
 
@@ -559,7 +572,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         """
         return self.get_or_create_account_by_name(self.coin_description.Account.NETWORK_FEE_ACCOUNT)
 
-    def create_receiving_address(self, account, label=None):
+    def create_receiving_address(self, account, label=None, automatic_label=False):
         """ Creates a new receiving address.
 
         All incoming transactions on this address
@@ -577,6 +590,11 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         assert session
         assert account
         assert account.id
+
+        assert label or automatic_label, "You must give explicit label for the address or use automatic_label option"
+
+        if not label and automatic_label:
+            label = account.pick_next_receiving_address_label()
 
         _address = self.backend.create_address(label=label)
 

@@ -1,16 +1,15 @@
 import os
 import unittest
-import warnings
-
-from sqlalchemy import create_engine
 
 from ..configure import ConfigurationError
 from ..configure import Configurator
-from ..backend.blockio import BlockIo
 from ..app import CryptoAssetsApp
 from ..coin.registry import Coin
 from ..coin.bitcoin.models import BitcoinWallet
 from ..backend.bitcoind import Bitcoind
+
+from . import testwarnings
+
 
 class ConfigureTestCase(unittest.TestCase):
     """Stress out configuration functionality and loading YAMLs."""
@@ -19,7 +18,7 @@ class ConfigureTestCase(unittest.TestCase):
 
         # ResourceWarning: unclosed <ssl.SSLSocket fd=9, family=AddressFamily.AF_INET, type=SocketType.SOCK_STREAM, proto=6, laddr=('192.168.1.4', 56386), raddr=('50.116.26.213', 443)>
         # http://stackoverflow.com/a/26620811/315168
-        warnings.filterwarnings("ignore", category=ResourceWarning)  # noqa
+        testwarnings.begone()
 
         self.app = CryptoAssetsApp()
         self.configurator = Configurator(self.app)
@@ -36,7 +35,6 @@ class ConfigureTestCase(unittest.TestCase):
                 }
             }
         }
-
 
         coin_registry = self.configurator.setup_coins(coins)
 

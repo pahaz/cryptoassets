@@ -1,10 +1,10 @@
 """cryptoassets.core example application.
 """
 
+import os
 from decimal import Decimal
 
 from cryptoassets.core.app import CryptoAssetsApp
-from cryptoassets.core.app import Subsystem
 from cryptoassets.core.configure import Configurator
 
 from cryptoassets.core.utils.httpeventlistener import simple_http_event_listener
@@ -12,8 +12,10 @@ from cryptoassets.core.utils.httpeventlistener import simple_http_event_listener
 assets_app = CryptoAssetsApp()
 
 # This will load the configuration file for the cryptoassets framework
+# for the same path as examply.py is
+conf_file = os.path.join(os.path.dirname(__file__), "example.config.yaml")
 configurer = Configurator(assets_app)
-configurer.load_yaml_file("example.config.yaml")
+configurer.load_yaml_file(conf_file)
 
 # This will set up SQLAlchemy database connections, as loaded from
 # config. It's also make assets_app.conflict_resolver available for us
@@ -57,7 +59,7 @@ def get_wallet_and_account(session):
 
     # If we don't have any receiving addresses, create a default one
     if len(account.addresses) == 0:
-        wallet.create_receiving_address(account)
+        wallet.create_receiving_address(account, automatic_label=True)
 
     return wallet, account
 
@@ -79,8 +81,11 @@ def get_wallet_and_account(session):
 def create_receiving_address(session):
     """Create new receiving address on the default wallet and account."""
     wallet, my_account = get_wallet_and_account(session)
-    #: All addresses must have unique label (makes accounting easier)
-    wallet.create_receiving_address(my_account)
+
+    # All addresses must have unique label on block.io.
+    # Note that this is not a limitation of Bitcoin,
+    # but block.io service itself.
+    wallet.create_receiving_address(my_account, automatic_label=True)
 
 
 @assets_app.conflict_resolver.managed_transaction

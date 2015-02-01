@@ -1,4 +1,15 @@
-"""Serialized SQL transaction conflict resolution as a function decorator."""
+"""ConflictResolver is a helper class to provide transaction conflict resolution mechanism in your SQLAlchemy application.
+
+Transaction conflict resolution is a way to deal concurrency issues within multiuser application. It is a way to resolve race conditions when two users (threads) are performing an action affecting the same data set simultaneously.
+
+There are two basic ways of mitigating database race conditions
+
+* Up-front locking
+
+* Transaction serialization
+
+
+"""
 
 import warnings
 import logging

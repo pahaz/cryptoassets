@@ -22,16 +22,13 @@ coins:
                 class: cryptoassets.core.backend.sochainwalletnotify.SochainWalletNotifyHandler
                 pusher_app_key: e9f5cc20074501ca7395
 
-        # We are connected to test network
-        testnet: true
-
-# This section tells how cryptoassets helper service will
+# This section tells how cryptoassets helper process will
 # notify your app from events like new incoming transactions
-# and outgoing transaction confirmatino updates
-notify:
+# and outgoing transaction confirmation updates
+events:
     # For each event, we send a HTTP webhook notification
     # to your app. Your app should be listening HTTP at localhost:10000
     example_app:
-        class: cryptoassets.core.event.http.HTTPNotifier
+        class: cryptoassets.core.event.http.HTTPEventHandler
         url: http://localhost:10000
 
