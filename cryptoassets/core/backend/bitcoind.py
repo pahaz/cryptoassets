@@ -35,7 +35,7 @@ The backend configuration takes following parameters.
 
 :param url: Bitcoind connection URL with username and password (rpcuser and rpcassword in bitcoin config) for `AuthServiceProxy <https://github.com/jgarzik/python-bitcoinrpc>`_. Usually something like ``http://foo:bar@127.0.0.1:8332/``
 
-:param walletnotify: Dictionary of settings up walletnotify handler.
+:param walletnotify: Dictionary of parameters to set up walletnotify handler.
 
 :param timeout: Timeout for JSON-RPC call. Default is 15 seconds. If the timeout occurs, the API operation can be considered as failed and the bitcoind as dead.
 
@@ -47,6 +47,7 @@ import socket
 import time
 from decimal import Decimal
 from http.client import BadStatusLine
+from http.client import CannotSendRequest
 from collections import Counter
 import threading
 
@@ -107,6 +108,9 @@ class Bitcoind(base.CoinBackend):
 
         self.thread_connection_pool = threading.local()
 
+        #: How many times we try to recover from bad HTTP connection situation
+        self.bad_http_connection_retries = 3
+
     def connect(self, reconnect=False):
         """Gets or creates a per-thread connection to bitcoind.
 
@@ -119,7 +123,7 @@ class Bitcoind(base.CoinBackend):
 
             if bitcoind:
                 # XXX: Try to close the existing TCP/IP connection
-                logger.warning("Had to reconnect to bitcoind")
+                logger.warning("Had to reconnect to bitcoind, old connection was %s", bitcoind)
 
             self.thread_connection_pool.bitcoind = bitcoind = AuthServiceProxy(self.url, timeout=self.timeout)
 
@@ -135,45 +139,61 @@ class Bitcoind(base.CoinBackend):
         return Decimal(amount)
 
     def api_call(self, name, *args, **kwargs):
-        """ """
+        """Perform bitcoind JSON-RPC api call.
+
+        Have some safety mechanism to handle most common transportation layer level errors.
+
+        :param name: JSON-RPC function name
+
+        :param args: Passed to underlying bitcoind lib
+
+        :param kwargs: Passed to underlying bitcoind lib
+        """
 
         bitcoind = self.connect()
 
-        try:
-            func = getattr(bitcoind, name)
-            result = func(*args, **kwargs)
-            return result
-        except ValueError as e:
-            #
-            raise BitcoindJSONError("Probably could not authenticate against bitcoind-like RPC, try manually with curl") from e
-        except socket.timeout as e:
-            raise BitcoindJSONError("Got timeout when doing bitcoin RPC call {}. Maybe bitcoind was not synced with network?".format(name)) from e
-        except (BadStatusLine, ConnectionRefusedError) as e:
-            # This is the exception with SSH forwarding if the bitcoind is dead/stuck?
+        for retry in range(0, self.bad_http_connection_retries):
+            try:
+                func = getattr(bitcoind, name)
+                result = func(*args, **kwargs)
+                return result
+            except ValueError as e:
+                #
+                raise BitcoindJSONError("Probably could not authenticate against bitcoind-like RPC, try manually with curl") from e
+            except socket.timeout as e:
+                raise BitcoindJSONError("Got timeout when doing bitcoin RPC call {}. Maybe bitcoind was not synced with network?".format(name)) from e
+            except CannotSendRequest as e:
+                logger.error("Recoverable JSON-RPC API exception - most likely HTTP client stuck in a bad state. Will reconnect, reconnect attempt %d", retry)
+                logger.exception(e)
+                self.connect(reconnect=True)
+                continue
+            except (BadStatusLine, ConnectionRefusedError) as e:
+                # This is the exception with SSH forwarding if the bitcoind is dead/stuck?
 
-            # Clean up HTTP client, as otherwise the persistent connection will get stuck
-            #   File "/Users/mikko/code/cryptoassets/cryptoassets/cryptoassets/core/backend/bitcoind.py", line 78, in api_call
-            #     result = func(*args, **kwargs)
-            #   File "/Users/mikko/code/applebytestore/venv/src/python-bitcoinrpc/bitcoinrpc/authproxy.py", line 125, in __call__
-            #     'Content-type': 'application/json'})
-            #   File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/http/client.py", line 1090, in request
-            #     self._send_request(method, url, body, headers)
-            #   File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/http/client.py", line 1118, in _send_request
-            #     self.putrequest(method, url, **skips)
-            #   File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/http/client.py", line 966, in putrequest
-            #     raise CannotSendRequest(self.__state)
-            # http.client.CannotSendRequest: Request-sent
+                # Clean up HTTP client, as otherwise the persistent connection will get stuck
+                #   File "/Users/mikko/code/cryptoassets/cryptoassets/cryptoassets/core/backend/bitcoind.py", line 78, in api_call
+                #     result = func(*args, **kwargs)
+                #   File "/Users/mikko/code/applebytestore/venv/src/python-bitcoinrpc/bitcoinrpc/authproxy.py", line 125, in __call__
+                #     'Content-type': 'application/json'})
+                #   File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/http/client.py", line 1090, in request
+                #     self._send_request(method, url, body, headers)
+                #   File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/http/client.py", line 1118, in _send_request
+                #     self.putrequest(method, url, **skips)
+                #   File "/Library/Frameworks/Python.framework/Versions/3.4/lib/python3.4/http/client.py", line 966, in putrequest
+                #     raise CannotSendRequest(self.__state)
+                # http.client.CannotSendRequest: Request-sent
 
-            # After error AuthConnetionProxy is in an invalid state. Reset it.
-            self.connect(reconnect=True)
-            raise
-        except JSONRPCException as e:
-            msg = e.error.get("message")
-            if msg:
-                # Show error message for more pleasant debugging
-                raise BitcoindJSONError("Error communicating with bitcoind API call {}: {}".format(name, msg)) from e
-            # Didn't have specific error message
-            raise
+                # After error AuthConnetionProxy is in an invalid state. Reset it.
+                # This should be r
+                self.connect(reconnect=True)
+                raise
+            except JSONRPCException as e:
+                msg = e.error.get("message")
+                if msg:
+                    # Show error message for more pleasant debugging
+                    raise BitcoindJSONError("Error communicating with bitcoind API call {}: {}".format(name, msg)) from e
+                # Didn't have specific error message
+                raise
 
     def import_private_key(self, label, private_key):
         """Import an existing private key to this daemon.

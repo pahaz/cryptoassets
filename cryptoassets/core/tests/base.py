@@ -569,7 +569,7 @@ class CoinTestCase:
             succeeded = False
 
             while time.time() < deadline:
-                time.sleep(5.0)
+                time.sleep(30.0)
 
                 # Make sure confirmations are updated
                 transaction_updater = self.backend.create_transaction_updater(self.app.conflict_resolver, None)

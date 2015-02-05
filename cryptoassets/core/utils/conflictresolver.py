@@ -78,7 +78,7 @@ Here is a simple example how to use ConflictResolver::
         w = session.query(BitcoinWallet).get(1)
         w.balance += 1
 
-    # Execute the conflict sensitive code inside a managed transaction
+    # Execute the conflict sensitive code inside a transaction aware code block
     myfunc()
 
 Rules and limitations

@@ -1,22 +1,12 @@
 import os
 import unittest
-import time
 import logging
 from decimal import Decimal
 
-import pytest
-
-from ..models import _now
-
 from .base import CoinTestCase
-from .base import has_inet
 from ..utils import danglingthreads
 
 logger = logging.getLogger(__name__)
-
-
-#: This is a known address in the testnet test wallet with some funds on it
-BLOCK_IO_TESTNET_TEST_FUND_ADDRESS = "2MsgW3kCrRFtJuo9JNjkorWXaZSvLk4EWRr"
 
 
 class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
@@ -67,32 +57,9 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         # Wait 15 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 60 * 20
 
-    def is_address_monitored(self, wallet, address):
-        """ Check if we can get notifications from an incoming transactions for a certain address.
-
-        :param wallet: Wallet object
-
-        :param address: Address object
-        """
-
-        if len(self.incoming_transactions_runnable.wallets) == 0:
-            return False
-
-        return address.address in self.incoming_transactions_runnable.wallets[wallet.id]["addresses"]
-
-    def wait_receiving_address_ready(self, wallet, receiving_address):
-
-        # Let the Pusher to build the connection
-        # Make sure SoChain started to monitor this address
-        deadline = time.time() + 15
-        while time.time() < deadline:
-            if self.is_address_monitored(wallet, receiving_address):
-                break
-
-        self.assertTrue(self.is_address_monitored(wallet, receiving_address), "The receiving address didn't become monitored {}".format(receiving_address.address))
-
 
 class BlockIoDogeTestCase(BlockIoBTCTestCase):
+    """Test that our Dogecoin accounting works on top of block.io API."""
 
     def setup_coin(self):
 
@@ -118,4 +85,4 @@ class BlockIoDogeTestCase(BlockIoBTCTestCase):
         self.external_transaction_confirmation_count = 2
 
         # Wait 3 minutes for 1 confimation from the BTC TESTNET
-        self.external_receiving_timeout = 60 * 5
+        self.external_receiving_timeout = 60 * 10
