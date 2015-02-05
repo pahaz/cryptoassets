@@ -689,6 +689,8 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         assert type(receiving_address) == str
         assert isinstance(amount, Decimal)
 
+        # TODO: Check minimal withdrawal amount
+
         Address = self.coin_description.Address
 
         internal_receiving_address = session.query(Address).filter(Address.address == receiving_address, Address.account != None).first()  # noqa

@@ -12,7 +12,7 @@ coins:
     btc:
         backend:
             class: cryptoassets.core.backend.blockio.BlockIo
-            api_key: 0266-c2b6-c2c8-ee07
+            api_key: 923f-e3e9-a580-dfb2
             pin: foobar123
             network: btctest
             # walletnotify section tells how we receive

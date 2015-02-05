@@ -28,4 +28,4 @@ def event_json_dumps(event_data):
             return str(obj)
         raise TypeError
 
-    json.dumps(event_data, default=decimal_default)
+    return json.dumps(event_data, default=decimal_default)

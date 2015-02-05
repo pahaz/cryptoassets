@@ -45,23 +45,19 @@ class CryptoassetsServiceRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
 
         try:
-            ctype, pdict = parse_header(self.headers['content-type'])
-            if ctype == 'multipart/form-data':
-                postvars = parse_multipart(self.rfile, pdict)
-            elif ctype == 'application/x-www-form-urlencoded':
-                length = int(self.headers['content-length'])
-                postvars = parse_qs(self.rfile.read(length), keep_blank_values=1)
-            else:
-                postvars = {}
+            # http://stackoverflow.com/a/12731208/315168
+            # Extract and print the contents of the POST
+            length = int(self.headers['Content-Length'])
+            post_data = parse_qs(self.rfile.read(length).decode('utf-8'))
 
-            event_name = postvars[b"event_name"][0].decode("utf-8")
+            if "data" not in post_data:
+                raise RuntimeError("Incoming POST did not contain data field: {}".format(post_data))
+
+            event_name = post_data["event_name"][0]
+            data = post_data["data"][0]
 
             logger.debug("Handling incoming event %s", event_name)
 
-            if b"data" not in postvars:
-                raise RuntimeError("Incoming POST did not contain data field: {}".format(postvars))
-
-            data = postvars[b"data"][0].decode("utf-8")
             data = json.loads(data)
             self.server.func(event_name, data)
 

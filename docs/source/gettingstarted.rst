@@ -129,6 +129,11 @@ The application is fully functional and you can start your Bitcoin testnet walle
     # Run this command in another terminal
     cryptoassets-helper-service example.config.yaml
 
+You should see something like this::
+
+    ...
+    [00:23:09] [cryptoassets.core.service.main splash_version] cryptoassets.core version 0.0
+
 You will get some *Rescanned transactions* log messages on the start up if you didn't change the default block.io credentials. These are test transactions from other example users.
 
 Now you can send or receive Bitcoins within your application. If you don't start the helper service the application keeps functioning, but all external cryptoasset network traffic is being buffered until the *cryptoassets helper service* is running again.

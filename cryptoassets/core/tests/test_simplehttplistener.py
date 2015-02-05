@@ -35,7 +35,7 @@ class SimpleHTTPEventListenerTestCase(unittest.TestCase):
         @simple_http_event_listener(config, daemon=False)
         def myfunc(event, data):
             global _got_data
-            _got_data = data
+            _got_data = dict(event_name=event, data=data)
 
         server = myfunc.http_server
 
@@ -46,7 +46,7 @@ class SimpleHTTPEventListenerTestCase(unittest.TestCase):
                 time.sleep(0.1)
                 self.assertLess(time.time(), deadline, "Event capture HTTP server never woke up")
 
-            requests.post("http://localhost:10001", {
+            requests.post("http://localhost:10001", data={
                 "event_name": "myfoobar",
                 "data": '{"foo":"bar"}',
                 })
@@ -58,7 +58,10 @@ class SimpleHTTPEventListenerTestCase(unittest.TestCase):
                     break
                 self.assertLess(time.time(), deadline, "Event capture HTTP server never woke up")
 
-            self.assertEqual(_got_data, {"foo": "bar"})
+            self.assertEqual(_got_data, {
+                "event_name": "myfoobar",
+                "data": {"foo": "bar"},
+                })
 
         finally:
 

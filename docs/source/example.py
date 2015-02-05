@@ -74,6 +74,7 @@ def get_wallet_and_account(session):
     # If we don't have any receiving addresses, create a default one
     if len(account.addresses) == 0:
         wallet.create_receiving_address(account, automatic_label=True)
+        session.flush()
 
     return wallet, account
 
@@ -140,6 +141,7 @@ def print_status(session):
     Address = assets_app.coins.get("btc").address_model
     Transaction = assets_app.coins.get("btc").transaction_model
 
+    print("-" * 40)
     print("Account #{}, confirmed balance {:.8f} BTC, incoming BTC {:.8f}". \
         format(account.id, account.balance, account.get_unconfirmed_balance()))
 
@@ -153,14 +155,20 @@ def print_status(session):
     print("We know about the following transactions:")
     for tx in session.query(Transaction):
         if tx.state in ("pending", "broadcasted"):
-            print("Outgoing tx #{} {} to {} network txid {} amount {} BTC".format(
-                tx.id, tx.state, tx.txid, tx.address, tx.amount))
+
+            # This transactions might not be broadcasted out by
+            # cryptoassets helper service yet, thus it
+            # does not have network txid yet
+            txid = "(pending broadcast)" if tx.state == "pending" else tx.txid
+
+            print("- OUT tx:{} to {} amount:{:.8f} BTC confirmations:{}".format(
+                txid, tx.address.address, tx.amount, tx.confirmations))
         elif tx.state in ("incoming", "processed"):
             print("- IN tx:{} to:{} amount:{:.8f} BTC confirmations:{}".format(
                 tx.txid, tx.address.address, tx.amount, tx.confirmations))
         else:
             print("Internal/other tx #{} {} amount {} BTC".format(
-                tx.id, tx.state, tx.txid, tx.address, tx.amount))
+                tx.id, tx.state, tx.amount))
 
     print("")
     print("Give a command")

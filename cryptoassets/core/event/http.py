@@ -30,7 +30,7 @@ class HTTPEventHandler(EventHandler):
 
         data = event_json_dumps(data)
 
-        resp = requests.post(self.url, dict(event_name=event_name, data=data))
+        resp = requests.post(self.url, data=dict(event_name=event_name, data=data, xdata=data))
         if resp.status_code != 200:
             logger.error("Failed to call HTTP hook %s, status code %d", self.url, resp.status_code)
         else:
