@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def get_open_network_transactions(session, NetworkTransaction, confirmation_threshold):
     """Get list of transaction_type, txid of transactions we need to check."""
-    ntxs = session.query(NetworkTransaction).filter(NetworkTransaction.confirmations < confirmation_threshold)
+    ntxs = session.query(NetworkTransaction).filter(NetworkTransaction.confirmations < confirmation_threshold, NetworkTransaction.txid != None)  # noqa
     return [(ntx.transaction_type, ntx.txid) for ntx in ntxs]
 
 

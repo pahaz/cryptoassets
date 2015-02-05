@@ -1,13 +1,120 @@
-"""ConflictResolver is a helper class to provide transaction conflict resolution mechanism in your SQLAlchemy application.
+"""ConflictResolver is a helper class to provide serialized transaction conflict resolution mechanism in your SQLAlchemy application.
 
-Transaction conflict resolution is a way to deal concurrency issues within multiuser application. It is a way to resolve race conditions when two users (threads) are performing an action affecting the same data set simultaneously.
+Preface
+--------
 
-There are two basic ways of mitigating database race conditions
+Transaction conflict resolution is a way to deal with concurrency and `race condition <http://en.wikipedia.org/wiki/Race_condition>`_ issues within multiuser application. It is a way to resolve race conditions when two users, or two threads, are performing an action affecting the same data set simultaneously.
 
-* Up-front locking
+There are two basic ways of `concurrency control <http://en.wikipedia.org/wiki/Concurrency_control>`_
 
-* Transaction serialization
+* `Up-front locking <http://en.wikipedia.org/wiki/Lock_%28computer_science%29>`_: You use interprocess / interserver locks to signal you are about to access and modify resources. If there are concurrent access the actors accessing the resource wait for the lock before taking action. This is `pessimistic concurrency control mechanism <http://en.wikipedia.org/wiki/Concurrency_control#Concurrency_control_mechanisms>`_.
 
+* `Transaction serialization <http://en.wikipedia.org/wiki/Serializability>`_: Database detects concurrent access from different clients (a.k.a serialization anomaly) and do not let concurrent modifications to take place. Instead, only one transaction is let through and other conflicting transactions are rolled back. The strongest level of `transaction isolation <http://en.wikipedia.org/wiki/Isolation_%28database_systems%29>`_ is achieved using SQL `Serializable <http://en.wikipedia.org/wiki/Isolation_%28database_systems%29#Serializable_ isolation level. This is `optimistic concurrency control mechanism <http://en.wikipedia.org/wiki/Concurrency_control#Concurrency_control_mechanisms>`_.
+
+For complex systems, locking may pose scalability and complexity issues. More fine grained locking is required, placing cognitive load on the software developer to carefully think and manage all locks upfront to prevent race conditions and deadlocks. Thus, `locking may be error prone approach in real world application development <http://en.wikipedia.org/wiki/Software_transactional_memory#Conceptual_advantages_and_disadvantages>`_ (TBD needs better sources).
+
+Relying on database transaction serialization is easier from the development perspective. If you use serialized transactions you know there will never be database race conditions. In the worst case there is an user error saying there was concurrency error. But transaction serialization creates another problem: your application must be aware of potential transaction conflicts and in the case of transaction conflict it must be able to recover from them.
+
+Please note that when system is under high load and having high concurrent issue rate, both approaches will lead to degraded performance. In pessimistic approach, clients are waiting for locks, never getting them and eventually timing out. In optimistic approach high transaction conflict rate may exceed the rate the system can successfully replay transactions. Long running transaction are also an issue in both approaches, thus batch processing is encouraged to use limited batch size for each transaction if possible.
+
+Benefits and design goals
+---------------------------
+
+:py:class:`cryptoassets.core.utils.conflictresolver.ConflictResolver` is a helper class to manage serialized transaction conflicts in your code and resolve them in idiomatic Python manner. The design goals include
+
+* Race condition free codebase because there is no need for application level locking
+
+* Easy, Pythonic, to use
+
+* Simple
+
+* Have fine-grained control over transaction life cycle
+
+* Works with `SQLAlchemy <http://sqlalchemy.org/>`_
+
+These all should contribute toward cleaner, more robust and bug free, application codebase.
+
+The work was inspired by `ZODB transaction package <https://pypi.python.org/pypi/transaction>`_ which provides abstract two-phase commit protocol for Python. *transaction* package contains more features, works across databases, but also has more complex codebase and lacks decorator approach provided by *ConflictResolver*. Whereas ConflictResolver works directly with SQLAlchemy sessions, making it more straightforward to use in SQLAlchemy-only applications.
+
+Transaction retries
+-----------------------
+
+In the core of transaction serialization approach is recovery from the transaction conflict. If you do not have any recovery mechanism, when two users edit the same item on a website and press save simultaneously, leading to a transaction conflict in the database, one of the user gets save succeed the other gets an internal error page. The core principle here is that we consider transaction conflict a rare event under normal system load conditions i.e. it is rare users press the save simultaneously. But it still very bad user experience to give two error page for  one of the users, especially if the system itself knows how it could recovery from the situation - without needing intervention from the user.
+
+*ConflictResolver* approach to recovery is to
+
+* Run a transaction sensitive code within a marked Python code block
+
+* If the code block raises an exception which we identify to be a transaction conflict error from the database, just reset the situation and replay the code block
+
+* Repeat this X times and give up if it seems like our transaction is never going through (because of too high system load or misdesigned long running transaction blocking all writes)
+
+Marked Python code blocks are created using Python `function decorators <https://www.python.org/dev/peps/pep-0318/>´_. This is not optimal approach in the sense of code cleanness and Python ``with`` block would be preferred. However, Python ``with`` `lacks ability to run loops which is prerequisite for transaction retries <http://stackoverflow.com/q/27351433/315168>`_. However combined with Python `closures <http://stackoverflow.com/q/4020419/315168>_, the boilerplate is quite minimal.
+
+Example
+---------
+
+Here is a simple example how to use ConflictResolver::
+
+    from cryptoassets.core.utils.conflictresolver import ConflictResolver
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    engine = create_engine('postgresql:///unittest-conflict-resolution',  isolation_level='SERIALIZABLE')
+
+    # Create new session for SQLAlchemy engine
+    def create_session():
+        Session = sessionmaker()
+        Session.configure(bind=engine)
+        return Session()
+
+    conflict_resolver = ConflictResolver(create_session, retries=3)
+
+    # Create a decorated function which can try to re-run itself in the case of conflict
+    @conflict_resolver.managed_transaction
+    def myfunc(session):
+
+        # Both threads modify the same wallet simultaneously
+        w = session.query(BitcoinWallet).get(1)
+        w.balance += 1
+
+    # Execute the conflict sensitive code inside a managed transaction
+    myfunc()
+
+Rules and limitations
+-----------------------
+
+The rules:
+
+- You must not blindly swallow all exceptions (generic Python ``Exception``) within ``managed_transactions``. Example how to handle exceptions if generic exception catching is needed::
+
+    # Create a decorated function which can try to re-run itself in the case of conflict
+    @conflict_resolver.managed_transaction
+    def myfunc(session):
+
+        try:
+            my_code()
+        except Exception as e:
+            if ConflictResolver.is_retryable_exception(e):
+                # This must be passed to the function decorator, so it can attempt retry
+                raise
+            # Otherwise the exception is all yours
+
+- Use special read-only database sessions if you know you do not need to modify the database and you need weaker transaction guarantees e.g. for displaying the total balance.
+
+- Never do external actions, like sending emails, inside ``managed_transaction``. If the database transaction is replayed, the code is run twice and you end up sending the same email twice.
+
+- Managed transaction code block should be as small and fast as possible to avoid transaction conflict congestion. Avoid long-running transactions by splitting up big transaction to smaller worker batches.
+
+Compatibility
+--------------
+
+ConflictResolver should be compatible with all SQL databases providing Serializable isolation level. However, because Python SQL drivers and SQLAlchemy do not standardize the way how SQL execution communicates the transaction conflict back to the application, the exception mapping code might need to be updated to handle your database driver.
+
+Further reading
+-----------------
+
+For different transaction conflict test cases, see the unit tests.
 
 """
 
@@ -104,62 +211,11 @@ class ConflictResolver:
         return False
 
     def managed_transaction(self, func):
-        """SQL Seralized transaction isolation-level conflict resolution.
+        """Function decorator for SQL Serialized transaction conflict resolution through retries.
 
-        When SQL transaction isolation level is its highest level (Serializable), the SQL database itself cannot alone resolve conflicting concurrenct transactions. Thus, the SQL driver raises an exception to signal this condition.
+        ``managed_transaction`` decorator will retry to run the decorator function. Retries are attempted until ``ConflictResolver.retries`` is exceeded, in the case the original SQL exception is let to fall through.
 
-        ``managed_transaction`` decorator will retry to run everyhing inside the function
-
-        Usage::
-
-            # Create new session for SQLAlchemy engine
-            def create_session():
-                Session = sessionmaker()
-                Session.configure(bind=engine)
-                return Session()
-
-            conflict_resolver = ConflictResolver(create_session, retries=3)
-
-            # Create a decorated function which can try to re-run itself in the case of conflict
-            @conflict_resolver.managed_transaction
-            def myfunc(session):
-
-                # Both threads modify the same wallet simultaneously
-                w = session.query(BitcoinWallet).get(1)
-                w.balance += 1
-
-            # Execute the conflict sensitive code inside a managed transaction
-            myfunc()
-
-        The rules:
-
-        - You must not swallow all exceptions within ``managed_transactions``. Example how to handle exceptions::
-
-            # Create a decorated function which can try to re-run itself in the case of conflict
-            @conflict_resolver.managed_transaction
-            def myfunc(session):
-
-                try:
-                    my_code()
-                except Exception as e:
-                    if ConflictResolver.is_retryable_exception(e):
-                        # This must be passed to the function decorator, so it can attempt retry
-                        raise
-                    # Otherwise the exception is all yours
-
-        - Use read-only database sessions if you know you do not need to modify the database and you need weaker transaction guarantees e.g. for displaying the total balance.
-
-        - Never do external actions, like sending emails, inside ``managed_transaction``. If the database transaction is replayed, the code is run twice and you end up sending the same email twice.
-
-        - Managed transaction section should be as small and fast as possible
-
-        - Avoid long-running transactions by splitting up big transaction to smaller worker batches
-
-        This implementation heavily draws inspiration from the following sources
-
-        - http://stackoverflow.com/q/27351433/315168
-
-        - https://gist.github.com/khayrov/6291557
+        Please obey the rules and limitations of transaction retries in the decorated functions.
         """
 
         def decorated_func(*args, **kwargs):
@@ -232,15 +288,13 @@ class ConflictResolver:
     def transaction(self):
         """Get a transaction contextmanager instance using the conflict resolver session.
 
-        This approach DOES NOT support conflict resolution, because Python context managers don't support looping. Instead, it will raise exception if the transaction does not pass on the first attempt.
+        This approach **does not** support conflict resolution, because Python context managers don't support looping. Instead, it will let any exception fall through. ``ConflictResolver.transaction`` is only useful to access the configured SQLAlchemy session in easy manner. This also suits for tests where you know there should be no conflicts in tests, unless explicitly caused.
 
         Transaction handling
 
         * Transaction is committed if the context manager exists succesfully
 
         * Transaction is rolled back on an exception
-
-        This suits for tests (there should be no conflicts in tests, unless explicitly caused). This also suits as Zope `transaction` package replacement without two-phased commit support.
 
         Example::
 
@@ -256,7 +310,7 @@ class ConflictResolver:
 class ContextManager:
     """Use conflict resolver in Python with statement.
 
-    See ``ConflictResolver.transaction``.
+    See :py:meth:`cryptoassets.core.utils.conflictresolver.ConflictResolver.transaction`.
     """
     def __init__(self, conflict_resolver):
         self.conflict_resolver = conflict_resolver

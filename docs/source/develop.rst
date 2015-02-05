@@ -166,4 +166,11 @@ Continuous integration is running on drone.io <https://drone.io/bitbucket.org/mi
 
 See ``tests/setup-testing-droneio.sh`` how tests are executed.
 
+Full CI test suite
++++++++++++++++++++
+
+Because some tests may take more than 15 minutes to execute, full test suite cannot be run on CI environment. There is script ``full-run-tests.sh`` which can be used to run tests on Linux VM + bitcoind testnet instance.
+
+Example::
+
 
