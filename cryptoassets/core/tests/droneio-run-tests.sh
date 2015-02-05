@@ -34,6 +34,12 @@ pip install -U --quiet pip
 pip install --quiet -r requirements.txt --use-mirrors
 pip install --quiet -r test-extra-requirements.txt --use-mirrors
 
+# Make sure our script hooks are installed in bin/
+python setup.py develop
+
+# Asset that we got the shell commands, needed for running test_service tests
+which cryptoassets-initialize-database
+
 # Make sure we have PSQL test database for conflict resolver test case
 # http://docs.drone.io/databases.html
 # no IF NOT EXISTS for psql

@@ -1,4 +1,6 @@
 import abc
+import decimal
+import json
 
 
 class EventHandler(abc.ABC):
@@ -13,3 +15,17 @@ class EventHandler(abc.ABC):
 
         :param data: Related data as dictionary
         """
+
+
+def event_json_dumps(event_data):
+    """Serializes the event as JSON.
+
+    Decimals are converted to string, not float, to prevent the loss of accuracy.
+    """
+
+    def decimal_default(obj):
+        if isinstance(obj, decimal.Decimal):
+            return str(obj)
+        raise TypeError
+
+    json.dumps(event_data, default=decimal_default)

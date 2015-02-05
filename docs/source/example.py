@@ -1,13 +1,27 @@
-"""cryptoassets.core example application.
-"""
+"""cryptoassets.core example application"""
 
 import os
+import warnings
 from decimal import Decimal
+import datetime
+
+
+from sqlalchemy.exc import SAWarning
 
 from cryptoassets.core.app import CryptoAssetsApp
 from cryptoassets.core.configure import Configurator
-
 from cryptoassets.core.utils.httpeventlistener import simple_http_event_listener
+from cryptoassets.core.models import NotEnoughAccountBalance
+
+# Because we are using a toy database and toy money, we ignore this SQLLite database warning
+warnings.filterwarnings(
+    'ignore',
+    r"^Dialect sqlite\+pysqlite does \*not\* support Decimal objects natively\, "
+    "and SQLAlchemy must convert from floating point - rounding errors and other "
+    "issues may occur\. Please consider storing Decimal numbers as strings or "
+    "integers on this platform for lossless storage\.$",
+    SAWarning, r'^sqlalchemy\.sql\.type_api$')
+
 
 assets_app = CryptoAssetsApp()
 
@@ -28,11 +42,11 @@ assets_app.setup_session()
 # process
 @simple_http_event_listener(configurer.config)
 def handle_cryptoassets_event(event_name, data):
-    if event_name == "txupdate" and data["transaction_type"] == "deposit":
+    if event_name == "txupdate":
         address = data["address"]
         confirmations = data["confirmations"]
         txid = data["txid"]
-        print("Got incoming transaction {} to address {}, {} confirmations".
+        print("Got transaction notification txid:{} addr:{}, confirmations:{}".
             format(txid, address, confirmations))
 
 
@@ -91,8 +105,9 @@ def create_receiving_address(session):
 @assets_app.conflict_resolver.managed_transaction
 def send_to(session, address, amount):
     """Perform the actual send operation within managed transaction."""
-    wallet, my_account = get_wallet_and_account()
-    transaction = wallet.send(my_account, address, amount)
+    wallet, my_account = get_wallet_and_account(session)
+    friendly_date = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    transaction = wallet.send(my_account, address, amount, "Test send at {}".format(friendly_date))
     print("Created new transaction #{}".format(transaction.id))
 
 
@@ -107,27 +122,33 @@ def send():
         print("Please enter a dot separated decimal number as amount.")
         return
 
-    send_to(address, amount)
+    try:
+        send_to(address, amount)
+    except NotEnoughAccountBalance:
+        print("*" * 40)
+        print("Looks like your wallet doesn't have enough Bitcoins to perform the send. Please top up your wallet from testnet faucet.")
+        print("*" * 40)
 
 
 @assets_app.conflict_resolver.managed_transaction
 def print_status(session):
-    """
-    """
+    """Print the state of our wallet and transactions."""
     wallet, account = get_wallet_and_account(session)
 
     # Get hold of classes we use for modelling Bitcoin
-    # These are instances of
-    #
+    # These classes are defined in cryptoassets.core.coin.bitcoind.model models
     Address = assets_app.coins.get("btc").address_model
     Transaction = assets_app.coins.get("btc").transaction_model
 
-    print("Welcome to cryptoassets example app")
-    print("")
-    print("You have the following addresses receiving addresses:")
+    print("Account #{}, confirmed balance {:.8f} BTC, incoming BTC {:.8f}". \
+        format(account.id, account.balance, account.get_unconfirmed_balance()))
 
-    for address in session.query(Address).filter_by(account == account):
-        print("{}: total received {} BTC", address.address, address.balance)
+    print("")
+    print("Receiving addresses available:")
+    print("(Send Testnet Bitcoins to them to see what happens)")
+
+    for address in session.query(Address).filter(Address.account == account):
+        print("- {}: confirmed received {:.8f} BTC".format(address.address, address.balance))
     print("")
     print("We know about the following transactions:")
     for tx in session.query(Transaction):
@@ -135,8 +156,8 @@ def print_status(session):
             print("Outgoing tx #{} {} to {} network txid {} amount {} BTC".format(
                 tx.id, tx.state, tx.txid, tx.address, tx.amount))
         elif tx.state in ("incoming", "processed"):
-            print("Incoming tx #{} {} to {} network txid {} amount {} BTC".format(
-                tx.id, tx.state, tx.txid, tx.address, tx.amount))
+            print("- IN tx:{} to:{} amount:{:.8f} BTC confirmations:{}".format(
+                tx.txid, tx.address.address, tx.amount, tx.confirmations))
         else:
             print("Internal/other tx #{} {} amount {} BTC".format(
                 tx.id, tx.state, tx.txid, tx.address, tx.amount))
@@ -148,11 +169,15 @@ def print_status(session):
     print("3) Quit")
 
 
+print("Welcome to cryptoassets example app")
+print("")
+
 running = True
 while running:
 
     print_status()
-    command = raw_input("Give your command [1-3]:")
+    command = input("Give your command [1-3]:")
+    print("")
     if command == "1":
         create_receiving_address()
     elif command == "2":

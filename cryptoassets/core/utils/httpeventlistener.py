@@ -58,6 +58,9 @@ class CryptoassetsServiceRequestHandler(BaseHTTPRequestHandler):
 
             logger.debug("Handling incoming event %s", event_name)
 
+            if b"data" not in postvars:
+                raise RuntimeError("Incoming POST did not contain data field: {}".format(postvars))
+
             data = postvars[b"data"][0].decode("utf-8")
             data = json.loads(data)
             self.server.func(event_name, data)

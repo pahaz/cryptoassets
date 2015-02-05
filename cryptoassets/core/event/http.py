@@ -2,6 +2,8 @@
 
 The HTTP POST contains two fields, ``event_name`` (string) and ``data`` (JSON).
 
+Decimals are converted to strings for serialization.
+
 Configuration options
 
 :param class: Always ``cryptoassets.core.event.http.HTTPEventHandler``.
@@ -11,9 +13,9 @@ Configuration options
 
 import requests
 import logging
-import json
 
 from .base import EventHandler
+from .base import event_json_dumps
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +28,7 @@ class HTTPEventHandler(EventHandler):
     def trigger(self, event_name, data):
         assert type(event_name) == str
 
-        data = json.dumps(data)
+        data = event_json_dumps(data)
 
         resp = requests.post(self.url, dict(event_name=event_name, data=data))
         if resp.status_code != 200:

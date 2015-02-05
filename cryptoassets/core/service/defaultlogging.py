@@ -8,14 +8,15 @@ from rainbow_logging_handler import RainbowLoggingHandler
 
 
 def setup_stdout_logging():
-    formatter = logging.Formatter("[%(asctime)s] %(message)s")  # same as default
+    formatter = logging.Formatter("[%(asctime)s] [%(name)s %(funcName)s] %(message)s")  # same as default
 
     # setup `RainbowLoggingHandler`
     # and quiet some logs for the test output
     handler = RainbowLoggingHandler(sys.stdout)
     handler.setFormatter(formatter)
     logger = logging.getLogger()
-    logger.addHandler(handler)
+    logger.handlers = [handler]
+    #logger.addHandler(handler)
 
     if "VERBOSE" in os.environ:
         logger.setLevel(logging.DEBUG)
@@ -29,6 +30,12 @@ def setup_stdout_logging():
     logger.setLevel(logging.WARN)
 
     logger = logging.getLogger("cryptoassets.core.backend.bitcoind")
+    logger.setLevel(logging.WARN)
+
+    logger = logging.getLogger("cryptoassets.core.backend.sochainwalletnotify")
+    logger.setLevel(logging.WARN)
+
+    logger = logging.getLogger("apscheduler")
     logger.setLevel(logging.WARN)
 
     # SQL Alchemy transactions

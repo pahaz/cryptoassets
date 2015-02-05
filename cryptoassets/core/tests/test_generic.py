@@ -148,3 +148,43 @@ class GenericWalletTestCase(unittest.TestCase):
             # Broadcasts should not count as deposits
             desposits = wallet.get_deposit_transactions()
             self.assertEqual(desposits.count(), 1)
+
+    def test_get_unconfirmed_balance(self):
+        """Check balance of incoming transctions."""
+
+        with self.app.conflict_resolver.transaction() as session:
+            wallet_class = self.app.coins.get("btc").wallet_model
+            NetworkTransaction = self.app.coins.get("btc").network_transaction_model
+
+            wallet = wallet_class.get_or_create_by_name("foobar", session)
+            session.flush()
+
+            account1 = wallet.get_or_create_account_by_name("account1")
+            account2 = wallet.get_or_create_account_by_name("account2")
+            session.flush()
+
+            self.assertEqual(account1.get_unconfirmed_balance(), Decimal(0))
+
+            receiving_addr = wallet.create_receiving_address(account1, "test incoming")
+            receiving_addr_2 = wallet.create_receiving_address(account2, "test incoming")
+            session.flush()
+
+            self.assertEqual(account1.get_unconfirmed_balance(), Decimal(0))
+
+            account2.balance = Decimal(100)
+            wallet.send_internal(account2, account1, Decimal(10), receiving_addr.address)
+            session.flush()
+
+            # Create deposit to account1
+            ntx, created = NetworkTransaction.get_or_create_deposit(session, "foobar")
+            session.flush()
+            account, transaction = wallet.deposit(ntx, receiving_addr.address, Decimal(20), extra=dict(confirmations=1))
+            session.flush()
+
+            # Create deposit to account2
+            ntx, created = NetworkTransaction.get_or_create_deposit(session, "foobar")
+            session.flush()
+            account, transaction = wallet.deposit(ntx, receiving_addr_2.address, Decimal(30), extra=dict(confirmations=1))
+            session.flush()
+
+            self.assertEqual(account1.get_unconfirmed_balance(), Decimal(20))

@@ -80,9 +80,13 @@ class BlockIo(base.CoinBackend):
         return str(amount)
 
     def create_address(self, label):
+        """Create a new address on block.io wallet.
 
+        Note that block.io blocks creating addresses with the same label.
+        """
         # # block.io does not allow arbitrary characters in labels
         label = slugify(label)
+
         result = self.block_io.get_new_address(label=label)
         # {'data': {'address': '2N2Qqvj5rXv27rS6b7rMejUvapwvRQ1ahUq', 'user_id': 5, 'label': 'slange11', 'network': 'BTCTEST'}, 'status': 'success'}
 

@@ -158,11 +158,12 @@ class Bitcoind(base.CoinBackend):
                 result = func(*args, **kwargs)
                 return result
             except ValueError as e:
-                #
                 raise BitcoindJSONError("Probably could not authenticate against bitcoind-like RPC, try manually with curl") from e
             except socket.timeout as e:
                 raise BitcoindJSONError("Got timeout when doing bitcoin RPC call {}. Maybe bitcoind was not synced with network?".format(name)) from e
             except CannotSendRequest as e:
+                # AuthServiceProxy is unreliable and may up stuck in a state it cannot function anymore.
+                # Thus, we recreate it.
                 logger.error("Recoverable JSON-RPC API exception - most likely HTTP client stuck in a bad state. Will reconnect, reconnect attempt %d", retry)
                 logger.exception(e)
                 self.connect(reconnect=True)

@@ -11,6 +11,7 @@ import datetime
 from collections import Counter
 from decimal import Decimal
 
+from sqlalchemy.sql import func
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import Numeric
@@ -54,6 +55,10 @@ class SameAccount(Exception):
 
 class BadAddress(Exception):
     """Cannot send to invalid address."""
+
+
+class CannotCreateAddress(Exception):
+    """Backend failed to create a new receiving address."""
 
 
 class TableName:
@@ -143,7 +148,32 @@ class GenericAccount(CoinDescriptionModel, CoinBackend):
 
         Address = self.coin_description.Address
         addresses = session.query(Address).filter(Address.account == self)
-        return "Receiving address #{} for account #{}".format(addresses.count()+1, self.id)
+        friendly_date = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+        return "Receiving address #{} for account #{} created at {}".format(addresses.count()+1, self.id, friendly_date)
+
+    def get_unconfirmed_balance(self):
+        """Get the balance of this incoming transactions balance.
+
+        TODO: Move to its own subclass
+
+        TODO: Denormalize unconfirmed balances for faster look up?
+
+        :return: Decimal
+        """
+        session = Session.object_session(self)
+
+        Transaction = self.coin_description.Transaction
+        NetworkTransaction = self.coin_description.NetworkTransaction
+        Address = self.coin_description.Address
+        Account = self.__class__
+
+        unconfirmed_amount = func.sum(Transaction.amount).label("unconfirmed_amount")
+        unconfirmed_amounts = session.query(unconfirmed_amount).join(NetworkTransaction).filter(NetworkTransaction.confirmations < NetworkTransaction.confirmation_count).join(Address).filter(Address.account == self)
+
+        results = unconfirmed_amounts.all()
+        assert len(results) == 1
+        # SQL might spit out None if no matching rows
+        return results[0][0] or Decimal(0)
 
     def __str__(self):
         return "ACC:{} name:{} bal:{} wallet:{}".format(self.id, self.name, self.balance, self.wallet.id if self.wallet else "-")
@@ -596,7 +626,10 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         if not label and automatic_label:
             label = account.pick_next_receiving_address_label()
 
-        _address = self.backend.create_address(label=label)
+        try:
+            _address = self.backend.create_address(label=label)
+        except Exception as e:
+            raise CannotCreateAddress("Backend failed to create address for account {} label {}".format(account.id, label)) from e
 
         address = self.coin_description.Address()
         address.address = _address
@@ -810,7 +843,7 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
         assert isinstance(amount, Decimal)
 
         if from_account.id == to_account.id:
-            raise SameAccount("Trying to do internal transfer on account id {}".format(from_account.id))
+            raise SameAccount("Transaction receiving and sending internal account is same: #{}".format(from_account.id))
 
         if not allow_negative_balance:
             if from_account.balance < amount:

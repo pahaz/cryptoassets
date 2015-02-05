@@ -107,6 +107,21 @@ Running the example application::
 
     python example.py
 
+You should see something like this::
+
+    Welcome to cryptoassets example app
+
+    Receiving addresses available:
+    (Send Testnet Bitcoins to them to see what happens)
+    - 2MzGzEUyHgqBXzbuGCJDSBPKAyRxhj2q9hj: total received 0.00000000 BTC
+
+    We know about the following transactions:
+
+    Give a command
+    1) Create new receiving address
+    2) Send bitcoins to other address
+    3) Quit
+
 The application is fully functional and you can start your Bitcoin testnet wallet business right away. Only one more thing to do...
 
 ...the communication with cryptoasset network is handled by the :doc:`cryptoassets helper service <./service>` background process. Thus, nothing comes in or goes out to your application before you start the helper process::
@@ -114,9 +129,26 @@ The application is fully functional and you can start your Bitcoin testnet walle
     # Run this command in another terminal
     cryptoassets-helper-service example.config.yaml
 
+You will get some *Rescanned transactions* log messages on the start up if you didn't change the default block.io credentials. These are test transactions from other example users.
+
 Now you can send or receive Bitcoins within your application. If you don't start the helper service the application keeps functioning, but all external cryptoasset network traffic is being buffered until the *cryptoassets helper service* is running again.
 
 If you want to reset the application just delete the database file ``/tmp/cryptoassets.test.sqlite``.
+
+Obtaining testnet bitcoins and sending them
+----------------------------------------------
+
+The example runs on Bitcoin testnet bitcoins which are not real bitcoins.
+
+Get Testnet coins from here:
+
+* http://tpfaucet.appspot.com/
+
+* `Alternative testnet faucets <http://bitcoin.stackexchange.com/questions/17690/is-there-any-where-to-get-free-testnet-bitcoins>`_
+
+No more than **0.01** testnet bitcoins are needed for the example.
+
+Send them to the receiving address displayed in the eaxmples application status. You should see a notification printed for incoming transaction in ~30 seconds after you send the bitcoins.
 
 After completing the example
 ===============================

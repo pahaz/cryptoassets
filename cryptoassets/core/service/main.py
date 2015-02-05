@@ -56,7 +56,7 @@ class Service:
     Status server (:py:mod:`cryptoassets.core.service.status`) can be started for inspecting our backend connections are running well.
 
     """
-    def __init__(self, config, subsystems=[Subsystem.database, Subsystem.backend], daemon=False):
+    def __init__(self, config, subsystems=[Subsystem.database, Subsystem.backend], daemon=False, logging=True):
         """
         :param config: cryptoassets configuration dictionary
 
@@ -80,18 +80,21 @@ class Service:
 
         self.daemon = daemon
 
-        self.config(config)
+        self.config(config, logging=logging)
         self.setup()
 
-    def config(self, config):
-        """Load configuration from Python dict."""
+    def config(self, config, logging):
+        """Load configuration from Python dict.
+
+        Initialize logging system if necessary.
+        """
         self.configurator = Configurator(self.app)
         self.configurator.load_from_dict(config)
+        if logging:
+            self.setup_logging(config)
 
     def setup(self):
         """Start background threads and such."""
-
-        self.setup_logging()
 
         if Subsystem.broadcast in self.app.subsystems:
             self.setup_jobs()
@@ -105,10 +108,11 @@ class Service:
         # XXX: We are aliasing here, because configurator can only touch app object. Need to figure out something cleaner.
         self.status_server = self.app.status_server
 
-    def setup_logging(self):
+    def setup_logging(self, config):
         global logger
 
-        if not self.daemon:
+        if not self.daemon or not config.get("service", {}).get("logging"):
+            # Setup console logging if we run as a batch command or service config lacks logging
             defaultlogging.setup_stdout_logging()
 
         logger = logging.getLogger(__name__)
@@ -126,7 +130,7 @@ class Service:
         self.app.create_tables()
 
     def setup_jobs(self):
-        logger.info("Setting up broadcast scheduled job")
+        logger.debug("Setting up broadcast scheduled job")
         self.scheduler = BackgroundScheduler()
         self.broadcast_job = self.scheduler.add_job(self.poll_broadcast, 'interval', minutes=2)
         self.open_transaction_job = self.scheduler.add_job(self.poll_network_transaction_confirmations, 'interval', minutes=1)

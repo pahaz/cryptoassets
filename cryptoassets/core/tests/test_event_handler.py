@@ -9,7 +9,7 @@ import json
 import threading
 import requests
 import time
-
+from decimal import Decimal
 from http.server import HTTPServer
 from http.server import BaseHTTPRequestHandler
 
@@ -175,7 +175,7 @@ class HTTPNotificationTestCase(unittest.TestCase):
                 time.sleep(0.1)
                 self.assertLess(time.time(), deadline, "TestServer never become ready")
 
-            event_handler_registry.trigger("foobar", {"test": "abc"})
+            event_handler_registry.trigger("foobar", {"test": "abc", "test2": Decimal("1.0")})
         finally:
             server.stop()
 
