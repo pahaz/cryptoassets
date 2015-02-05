@@ -26,3 +26,4 @@ lib/*
 *.sqlite
 cryptoassets/lib
 coverage.xml
+.coverage
