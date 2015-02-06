@@ -171,6 +171,10 @@ Full CI test suite
 
 Because some tests may take more than 15 minutes to execute, full test suite cannot be run on CI environment. There is script ``full-run-tests.sh`` which can be used to run tests on Linux VM + bitcoind testnet instance.
 
-Example::
+Run this script on a server having running Bitcoind instance.
+
+Releases
+----------
+
 
 

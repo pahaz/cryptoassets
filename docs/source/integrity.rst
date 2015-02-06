@@ -40,28 +40,14 @@ The production *cryptoassets.core* always runs its database transactions on `ser
 
 Serializable transaction isolation simply prevents all kind of race conditions. Alternative would be writing application level locking code, which is prone to errors, as it incumbers more cognitive overhead for the developers themselves. Better let the database developers take care of the locking, as they have liven their life by solving concurrency issues and they are expert on it.
 
-More information
-
 * `PostgreSQL transaction isolation levels <http://www.postgresql.org/docs/devel/static/transaction-iso.html>`_
 
 Transaction conflict handling
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-*cryptoassets.core* provides tools to handle serialized transaction rollbacks in idomatic Python way.
+*cryptoassets.core* provides tools to handle serialized transaction rollbacks in Pythonic way.
 
-:py:mod:`cryptoassets.core.utils.conflictresolver` is an utility class extensively used through *cryptoassets.core*. It's :py:meth:`cryptoassets.core.utils.conflictresolver.ConflictResolver.managed_transaction` function decorator allows one easily write Python pieces of code
-
-* Where serialized transaction is initialized.
-
-* The code is re-run in the case of transaction conflicts - e.g. other process or thread edited data when this code was being run.
-
-Conflict tests
-~~~~~~~~~~~~~~~~
-
-Unit test suite provides a test case for testing out different transaction conflict cases and their resolution. If you are unsure Python database driver can handle transaction conflicts, this is a good smoke test to find out.
-
-.. automodule:: cryptoassets.core.tests.test_conflictresolver
- :members: PostgreSQLConflictResolverTestCase
+:py:mod:`cryptoassets.core.utils.conflictresolver` is an utility class extensively used through *cryptoassets.core*. It's :py:meth:`cryptoassets.core.utils.conflictresolver.ConflictResolver.managed_transaction` function decorator allows one easily write transaction sensitive code blocks.
 
 Data separation
 ----------------------------------------------------------------------
@@ -86,7 +72,7 @@ For broken transactions one needs to manually check from blockchain, by matching
 Missed incoming transactions
 ------------------------------
 
-For a reason or another, *cryptoassets.core* may miss the initial :doc:`wallet notification <./backends>` from the network for new deposit transaction arriving to the address in your application wallet. Particularly, *cryptoassets helper service* could be down when the transaction was broadcasted.
+For a reason or another, *cryptoassets.core* may miss the initial :doc:`wallet notification <./backends>` from the network for new deposit transaction arriving to the address in your application wallet. Particularly, *cryptoassets helper service* could be down when the incoming transaction was broadcasted.
 
 *cryptoassets helper service* rescans all receiving addresses on start up. Thus, restarting *cryptoassets helper service* fixes the problem. Alternatively, you can manually run :doc:`rescan command <./service>`.
 
@@ -101,9 +87,9 @@ E.g.
 
 * *Cryptoassets helper service* was down when :doc:`wallet notification <./backends>` arrived
 
-*Cryptoassets helper service* will poll all transactions where the transaction confirmation count is below a :doc:`threshold value <./config>`. If you miss confirmation notification *cryptoassets.core* will simple keep polling the transaction again and again until it manages to update the confirmation count.
+*Cryptoassets helper service* will poll all transactions where the transaction confirmation count is below a :doc:`threshold value <./config>`. If you miss confirmation notification *cryptoassets.core* keeps polling the transaction and resend the transaction update message to your application. When your application is satisfied with the confirmation count it can mark the transaction processed.
 
 Choosing your database
-------------------..----
+------------------------
 
-`MySQL InnoDB engine is known for various prone-to-human-error issues <http://blog.ionelmc.ro/2014/12/28/terrible-choices-mysql/>`_, sacrifing predictability and data integrity for legacy compatibility and performance. It is recommended you use *cryptoassets.core* on PostgreSQL insallation unless you have considerable MySQL experience.
+`MySQL InnoDB engine is known for various prone-to-human-error issues <http://blog.ionelmc.ro/2014/12/28/terrible-choices-mysql/>`_, sacrifing predictability and data integrity for legacy compatibility and performance. It is recommended you use *cryptoassets.core* on PostgreSQL or other alternative database unless you have considerable MySQL experience.

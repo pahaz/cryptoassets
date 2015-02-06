@@ -9,7 +9,7 @@ There are two basic ways of `concurrency control <http://en.wikipedia.org/wiki/C
 
 * `Up-front locking <http://en.wikipedia.org/wiki/Lock_%28computer_science%29>`_: You use interprocess / interserver locks to signal you are about to access and modify resources. If there are concurrent access the actors accessing the resource wait for the lock before taking action. This is `pessimistic concurrency control mechanism <http://en.wikipedia.org/wiki/Concurrency_control#Concurrency_control_mechanisms>`_.
 
-* `Transaction serialization <http://en.wikipedia.org/wiki/Serializability>`_: Database detects concurrent access from different clients (a.k.a serialization anomaly) and do not let concurrent modifications to take place. Instead, only one transaction is let through and other conflicting transactions are rolled back. The strongest level of `transaction isolation <http://en.wikipedia.org/wiki/Isolation_%28database_systems%29>`_ is achieved using SQL `Serializable <http://en.wikipedia.org/wiki/Isolation_%28database_systems%29#Serializable_ isolation level. This is `optimistic concurrency control mechanism <http://en.wikipedia.org/wiki/Concurrency_control#Concurrency_control_mechanisms>`_.
+* `Transaction serialization <http://en.wikipedia.org/wiki/Serializability>`_: Database detects concurrent access from different clients (a.k.a serialization anomaly) and do not let concurrent modifications to take place. Instead, only one transaction is let through and other conflicting transactions are rolled back. The strongest level of `transaction isolation <http://en.wikipedia.org/wiki/Isolation_%28database_systems%29>`_ is achieved using SQL `Serializable <http://en.wikipedia.org/wiki/Isolation_%28database_systems%29#Serializable>`_ isolation level. This is `optimistic concurrency control mechanism <http://en.wikipedia.org/wiki/Concurrency_control#Concurrency_control_mechanisms>`_.
 
 For complex systems, locking may pose scalability and complexity issues. More fine grained locking is required, placing cognitive load on the software developer to carefully think and manage all locks upfront to prevent race conditions and deadlocks. Thus, `locking may be error prone approach in real world application development <http://en.wikipedia.org/wiki/Software_transactional_memory#Conceptual_advantages_and_disadvantages>`_ (TBD needs better sources).
 
@@ -39,7 +39,7 @@ The work was inspired by `ZODB transaction package <https://pypi.python.org/pypi
 Transaction retries
 -----------------------
 
-In the core of transaction serialization approach is recovery from the transaction conflict. If you do not have any recovery mechanism, when two users edit the same item on a website and press save simultaneously, leading to a transaction conflict in the database, one of the user gets save succeed the other gets an internal error page. The core principle here is that we consider transaction conflict a rare event under normal system load conditions i.e. it is rare users press the save simultaneously. But it still very bad user experience to give two error page for  one of the users, especially if the system itself knows how it could recovery from the situation - without needing intervention from the user.
+In the core of transaction serialization approach is recovery from the transaction conflict. If you do not have any recovery mechanism, when two users edit the same item on a website and press save simultaneously, leading to a transaction conflict in the database, one of the user gets save succeed the other gets an internal error page. The core principle here is that we consider transaction conflict a rare event under normal system load conditions i.e. it is rare users press the save simultaneously. But it still very bad user experience to serve an error page for  one of the users, especially if the system itself knows how it could recovery from the situation - without needing intervention from the user.
 
 *ConflictResolver* approach to recovery is to
 
@@ -49,7 +49,7 @@ In the core of transaction serialization approach is recovery from the transacti
 
 * Repeat this X times and give up if it seems like our transaction is never going through (because of too high system load or misdesigned long running transaction blocking all writes)
 
-Marked Python code blocks are created using Python `function decorators <https://www.python.org/dev/peps/pep-0318/>´_. This is not optimal approach in the sense of code cleanness and Python ``with`` block would be preferred. However, Python ``with`` `lacks ability to run loops which is prerequisite for transaction retries <http://stackoverflow.com/q/27351433/315168>`_. However combined with Python `closures <http://stackoverflow.com/q/4020419/315168>_, the boilerplate is quite minimal.
+Marked Python code blocks are created using Python `function decorators <https://www.python.org/dev/peps/pep-0318/>`_. This is not optimal approach in the sense of code cleanness and Python ``with`` block would be preferred. However, Python ``with`` `lacks ability to run loops which is prerequisite for transaction retries <http://stackoverflow.com/q/27351433/315168>`_. However combined with Python `closures <http://stackoverflow.com/q/4020419/315168>`_, the boilerplate is quite minimal.
 
 Example
 ---------
@@ -60,7 +60,8 @@ Here is a simple example how to use ConflictResolver::
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    engine = create_engine('postgresql:///unittest-conflict-resolution',  isolation_level='SERIALIZABLE')
+    engine = create_engine('postgresql:///unittest-conflict-resolution', \
+        isolation_level='SERIALIZABLE')
 
     # Create new session for SQLAlchemy engine
     def create_session():
@@ -72,14 +73,16 @@ Here is a simple example how to use ConflictResolver::
 
     # Create a decorated function which can try to re-run itself in the case of conflict
     @conflict_resolver.managed_transaction
-    def myfunc(session):
+    def top_up_balance(session, amount):
 
-        # Both threads modify the same wallet simultaneously
-        w = session.query(BitcoinWallet).get(1)
-        w.balance += 1
+        # Many threads could modify this account simultanously,
+        # as incrementing the value in application code is
+        # not atomic
+        acc = session.query(Account).get(1)
+        acc.balance += amount
 
     # Execute the conflict sensitive code inside a transaction aware code block
-    myfunc()
+    top_up_balance(100)
 
 Rules and limitations
 -----------------------
@@ -111,10 +114,10 @@ Compatibility
 
 ConflictResolver should be compatible with all SQL databases providing Serializable isolation level. However, because Python SQL drivers and SQLAlchemy do not standardize the way how SQL execution communicates the transaction conflict back to the application, the exception mapping code might need to be updated to handle your database driver.
 
-Further reading
------------------
+API documentation
+------------------
 
-For different transaction conflict test cases, see the unit tests.
+See *ConflictResolver* API documentation below.
 
 """
 
@@ -156,13 +159,6 @@ DATABASE_COFLICT_ERRORS.append((ConcurrentModificationError, None))
 
 
 logger = logging.getLogger(__name__)
-
-
-class CannotResolveDatabaseConflict(Exception):
-    """The managed_transaction decorator has given up trying to resolve the conflict.
-
-    We have exceeded the threshold for database conflicts. Probably long-running transactions or overload are blocking our rows in the database, so that this transaction would never succeed in error free manner. Thus, we need to tell our service user that unfortunately this time you cannot do your thing.
-    """
 
 
 class ConflictResolver:
@@ -255,7 +251,9 @@ class ConflictResolver:
         return decorated_func
 
     def managed_non_retryable_transaction(self, func):
-        """
+        """Provide ``managed_transactions`` decorator API compatibility without retrying.
+
+        Decorate your transaction handling functions with this method if you absolute must not run the code twice for transaction retry and the user error is desirable outcome.
         """
 
         def decorated_func(*args, **kwargs):
@@ -307,8 +305,15 @@ class ConflictResolver:
         return ContextManager(self)
 
 
+class CannotResolveDatabaseConflict(Exception):
+    """The managed_transaction decorator has given up trying to resolve the conflict.
+
+    We have exceeded the threshold for database conflicts. Probably long-running transactions or overload are blocking our rows in the database, so that this transaction would never succeed in error free manner. Thus, we need to tell our service user that unfortunately this time you cannot do your thing.
+    """
+
+
 class ContextManager:
-    """Use conflict resolver in Python with statement.
+    """Use conflict resolver in Python ``with` statement.
 
     See :py:meth:`cryptoassets.core.utils.conflictresolver.ConflictResolver.transaction`.
     """

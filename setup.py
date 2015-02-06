@@ -13,11 +13,15 @@ requires = [
     'python-slugify',
     'block-io',
     'rainbow_logging_handler',
+    'apscheduler',
+    'PyYAML',
+    'requests',
+    'python-bitcoinrpc'
     ]
 
 setup(name='cryptoassets.core',
       version='0.0',
-      description='Bitcoin, cryptocurrency and cryptoassets API, database models and accounting library',
+      description='A Python framework for building Bitcoin, other cryptocurrency (altcoin) and cryptoassets services',
       long_description=README + '\n\n' + CHANGES,
       # https://packaging.python.org/en/latest/distributing.html#classifiers
       classifiers=[
@@ -29,7 +33,6 @@ setup(name='cryptoassets.core',
         'License :: OSI Approved :: MIT License',
         'Topic :: Security :: Cryptography',
         'Intended Audience :: Financial and Insurance Industry'
-
         ],
       author='Mikko Ohtamaa',
       author_email='mikko@opensourcehacker.com',

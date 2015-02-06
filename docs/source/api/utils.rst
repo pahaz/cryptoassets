@@ -15,6 +15,11 @@ Transaction conflict resolver
 .. automodule:: cryptoassets.core.utils.conflictresolver
  :members:
 
+Conflict resolver unit tests provide tests for different transaction conflict resolution outcomes and their resolution. If you are unsure Python database driver can handle transaction conflicts, this is a good smoke test to find out.
+
+.. automodule:: cryptoassets.core.tests.test_conflictresolver
+ :members: PostgreSQLConflictResolverTestCase
+
 Automatic enumeration classes
 ------------------------------
 
