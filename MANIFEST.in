@@ -1,1 +1,3 @@
-recursive-include cryptoassets *.yaml *.py *.rst
+recursive-include cryptoassets *.yaml *.py
+include *.rst
+
