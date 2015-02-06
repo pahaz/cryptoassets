@@ -22,7 +22,7 @@ cryptoassets.core
     :target: https://pypi.python.org/pypi/cryptoassets.core/
     :alt: License
 
-.. |versions| image:: https://pypip.in/py_versions/cryptoassets.core/badge.svg
+.. |versions| image:: https://pypip.in/py_versions/cryptoassets.core/badge.png
     :target: https://pypi.python.org/pypi/cryptoassets.core/
     :alt: Supported Python versions
 
