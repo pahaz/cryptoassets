@@ -7,7 +7,7 @@ Getting started
 Introduction
 ==============
 
-*cryptoassets.core* provides safe, scalable and future-proof cryptocurrency and cryptoassets management for your Python application. You can use the framework to accept cryptocurrency payments, build cryptoasset services and exchanges.
+*cryptoassets.core* provides safe, scalable and future-proof cryptocurrency and cryptoassets accounting for your Python application. You can use the framework to accept cryptocurrency payments, build cryptoasset services and exchanges.
 
 Basics
 ======
@@ -16,7 +16,7 @@ Basics
 
 * *cryptoassets.core* support various cryptocurrencies and assets and is easily to extend support your favorite altcoin.
 
-* *cryptoassets.core* works with cryptocurrency API services (block.io, blockchain.info) and daemons (*bitcoind*, *dogecoind*). The framework uses term "backend" to refer these. You either sign up for an account on any the API services or run the daemon on your own server. Please note that running *bitcoind* requires at least 2 GB of RAM and 20 GB of disk space.
+* *cryptoassets.core* works with cryptocurrency API services (block.io, blockchain.info) and daemons (*bitcoind*, *dogecoind*). The framework uses term *backend* to refer these. You either sign up for an account on any the API services or run the daemon on your own server. Please note that running *bitcoind* requires at least 2 GB of RAM and 20 GB of disk space.
 
 * :doc:`For data integrity reasons <./integrity>`, *cryptoassets.core* uses its own database connection, most likely being different from the default database connection of your application.
 

@@ -1,14 +1,14 @@
 Changelog
 ----------
 
-0.1 (unreleased)
+0.1 (2015-02-06)
 ++++++++++++++++
 
-- Nothing changed yet.
+- Initial release.
 
 
 0.0 (2015-02-06)
 ++++++++++++++++++
 
--  Release testing
+-  Release testing.
 
