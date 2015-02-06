@@ -7,7 +7,7 @@ Getting started
 Introduction
 ==============
 
-*cryptoassets.core* provides safe, scalable and future-proof cryptocurrency and cryptoassets accounting for your Python application. You can use the framework to accept cryptocurrency payments, build cryptoasset services and exchanges.
+`cryptoassets.core <https://bitbucket.org/miohtama/cryptoassets>`_ provides safe, scalable and future-proof cryptocurrency and cryptoassets accounting for your Python application. Use the framework to easily accept cryptocurrency payments, build cryptoasset services and exchanges.
 
 Basics
 ======
