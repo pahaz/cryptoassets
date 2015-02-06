@@ -144,7 +144,9 @@ The example runs on testnet Bitcoins which are not real Bitcoins. Get some testn
 
 No more than **0.01** Bitcoins are needed for playing around with the example app.
 
-After sending the Bitcoins you should see a notification printed for an incoming transaction in ~30 seconds.
+After sending the Bitcoins you should see a notification printed for an incoming transaction in ~30 seconds which is the time it takes for the Bitcoin transaction to propagate through testnet::
+
+    Got transaction notification txid:512a082c2f4908d243cb52576cd5d22481344faba0d7a837098f9af81cfa8ef3 addr:2N7Fi392deSEnQgiYbmpw1NmK6vMVrVzuwc, confirmations:0
 
 After completing the example
 ===============================
