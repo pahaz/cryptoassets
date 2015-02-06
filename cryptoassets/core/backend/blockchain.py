@@ -1,11 +1,6 @@
 """blockchain.info backend.
 
-Currently does not support incoming transactions.
-
-You need to create a wallet on `blockhain.info <https://blockhain.info>`_.
-Wallet unique id and your password are used to create API connection.
-
-For usage instructions see :py:mod:`cryptoassets.core.tests.test_blockchain`.
+**The support is disabled in this version**
 """
 
 import json

@@ -102,7 +102,7 @@ class ServiceTestCase(unittest.TestCase):
 
         config = self.prepare_config()
 
-        self.service = service = Service(configure, ALL_SUBSYSTEMS)
+        self.service = service = Service(config, ALL_SUBSYSTEMS)
         self.service.setup_session()
 
         status_http_server = self.service.status_server

@@ -1,29 +1,44 @@
 cryptoassets.core
 ==================
 
-.. image:: https://readthedocs.org/projects/cryptoassetscore/badge/?version=latest
+.. |docs| image:: https://readthedocs.org/projects/cryptoassetscore/badge/?version=latest
     :target: http://cryptoassetscore.readthedocs.org/en/latest/
 
-.. image:: https://drone.io/bitbucket.org/miohtama/cryptoassets/status.png
+.. |ci| image:: https://drone.io/bitbucket.org/miohtama/cryptoassets/status.png
     :target: https://drone.io/bitbucket.org/miohtama/cryptoassets/latest
 
-.. image:: https://codecov.io/bitbucket/miohtama/cryptoassets/coverage.svg?branch=master :target: https://codecov.io/bitbucket/miohtama/cryptoassets?branch=master
+.. |cov| image:: https://codecov.io/bitbucket/miohtama/cryptoassets/coverage.svg?branch=master
+    :target: https://codecov.io/bitbucket/miohtama/cryptoassets?branch=master
 
-.. image:: https://pypip.in/download/cryptoassets.core/badge.png
-    :target: https://pypi.python.org/pypi//pytest-cov/
+.. |downloads| image:: https://pypip.in/download/cryptoassets.core/badge.png
+    :target: https://pypi.python.org/pypi/cryptoassets.core/
     :alt: Downloads
 
-.. image:: https://pypip.in/version/cryptoassets.core/badge.png
+.. |latest| image:: https://pypip.in/version/cryptoassets.core/badge.png
     :target: https://pypi.python.org/pypi/pytest-cov/
     :alt: Latest Version
 
-.. image:: https://pypip.in/license/cryptoassets.core/badge.png
+.. |license| image:: https://pypip.in/license/cryptoassets.core/badge.png
     :target: https://pypi.python.org/pypi/pytest-cov/
     :alt: License
 
-.. contents:: :local:
-
 *cryptoassets.core* is a Python framework for building Bitcoin, other cryptocurrency (altcoin) and cryptoassets services. Use cases include eCommerce, exhanges, wallets and payments.
+
++-----------+
+| |docs|    |
++-----------+
+| |ci|      |
++-----------+
+| |cov|     |
++-----------+
+| |latest|  |
++-----------+
+| |license| |
++-----------+
+||downloads||
++-----------+
+
+.. contents:: :local:
 
 Benefits
 ----------------------------------------------------------------------
@@ -36,7 +51,7 @@ Benefits
 
 * `Lock-in free <http://cryptoassetscore.readthedocs.org/en/latest/backends.html>`_: Vendor independent and platform agnostics
 
-* Customizable: Override any part of the framework
+* `Customizable <http://cryptoassetscore.readthedocs.org/en/latest/extend.html#overriding-parts-of-the-framework>`_: Override and tailor any part of the framework for your specific needs
 
 Requirements and installation
 --------------------------------
@@ -45,7 +60,7 @@ Requirements and installation
 
 You need to install database support libraries separately, depending on which database you are using.
 
-See `Installation <http://cryptoassetscore.readthedocs.org/en/latest/>_.
+See `Installation <http://cryptoassetscore.readthedocs.org/en/latest/>`_.
 
 Getting started
 ---------------
@@ -112,10 +127,10 @@ You can integrate *cryptoassets.core* on
 
 ... and any other Python application where `SQLAlchemy can be run <http://www.sqlalchemy.org/>`_.
 
-Source
---------
+Source code and issue tracking
+--------------------------------
 
-The source can be browsed at `Bitbucket <https://bitbucket.org/miohtama/cryptoassets/src>`_.
+The project source code is hosted at `Bitbucket <https://bitbucket.org/miohtama/cryptoassets/src>`_.
 
 License
 ----------
