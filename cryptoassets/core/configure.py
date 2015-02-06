@@ -44,8 +44,15 @@ class Configurator:
     Reads Python or YAML format config data and then setss :py:class:`cryptoassets.core.app.CryptoassetsApp` up and running  accordingly.
     """
 
-    def __init__(self, app):
+    def __init__(self, app, service=None):
+        """
+        :param app: :py:class:`cryptoassets.core.app.CryptoassetsApp` instance
+
+        :param service: :py:class:`cryptoassets.core.service.main.Service` instance (optional)
+        """
         self.app = app
+
+        self.service = service
 
         #: Store full parsed configuration as Python dict for later consumption
         self.config = None
@@ -215,6 +222,17 @@ class Configurator:
         server = status.StatusHTTPServer(ip, port)
         return server
 
+    def setup_service(self, config):
+        """Configure cryptoassets service helper process."""
+        assert self.service
+
+        # Nothing given, use defaults
+        if not config:
+            return
+
+        if "broadcast_period" in config:
+            self.service.broadcast_period = int(config["broadcast_period"])
+
     def load_from_dict(self, config):
         """ Load configuration from Python dictionary.
 
@@ -226,7 +244,11 @@ class Configurator:
 
         # XXX: Backwards compatibility ... drop in some point
         self.app.status_server = self.setup_status_server(config.get("status_server") or  config.get("status-server"))
+
         self.app.event_handler_registry = self.setup_event_handlers(config.get("events"))
+
+        if self.service:
+            self.setup_service(config.get("service"))
 
         self.config = config
 
@@ -244,8 +266,8 @@ class Configurator:
             logging.config.dictConfig(config)
 
     @classmethod
-    def setup_service(cls, config):
-        """Service process specific setup.
+    def setup_startup(cls, config):
+        """Service helper process specific setup when launched from command line.
 
         Reads configuration ``service`` section, ATM only interested in ``logging`` subsection.
 

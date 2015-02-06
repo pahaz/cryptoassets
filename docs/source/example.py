@@ -46,8 +46,11 @@ def handle_cryptoassets_event(event_name, data):
         address = data["address"]
         confirmations = data["confirmations"]
         txid = data["txid"]
+        print("")
+        print("")
         print("Got transaction notification txid:{} addr:{}, confirmations:{}".
             format(txid, address, confirmations))
+        print("")
 
 
 def get_wallet_and_account(session):
@@ -167,7 +170,7 @@ def print_status(session):
             print("- IN tx:{} to:{} amount:{:.8f} BTC confirmations:{}".format(
                 tx.txid, tx.address.address, tx.amount, tx.confirmations))
         else:
-            print("Internal/other tx #{} {} amount {} BTC".format(
+            print("- OTHER tx:{} {} amount:{:.8f} BTC".format(
                 tx.id, tx.state, tx.amount))
 
     print("")

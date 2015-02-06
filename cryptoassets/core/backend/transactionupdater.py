@@ -1,6 +1,7 @@
 import datetime
 from collections import Counter
 import logging
+from decimal import Decimal
 
 from sqlalchemy.orm.session import Session
 
@@ -168,6 +169,8 @@ class TransactionUpdater:
                 # Don't crash when we are self-sending into back to our wallet.
                 # This will filter out "send" and "receive" both inside the same tx
                 continue
+
+            assert isinstance(detail["amount"], Decimal), "Problem decoding txdata detail {}".format(detail)
 
             if detail["address"] == address:
                 # This transaction contained sends to some other addresses too, not just us

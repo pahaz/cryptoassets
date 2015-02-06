@@ -339,7 +339,7 @@ class ListReceivedTransactionsIterator(base.ListTransactionsIterator):
                 attemps -= 1
                 if attemps:
                     # Recreate connection. We are
-                    self.connect(reconnect=True)
+                    self.bitcoind.connect(reconnect=True)
                     continue
                 else:
                     raise

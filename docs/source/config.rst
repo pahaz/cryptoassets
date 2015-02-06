@@ -338,6 +338,7 @@ Example:
 .. code-block:: yaml
 
     service:
+        broadcast_period: 60
         logging:
             formatters:
                 verbose:
@@ -360,6 +361,14 @@ Example:
                     - file
                     - console
                 level: DEBUG
+
+
+broadcast_period
++++++++++++++++++
+
+How often (seconds) the helper service will check for outgoing transactions to broadcast.
+
+Default is 30 seconds.
 
 logging
 +++++++++

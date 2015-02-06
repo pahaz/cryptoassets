@@ -79,14 +79,16 @@ class ServiceTestCase(unittest.TestCase):
         return _status_server_port
 
     def test_start_shutdown_service(self):
-        """See that service starts and stops with bitcoind config.
-        """
+        """See that service starts and stops with bitcoind config."""
 
         config = self.prepare_config()
 
         self.service = Service(config, ALL_SUBSYSTEMS)
         # We should get one thread monitoring bitcoind walletnotify
         self.assertEqual(len(self.service.incoming_transaction_runnables), 1)
+
+        # Check we read broadcast_period config
+        self.assertEqual(self.service.broadcast_period, 60)
 
         self.service.start()
 
@@ -100,7 +102,7 @@ class ServiceTestCase(unittest.TestCase):
 
         config = self.prepare_config()
 
-        self.service = service = Service(config, ALL_SUBSYSTEMS)
+        self.service = service = Service(configure, ALL_SUBSYSTEMS)
         self.service.setup_session()
 
         status_http_server = self.service.status_server

@@ -175,7 +175,7 @@ class ListReceivedTransactionsIterator(base.ListTransactionsIterator):
 
         details = []
         for received in result["amounts_received"]:
-            details.append(dict(category="receive", address=received["recipient"], amount=received["amount"]))
+            details.append(dict(category="receive", address=received["recipient"], amount=Decimal(received["amount"])))
 
         # See top comment
         out["only_receive"] = True

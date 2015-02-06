@@ -42,6 +42,10 @@ class CryptoassetsServiceRequestHandler(BaseHTTPRequestHandler):
 
     Extra txid from the POST request.
     """
+
+    def log_request(self, code=None, size=None):
+        logger.debug("HTTP %d", code)
+
     def do_POST(self):
 
         try:
@@ -72,6 +76,10 @@ class CryptoassetsServiceRequestHandler(BaseHTTPRequestHandler):
             raise e
 
 
+class EventCaptureHTTPServer(HTTPServer):
+    """HTTP Server responsing to event HTTP POST notifications."""
+
+
 class SimpleHTTPEventListenerThread(threading.Thread):
 
     def __init__(self, ip, port, func):
@@ -91,7 +99,7 @@ class SimpleHTTPEventListenerThread(threading.Thread):
         server_address = (ip, port)
 
         try:
-            self.httpd = HTTPServer(server_address, CryptoassetsServiceRequestHandler)
+            self.httpd = EventCaptureHTTPServer(server_address, CryptoassetsServiceRequestHandler)
 
             # XXX: More explicitly pass this around?
             self.httpd.func = func
@@ -114,6 +122,10 @@ class SimpleHTTPEventListenerThread(threading.Thread):
 
 def simple_http_event_listener(config, daemon=True):
     """Function decorator to make the target function to retrieve events from cryptoassets helper service over HTTP event callback.
+
+    You can also call this manually from command line from testing::
+
+        curl --data 'event_name=txupdate&data={"transaction_type":"broadcast","address":"x","confirmations":2,"txid":"foobar"}' http://127.0.0.1:10000
 
     :param config: *cryptoassets.core* app configuration as Python dict. We'll extract the information which port and IP to listen to on HTTP server from there.
 

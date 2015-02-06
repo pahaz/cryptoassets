@@ -75,6 +75,9 @@ class Service:
         self.last_broadcast = None
         self.receive_scan_thread = None
 
+        #: How often we check out for outgoing transactions
+        self.broadcast_period = 30
+
         # List of active running threads
         self.threads = []
 
@@ -88,7 +91,7 @@ class Service:
 
         Initialize logging system if necessary.
         """
-        self.configurator = Configurator(self.app)
+        self.configurator = Configurator(self.app, self)
         self.configurator.load_from_dict(config)
         if logging:
             self.setup_logging(config)
@@ -132,7 +135,7 @@ class Service:
     def setup_jobs(self):
         logger.debug("Setting up broadcast scheduled job")
         self.scheduler = BackgroundScheduler()
-        self.broadcast_job = self.scheduler.add_job(self.poll_broadcast, 'interval', minutes=2)
+        self.broadcast_job = self.scheduler.add_job(self.poll_broadcast, 'interval', seconds=self.broadcast_period)
         self.open_transaction_job = self.scheduler.add_job(self.poll_network_transaction_confirmations, 'interval', minutes=1)
 
     def start_status_server(self):
@@ -168,12 +171,22 @@ class Service:
     def setup_sigterm(self):
         """Capture SIGTERM and shutdown on it."""
 
-        def handler(signum, frame):
+        old_sigint = None
+
+        def term_handler(signum, frame):
             logger.info("Received SIGTERM")
             self.running = False
 
+        def keyboard_handler(signum, frame):
+            logger.info("Received SIGINT")
+            self.running = False
+
+            # Reove keyboard handler, so that CTRL+C twice does hard kill
+            signal.signal(signal.SIGINT, old_sigint)
+
         # Set the signal handler and a 5-second alarm
-        signal.signal(signal.SIGTERM, handler)
+        signal.signal(signal.SIGTERM, term_handler)
+        old_sigint = signal.signal(signal.SIGINT, keyboard_handler)
 
     def poll_broadcast(self):
         """"A scheduled task to broadcast any new transactions to the bitcoin network.
@@ -332,7 +345,7 @@ def scan_received():
 def helper():
     config = parse_config_argv()
 
-    Configurator.setup_service(config)
+    Configurator.setup_startup(config)
 
     service = Service(config, ALL_SUBSYSTEMS, daemon=True)
     exit_code = service.start()
