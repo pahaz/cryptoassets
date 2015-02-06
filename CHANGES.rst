@@ -1,14 +1,14 @@
 Changelog
 ----------
 
-0.1.2 (unreleased)
-++++++++++++++++++
+0.1.2 (2015-02-06)
+++++++++++++++++++++++
 
-- Nothing changed yet.
+- Further PyPi README woes and fixes
 
 
 0.1.1 (2015-02-06)
-++++++++++++++++
+++++++++++++++++++++++
 
 - Fixed README badges
 
