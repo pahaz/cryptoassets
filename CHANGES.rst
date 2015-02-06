@@ -1,10 +1,10 @@
 Changelog
 ----------
 
-0.2 (unreleased)
+0.1.1 (2015-02-06)
 ++++++++++++++++
 
-- Nothing changed yet.
+- Fixed README badges
 
 
 0.1 (2015-02-06)
