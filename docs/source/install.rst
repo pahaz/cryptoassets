@@ -16,26 +16,17 @@ You need at least Python version 3.4.
 
 * `Install Python 3.4 on OSX <https://www.python.org/downloads/mac-osx/>`_
 
-* Microsoft Windows is untested, but should work
-
-Older Python versions might work, but are untested.
-
-Ubuntu / Debian and Python 3.4 virtualenv and pip issue
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-.. note ::
-
-    Ubuntu and Debian have an open issue regarding Python 3.4 virtualenv support. Thus, check the link below for how to workaround installation issues if you are using a non-conforming distribution.
-
-* `Issues with Ubuntu / Debian, Python 3.4 and virtualenv <https://lists.debian.org/debian-python/2014/03/msg00045.html>`_ - `see workaround <https://bugs.launchpad.net/ubuntu/+source/python3.4/+bug/1290847/comments/58>`_
+* Microsoft Windows is unsupported at the moment as the authors do not have access to Microsoft Windows development tools
 
 Create a virtualenv
 ---------------------
 
-``cryptoassets.core`` is distributed as a Python package. Follow the Python community best practices and `create a virtualenv <https://packaging.python.org/en/latest/installing.html#virtual-environments>`_ where you to install the package and its dependencies.
+``cryptoassets.core`` is distributed as a Python package. To use packages in your application, follow the Python community best practices and `create a virtualenv <https://packaging.python.org/en/latest/installing.html#virtual-environments>`_ where you to install the third party packages and their dependencies.
 
 OSX
 ++++
+
+For Homebrew with Python 3.4 installed::
 
     mkdir myproject
     cd myproject
@@ -56,6 +47,12 @@ This creates ``/usr/local/bin/virtualenv``. Then::
     virtualenv -p python3.4 venv
     source venv/bin/activate
 
+.. note ::
+
+    Ubuntu and Debian have an open issue regarding Python 3.4 virtualenv support. Thus, check the link below for how to workaround installation issues if you are using a non-conforming distribution.
+
+* `Issues with Ubuntu / Debian, Python 3.4 and virtualenv <https://lists.debian.org/debian-python/2014/03/msg00045.html>`_ - `see workaround <https://bugs.launchpad.net/ubuntu/+source/python3.4/+bug/1290847/comments/58>`_
+
 Installing cryptoassets package
 ---------------------------------
 
@@ -65,15 +62,17 @@ Installing the release version
 After virtualenv is created and active you can run::
 
     # Install the known good versions of dependencies
-    curl "https://bitbucket.org/miohtama/cryptoassets/raw/bdb2e36b63ce751aef1bbdec169a55536f80692b/requirements.txt" > requirements.txt && pip install -r requirements.txt
+    curl -o requirements.txt "https://bitbucket.org/miohtama/cryptoassets/raw/9bfbe5e16fd878cbb8231f06d8825e1e1af94495/requirements.txt" && pip install -r requirements.txt
 
-    # Install the latest version of cryptoassets.core package
+    # Install the latest release version of cryptoassets.core package
     pip install cryptoassets.core
 
 This will use the latest package pindowns of known good version set.
 
 Installing the development version
 ++++++++++++++++++++++++++++++++++++
+
+You can install git checkout if you want to develop / bug fix *cryptoassets.core* itself.
 
 First install dependencies.
 

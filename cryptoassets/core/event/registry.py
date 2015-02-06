@@ -29,11 +29,18 @@ class EventHandlerRegistry:
 
     def trigger(self, event_name, data):
         """Post an event to all listeners.
+
+        If any of the event handlers fails with an exception, log the exception and continue processing the event.
         """
         handlers = self.get_all()
         for instance in handlers:
             logger.info("Posting event %s to notification handler %s", event_name, instance)
-            instance.trigger(event_name, data)
+            try:
+                instance.trigger(event_name, data)
+            except Exception as e:
+                # Do not let the event handler take us down
+                logger.error("Error calling event handler %s for event %s", instance, event_name)
+                logger.exception(e)
 
         if len(handlers) == 0:
             logger.warn("No registered transaction notfication handlers")

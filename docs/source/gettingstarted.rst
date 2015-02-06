@@ -14,11 +14,11 @@ Basics
 
 * You can use *cryptoassets.core* framework in any Python application, including Django applications. Python 3 is required.
 
-* *cryptoassets.core* support various cryptocurrencies and assets and is easily to extend support your favorite altcoint
+* *cryptoassets.core* support various cryptocurrencies and assets and is easily to extend support your favorite altcoin.
 
-* *cryptoassets.core* works with API services (block.io, blockchain.info) and daemons (*bitcoind*, *dogecoind*). You either to sign up for an account on any the API services or run the daemon on your own server. Please note that running *bitcoind* requires at least 2 GB of RAM and 20 GB of disk space.
+* *cryptoassets.core* works with cryptocurrency API services (block.io, blockchain.info) and daemons (*bitcoind*, *dogecoind*). The framework uses term "backend" to refer these. You either sign up for an account on any the API services or run the daemon on your own server. Please note that running *bitcoind* requires at least 2 GB of RAM and 20 GB of disk space.
 
-* :doc`For data integrity reasons <./integrity>`, *cryptoassets.core* uses its own database connection which most likely will be different from your the normal database connection of your application.
+* :doc:`For data integrity reasons <./integrity>`, *cryptoassets.core* uses its own database connection, most likely being different from the default database connection of your application.
 
 * Some very basic `SQLAlchemy <http://www.sqlalchemy.org/>`_ knowledge is required for using the models API.
 
@@ -31,24 +31,26 @@ Interacting with cryptoassets.core
 
 The basic flow of using *cryptoassets.core* framework is
 
-* You set up :py:class:`cryptoassets.core.app.CryptoassetsApp` instance and configure it inside your Python code
+* You set up :py:class:`cryptoassets.core.app.CryptoAssetsApp` instance and configure it inside your Python code
 
 * You also set up a channel how :doc:`cryptoassets helper service <./service>` process callbacks you app. Usually this happens over :doc:`HTTP web hooks <./config>`.
 
-* You obtain SQLAlchemy session through :py:class:`cryptoassets.core.app.CryptoassetsApp.conflict_resolver` to interact with your cryptoasset database containing your customer transaction details.
+* You put your cryptoassets database accessing code to a separate function and decorate it with :py:class:`cryptoassets.core.app.CryptoAssetsApp.conflict_resolver` to obtain transaction conflict aware SQLAlchemy session.
 
-* You obtain an instance to :py:class:`cryptoassets.core.app.models.Wallet`. Wallet contains accounting information: which assets and which transactions belong to which users. Usually your application requires one default shared wallet.
+* In your database accessing code, you obtain an instance to :py:class:`cryptoassets.core.models.GenericWallet` subclass which is specific to cryptocurrency you are using. Wallet contains accounting information: which assets and which transactions belong to which users. Simple applications require one default shared wallet.
 
-* After having the wallet set up, call various model API methods like :py:meth:`cryptoassets.core.app.models.Wallet.send`.
+* After having the wallet set up, call various model API methods like :py:meth:`cryptoassets.core.models.GenericWallet.send`.
 
-* For receiving the payments you need to create at least one receiving address (see :py:meth:`cryptoassets.core.app.models.Wallet.create_receiving_address`). *Cryptoassets helper service* triggers :doc:`events <api/events>` which your application listens to and then performs application logic when a payment or a deposit is received.
+* For receiving the payments you need to create at least one receiving address (see :py:meth:`cryptoassets.core.models.GenericWallet.create_receiving_address`). *Cryptoassets helper service* triggers :doc:`events <api/events>` which your application listens to and then performs application logic when a payment or a deposit is received.
 
 Example command-line application
 ========================================
 
-Below is a simple Bitcoin wallet terminal application.
+Below is a simple Bitcoin wallet terminal application using `block.io <https://block.io>`_ API service as the backend. It is configured to work with Bitcoin `Testnet <https://en.bitcoin.it/wiki/Testnet>`_. Testnet Bitcoins are worthless, free to obtain and thus useful for application development and testing.
 
-It uses pre-created account on `block.io <https://en.bitcoin.it/wiki/Testnet>`_ Bitcoin API service. The coins stored on the block.io account are not use real Bitcoins, but `Testnet <https://en.bitcoin.it/wiki/Testnet>`_ Bitcoins which are worthless and thus very useful for testing.
+The example comes with pre-created account on block.io. It is recommended that you `sign up for your own block.io <https://block.io/users/sign_up>`_ account and API key and use them instead of ones in the example configuration.
+
+:doc:`First make sure you have created a virtualenv, installed cryptoassets.core and its dependencies <./install>`.
 
 Application code
 -------------------
@@ -83,13 +85,9 @@ Save this as ``example.config.yaml`` file.
 Creating the database structure
 ---------------------------------
 
-The example application uses `SQLite <http://www.sqlite.org/>`_ database. SQLite is a simple SQL database in a self contained file.
+The example application uses `SQLite <http://www.sqlite.org/>`_ database. SQLite is a simple SQL database in a self-contained file. SQLite3 database driver is included in the default Python installation.
 
-Install Python SQLite driver (be sure you do this in the activated virtual environment)::
-
-    pip install sqlite3
-
-Create the database tables::
+Run the command to create the database tables::
 
     cryptoassets-initialize-database example.config.yaml
 
@@ -101,9 +99,18 @@ This should print out::
 Running the example
 ---------------------
 
-:doc:`First make sure you have created a virtualenv, installed cryptoassets.core and its dependencies <./install>`.
+The application is fully functional and you can start your Bitcoin wallet business right away. Only one more thing to do...
 
-Running the example application::
+...the communication between cryptoasset networks and your application is handled by the :doc:`cryptoassets helper service <./service>` background process. Thus, nothing comes in or goes out to your application if the helper service process is not running. Start the helper service::
+
+    cryptoassets-helper-service example.config.yaml
+
+You should see something like this::
+
+    ...
+    [00:23:09] [cryptoassets.core.service.main splash_version] cryptoassets.core version 0.0
+
+Now leave *cryptoassets helper service* running and start the example application **in another terminal**::
 
     python example.py
 
@@ -112,27 +119,15 @@ You should see something like this::
     Welcome to cryptoassets example app
 
     Receiving addresses available:
-    (Send Testnet Bitcoins to them to see what happens)
+    (Send testnet Bitcoins to them to see what happens)
     - 2MzGzEUyHgqBXzbuGCJDSBPKAyRxhj2q9hj: total received 0.00000000 BTC
 
     We know about the following transactions:
 
     Give a command
     1) Create new receiving address
-    2) Send bitcoins to other address
+    2) Send Bitcoins to other address
     3) Quit
-
-The application is fully functional and you can start your Bitcoin testnet wallet business right away. Only one more thing to do...
-
-...the communication with cryptoasset network is handled by the :doc:`cryptoassets helper service <./service>` background process. Thus, nothing comes in or goes out to your application before you start the helper process::
-
-    # Run this command in another terminal
-    cryptoassets-helper-service example.config.yaml
-
-You should see something like this::
-
-    ...
-    [00:23:09] [cryptoassets.core.service.main splash_version] cryptoassets.core version 0.0
 
 You will get some *Rescanned transactions* log messages on the start up if you didn't change the default block.io credentials. These are test transactions from other example users.
 
@@ -140,20 +135,16 @@ Now you can send or receive Bitcoins within your application. If you don't start
 
 If you want to reset the application just delete the database file ``/tmp/cryptoassets.test.sqlite``.
 
-Obtaining testnet bitcoins and sending them
+Obtaining testnet Bitcoins and sending them
 ----------------------------------------------
 
-The example runs on Bitcoin testnet bitcoins which are not real bitcoins.
+The example runs on testnet Bitcoins which are not real Bitcoins. Get some testnet coins and send them from the faucet to the receiving address provided by the application.
 
-Get Testnet coins from here:
+`List of services providing faucets giving out Testnet Bitcoins <http://bitcoin.stackexchange.com/q/17690/5464>`_.
 
-* http://tpfaucet.appspot.com/
+No more than **0.01** Bitcoins are needed for playing around with the example app.
 
-* `Alternative testnet faucets <http://bitcoin.stackexchange.com/questions/17690/is-there-any-where-to-get-free-testnet-bitcoins>`_
-
-No more than **0.01** testnet bitcoins are needed for the example.
-
-Send them to the receiving address displayed in the eaxmples application status. You should see a notification printed for incoming transaction in ~30 seconds after you send the bitcoins.
+After sending the Bitcoins you should see a notification printed for an incoming transaction in ~30 seconds.
 
 After completing the example
 ===============================
@@ -170,11 +161,11 @@ More about SQLAlchemy
 
 Please see these tutorials
 
-* (Official SQLAlchemy tutorial)
+* `Official SQLAlchemy tutorial <http://docs.sqlalchemy.org/en/rel_0_9/orm/tutorial.html>`_
 
-* http://www.pythoncentral.io/sqlalchemy-orm-examples/
+* `SQLAlchemy ORM Examples <http://www.pythoncentral.io/sqlalchemy-orm-examples/>`_ by Xiaonuo Gantan
 
 Questions?
 ----------
 
-:doc:`See the community resources <./community>`.
+:doc:`See the community resources how to contact the developers <./community>`.

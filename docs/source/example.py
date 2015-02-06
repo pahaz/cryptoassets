@@ -155,7 +155,7 @@ def print_status(session):
     for address in session.query(Address).filter(Address.account == account):
         print("- {}: confirmed received {:.8f} BTC".format(address.address, address.balance))
     print("")
-    print("We know about the following transactions:")
+    print("Wallet transactions:")
     for tx in session.query(Transaction):
         if tx.state in ("pending", "broadcasted"):
 
@@ -174,7 +174,7 @@ def print_status(session):
                 tx.id, tx.state, tx.amount))
 
     print("")
-    print("Give a command")
+    print("Available commands:")
     print("1) Create new receiving address")
     print("2) Send bitcoins to other address")
     print("3) Quit")
@@ -187,7 +187,7 @@ running = True
 while running:
 
     print_status()
-    command = input("Give your command [1-3]:")
+    command = input("Enter command [1-3]:")
     print("")
     if command == "1":
         create_receiving_address()

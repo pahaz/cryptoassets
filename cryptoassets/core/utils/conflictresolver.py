@@ -60,7 +60,7 @@ Here is a simple example how to use ConflictResolver::
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    engine = create_engine('postgresql:///unittest-conflict-resolution', \
+    engine = create_engine('postgresql:///unittest-conflict-resolution',
         isolation_level='SERIALIZABLE')
 
     # Create new session for SQLAlchemy engine
@@ -313,10 +313,7 @@ class CannotResolveDatabaseConflict(Exception):
 
 
 class ContextManager:
-    """Use conflict resolver in Python ``with` statement.
 
-    See :py:meth:`cryptoassets.core.utils.conflictresolver.ConflictResolver.transaction`.
-    """
     def __init__(self, conflict_resolver):
         self.conflict_resolver = conflict_resolver
 

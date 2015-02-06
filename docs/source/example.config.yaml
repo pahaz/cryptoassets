@@ -3,7 +3,7 @@
 # Cryptoassets.core configuration for example application
 
 database:
-  url: sqlite:////tmp/cryptoassets.example.sqlite
+    url: sqlite:////tmp/cryptoassets.example.sqlite
 
 # What services we use to run talk to the cryptocurrency networks.
 # This will configure us to use pre-defined block.io API service
@@ -12,8 +12,8 @@ coins:
     btc:
         backend:
             class: cryptoassets.core.backend.blockio.BlockIo
-            api_key: 923f-e3e9-a580-dfb2
-            pin: foobar123
+            api_key: b2db-c8ad-29d2-c611
+            pin: ThisIsNotVerySecret1
             network: btctest
             # walletnotify section tells how we receive
             # transaction updates from the  the backend

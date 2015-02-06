@@ -15,28 +15,28 @@ cryptoassets.core
     :alt: Downloads
 
 .. |latest| image:: https://pypip.in/version/cryptoassets.core/badge.png
-    :target: https://pypi.python.org/pypi/pytest-cov/
+    :target: https://pypi.python.org/pypi/cryptoassets.core/
     :alt: Latest Version
 
 .. |license| image:: https://pypip.in/license/cryptoassets.core/badge.png
-    :target: https://pypi.python.org/pypi/pytest-cov/
+    :target: https://pypi.python.org/pypi/cryptoassets.core/
     :alt: License
+
+.. |versions| image:: https://pypip.in/py_versions/<PYPI_PKG_NAME>/badge.svg
+    :target: https://pypi.python.org/pypi/<PYPI_PKG_NAME>/
+    :alt: Supported Python versions
 
 *cryptoassets.core* is a Python framework for building Bitcoin, other cryptocurrency (altcoin) and cryptoassets services. Use cases include eCommerce, exhanges, wallets and payments.
 
-+-----------+
-| |docs|    |
-+-----------+
-| |ci|      |
-+-----------+
-| |cov|     |
-+-----------+
-| |latest|  |
-+-----------+
-| |license| |
-+-----------+
-||downloads||
-+-----------+
++-----------+-----------+
+| |docs|    | |cov|     |
++-----------+-----------+
+| |versions|| |license| |
++-----------+-----------+
+| |ci|      | |latest|  |
++-----------+-----------+
+||downloads||           |
++-----------+-----------+
 
 .. contents:: :local:
 

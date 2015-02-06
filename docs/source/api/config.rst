@@ -20,6 +20,7 @@ Cryptoassets Application
 .. automodule:: cryptoassets.core.app
     :members:
 
+
 Configuration API
 ------------------
 

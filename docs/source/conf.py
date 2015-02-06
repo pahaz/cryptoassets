@@ -264,6 +264,7 @@ texinfo_documents = [
 
 # http://stackoverflow.com/a/9772922/315168
 autoclass_content = 'both'
+autodoc_member_order = "bysource"
 
 import sys
 from unittest.mock import MagicMock
