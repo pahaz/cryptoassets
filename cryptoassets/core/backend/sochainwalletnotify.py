@@ -156,8 +156,9 @@ class SochainWalletNotifyHandler(threading.Thread, IncomingTransactionRunnable):
             Address = wallet.coin_description.Address
             for address in addresses.filter(Address.id > last_id, Address.archived_at is not None):  # noqa
 
+                # XXX: It is unresolved what is causing this. Not critical, but needs to get down on this and make it disappear.
                 if address.address in self.wallets[wallet.id]["addresses"]:
-                    logger.warn("Tried to double monitor address %s, wallet id: %s, monitoring addresses since %s", address.address, wallet.id, last_id)
+                    logger.info("Tried to double monitor address %s, wallet id: %s, monitoring addresses since %s", address.address, wallet.id, last_id)
                     continue
 
                 assert address.is_deposit(), "Tried to monitor non-deposit address"

@@ -4,7 +4,7 @@ Changelog
 0.1.3 (unreleased)
 ++++++++++++++++++
 
-- Nothing changed yet.
+- Logging system setup and logging level updates for more sane defaults
 
 
 0.1.2 (2015-02-06)
