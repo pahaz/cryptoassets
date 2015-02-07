@@ -100,6 +100,8 @@ class Service:
         global logger
         logger = logging.getLogger(__name__)
 
+        splash_version()
+
     def setup(self):
         """Start background threads and such."""
 
@@ -120,8 +122,6 @@ class Service:
         if not self.daemon or not config.get("service", {}).get("logging"):
             # Setup console logging if we run as a batch command or service config lacks logging
             defaultlogging.setup_stdout_logging()
-
-        splash_version()
 
     def setup_session(self):
         """Setup database sessions and conflict resolution."""
