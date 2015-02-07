@@ -83,7 +83,7 @@ class Service:
 
         self.daemon = daemon
 
-        self.config(config, logging=logging)
+        self.config(config, logging_=logging)
         self.setup()
 
     def config(self, config, logging_):
