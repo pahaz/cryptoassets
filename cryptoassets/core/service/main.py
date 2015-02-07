@@ -86,15 +86,19 @@ class Service:
         self.config(config, logging=logging)
         self.setup()
 
-    def config(self, config, logging):
+    def config(self, config, logging_):
         """Load configuration from Python dict.
 
         Initialize logging system if necessary.
         """
         self.configurator = Configurator(self.app, self)
         self.configurator.load_from_dict(config)
-        if logging:
+        if logging_:
             self.setup_logging(config)
+
+        # Now logging is up'n'running and we can finally create logger for this Python module
+        global logger
+        logger = logging.getLogger(__name__)
 
     def setup(self):
         """Start background threads and such."""
@@ -112,13 +116,10 @@ class Service:
         self.status_server = self.app.status_server
 
     def setup_logging(self, config):
-        global logger
 
         if not self.daemon or not config.get("service", {}).get("logging"):
             # Setup console logging if we run as a batch command or service config lacks logging
             defaultlogging.setup_stdout_logging()
-
-        logger = logging.getLogger(__name__)
 
         splash_version()
 
