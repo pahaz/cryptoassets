@@ -7,14 +7,36 @@ Getting started
 Introduction
 ==============
 
-`cryptoassets.core <https://bitbucket.org/miohtama/cryptoassets>`_ provides safe, scalable and future-proof cryptocurrency and cryptoassets accounting for your Python application. Use the framework to easily accept cryptocurrency payments, build cryptoasset services and exchanges.
+This tutorial introduces *cryptoassets.core*: what it does for you and how to set up a trivial Bitcoin wallet command line application on the top of it.
+
+`cryptoassets.core <https://bitbucket.org/miohtama/cryptoassets>`_ is a Python framework providing safe, scalable and future-proof cryptocurrency and cryptoassets accounting for your Python application. You can use it to easily accept cryptocurrency payments, build cryptoasset services and exchanges.
+
+* `See PyPi download page <https://pypi.python.org/pypi/cryptoassets.core>`_
+
+* `See project homepage <https://bitbucket.org/miohtama/cryptoassets>`_
+
+Benefits
+==============
+
+* `Easy <http://cryptoassetscore.readthedocs.org/en/latest/gettingstarted.html>`_: Documented user-friendly APIs.
+
+* `Extensible <http://cryptoassetscore.readthedocs.org/en/latest/extend.html>`_: Any cryptocurrency and cryptoassets support.
+
+* `Safe <http://cryptoassetscore.readthedocs.org/en/latest/integrity.html>`_: Secure and high data integrity.
+
+* `Lock-in free <http://cryptoassetscore.readthedocs.org/en/latest/backends.html>`_: Vendor independent and platform agnostics.
+
+* `Customizable <http://cryptoassetscore.readthedocs.org/en/latest/extend.html#overriding-parts-of-the-framework>`_: Override and tailor any part of the framework for your specific needs.
 
 Basics
 ======
 
+.. image:: diagrams/cryptoassets_framework.png
+    :align: center
+
 * You can use *cryptoassets.core* framework in any Python application, including Django applications. Python 3 is required.
 
-* *cryptoassets.core* support various cryptocurrencies and assets and is easily to extend support your favorite altcoin.
+* *cryptoassets.core* supports various cryptocurrencies and cryptoassets and is easy to extend to support further `altcoins <http://coinmarketcap.com/>`_.
 
 * *cryptoassets.core* works with cryptocurrency API services (block.io, blockchain.info) and daemons (*bitcoind*, *dogecoind*). The framework uses term *backend* to refer these. You either sign up for an account on any the API services or run the daemon on your own server. Please note that running *bitcoind* requires at least 2 GB of RAM and 20 GB of disk space.
 
@@ -22,24 +44,26 @@ Basics
 
 * Some very basic `SQLAlchemy <http://www.sqlalchemy.org/>`_ knowledge is required for using the models API.
 
-* You need to run a separate a :doc:`cryptoassets helper service <./service>` process which is responsible for communicating between your application and cryptoasset networks.
+* You need to run a separate a :doc:`cryptoassets helper service <./service>` process being responsible for communicating between your application and cryptoasset networks.
 
-* *cryptoassets.core* framework is initialized from its own :doc:`configuration <./config>`, which can be passed in as Python dictionary or YAML configuration file.
+* *cryptoassets.core* framework is initialized from its own :doc:`configuration <./config>`, which can be passed in as a Python dictionary or a YAML configuration file.
+
+* At the moment *cryptoassets.core* is in initial version 0.1 release. Expect the scope of the project to expand to support other cryptoassets (`Counterparty <http://counterparty.io/>`_, `Ethereum <http://ethereum.org/>`_, `BitShares-X <http://wiki.bitshares.org/index.php/Bitshares_X>`_) out of the box.
 
 Interacting with cryptoassets.core
 -----------------------------------
 
-The basic flow of using *cryptoassets.core* framework is
+The basic programming flow with *cryptoassets.core* is
 
-* You set up :py:class:`cryptoassets.core.app.CryptoAssetsApp` instance and configure it inside your Python code
+* You set up :py:class:`cryptoassets.core.app.CryptoAssetsApp` instance and configure it inside your Python code.
 
 * You also set up a channel how :doc:`cryptoassets helper service <./service>` process callbacks you app. Usually this happens over :doc:`HTTP web hooks <./config>`.
 
 * You put your cryptoassets database accessing code to a separate function and decorate it with :py:class:`cryptoassets.core.app.CryptoAssetsApp.conflict_resolver` to obtain transaction conflict aware SQLAlchemy session.
 
-* In your database accessing code, you obtain an instance to :py:class:`cryptoassets.core.models.GenericWallet` subclass which is specific to cryptocurrency you are using. Wallet contains accounting information: which assets and which transactions belong to which users. Simple applications require one default shared wallet.
+* In your cryptoasset application logic, you obtain an instance to :py:class:`cryptoassets.core.models.GenericWallet` subclass. Each cryptoasset has its own set of SQLAlchemy model classes. The wallet instance contains the accounting information: which assets and which transactions belong to which users. Simple applications usually require only one default  wallet instance.
 
-* After having the wallet set up, call various model API methods like :py:meth:`cryptoassets.core.models.GenericWallet.send`.
+* After having set up the wallet, call various wallet model API methods like :py:meth:`cryptoassets.core.models.GenericWallet.send`.
 
 * For receiving the payments you need to create at least one receiving address (see :py:meth:`cryptoassets.core.models.GenericWallet.create_receiving_address`). *Cryptoassets helper service* triggers :doc:`events <api/events>` which your application listens to and then performs application logic when a payment or a deposit is received.
 
@@ -50,7 +74,10 @@ Below is a simple Bitcoin wallet terminal application using `block.io <https://b
 
 The example comes with pre-created account on block.io. It is recommended that you `sign up for your own block.io <https://block.io/users/sign_up>`_ account and API key and use them instead of ones in the example configuration.
 
-:doc:`First make sure you have created a virtualenv, installed cryptoassets.core and its dependencies <./install>`.
+Install cryptoassets.core
+---------------------------
+
+:doc:`First make sure you have created a virtualenv and installed cryptoassets.core and its dependencies <./install>`.
 
 Application code
 -------------------
@@ -99,7 +126,7 @@ This should print out::
 Running the example
 ---------------------
 
-The application is fully functional and you can start your Bitcoin wallet business right away. Only one more thing to do...
+The example application is fully functional and you can start your Bitcoin wallet business right away. Only one more thing to do...
 
 ...the communication between cryptoasset networks and your application is handled by the :doc:`cryptoassets helper service <./service>` background process. Thus, nothing comes in or goes out to your application if the helper service process is not running. Start the helper service::
 
@@ -152,6 +179,8 @@ After completing the example
 ===============================
 
 Explore :doc:`model API documentation <api/models>`, :doc:`configuration <config>` and :doc:`what tools there are available <api/functionality>`.
+
+You can also study `Liberty Music Store open source application, built on the top of Django and Bitcoin <http://libertymusicstore.net/>`_.
 
 Django integration
 --------------------

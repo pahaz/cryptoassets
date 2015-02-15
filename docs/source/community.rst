@@ -8,6 +8,8 @@ Community and resources
 
 * `Documentation <http://cryptoassetscore.readthedocs.org/>`_
 
+* `Discussion group and mailing list <https://groups.google.com/forum/#!forum/cryptoassets/>`_
+
 * `Source code and issue tracker <https://bitbucket.org/miohtama/cryptoassets>`_
 
 * `Continuos integration service <https://drone.io/bitbucket.org/miohtama/cryptoassets>`_

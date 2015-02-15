@@ -191,6 +191,10 @@ class StartupShutdownTestCase(unittest.TestCase):
         proc = subprocess.Popen(["cryptoassets-initialize-database", self.test_config], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         proc.wait()
+        if proc.returncode != 0:
+            print("STDOUT:", proc.stdout.read().decode("utf-8"))
+            print("STDERR:", proc.stderr.read().decode("utf-8"))
+
         self.assertEqual(proc.returncode, 0)
 
         # Start helper service
