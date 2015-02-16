@@ -27,3 +27,4 @@ lib/*
 cryptoassets/lib
 coverage.xml
 .coverage
+*.*~1
