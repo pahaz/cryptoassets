@@ -1,10 +1,13 @@
 import os
 import unittest
 import logging
+import random
 from decimal import Decimal
 
 from .base import CoinTestCase
 from ..utils import danglingthreads
+
+from ..backend.blockio import clean_blockio_test_wallet
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +60,10 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
         # Wait 15 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 60 * 20
 
+        # MAae sure the test wallet does't become unmanageable on block.io backend
+        if random.randint() % 100 == 0:
+            clean_blockio_test_wallet(self.backend, balance_threshold=Decimal(5000) / Decimal(10**8))
+
 
 class BlockIoDogeTestCase(BlockIoBTCTestCase):
     """Test that our Dogecoin accounting works on top of block.io API."""
@@ -86,3 +93,8 @@ class BlockIoDogeTestCase(BlockIoBTCTestCase):
 
         # Wait 3 minutes for 1 confimation from the BTC TESTNET
         self.external_receiving_timeout = 60 * 10
+
+        # MAae sure the test wallet does't become unmanageable on block.io backend
+        if random.randint() % 100 == 0:
+            clean_blockio_test_wallet(self.backend, balance_threshold=Decimal(3))
+

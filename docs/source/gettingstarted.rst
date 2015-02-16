@@ -88,14 +88,6 @@ Application code
 
 Here is an example walkthrough how to set up a command line application.
 
-To run this example::
-
-    # Activate the virtualenv where cryptoassets is installed
-    source venv/bin/activate
-
-    # Run the application
-    python example.py
-
 Save this as ``example.py`` file.
 
 .. literalinclude:: example.py

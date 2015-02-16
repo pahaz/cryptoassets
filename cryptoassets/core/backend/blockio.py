@@ -217,3 +217,75 @@ class ListReceivedTransactionsIterator(base.ListTransactionsIterator):
             self.last_timestamp = txs[-1]["time"]
 
         return [(tx["txid"], self._format_bitcoind_like(tx)) for tx in txs]
+
+
+def clean_blockio_test_wallet(backend, balance_threshold=Decimal(1)):
+    """Go through unused test addresses and archives them on block.io.
+
+    block.io has limit of 2000 active addresses on free plan. If you exceed the limit and do not archive your addresses, block.io stops doing withdrawals.
+
+    This helper function walks through a testnet wallet we use for unit tests and figures out which addresses look like test addresses, then consolidates them together.
+
+    :param balance_threshold: How low the address balance must be before we consolidate it together to one big balance address.
+    """
+
+    block_io = backend.block_io
+
+    needs_archive = []
+
+    # Move all test transfers under this address
+    consolidation_address = None
+
+    result = block_io.get_my_addresses()
+    addresses = result["data"]["addresses"]
+    network = result["data"]["network"]
+
+    # block.io has an issue that you cannot withdrawal under certain threshold from address
+    # 2015-02
+    network_withdrawal_limits = {
+        "DOGETEST": Decimal(2)
+    }
+
+    network_fees = {
+        "DOGETEST": Decimal(1),
+        "BTCTEST": Decimal(1000) / Decimal(10 ** 8)
+    }
+
+    withdrawal_limit = network_withdrawal_limits.get(network, 0)
+
+    network_fee = network_fees.get(network, 0)
+
+    result = block_io.get_my_archived_addresses()
+    archived_addresses = [entry["address"] for entry in result["data"]["addresses"]]
+
+    for addr in addresses:
+        # {'available_balance': '0.00000000', 'address': '2MvB2nKMKcWakVJxB3ZhPnG9eqWsEoX4CBD', 'user_id': 1, 'label': 'test-address-1413839537-401918', 'pending_received_balance': '0.00000000'}
+        balance = Decimal(addr["available_balance"]) + Decimal(addr["pending_received_balance"])
+        if balance == 0:
+            needs_archive.append(addr["address"])
+            continue
+
+        if balance < balance_threshold:
+            if not consolidation_address:
+                # Use the first found low balance address as the consolidation destionation
+                consolidation_address = addr["address"]
+            else:
+
+                if balance - network_fee < withdrawal_limit:
+                    logger.info("Cannot consolidate %s from %s, too low balance for block.io API call", balance, addr["address"])
+                else:
+                    # Move everyhing from this address to the consolidation address
+                    logger.info("Consolidating %s from %s to %s", balance, addr["address"], consolidation_address)
+
+                    block_io.withdraw_from_addresses(amounts=str(balance - network_fee), from_addresses=addr["address"], to_addresses=consolidation_address)
+
+            needs_archive.append(addr["address"])
+
+    not_yet_archived = set(needs_archive) - set(archived_addresses)
+
+    logger.info("Archiving %d addresses from total %s, already archived %d, not yet archived %d", len(needs_archive), len(addresses), len(archived_addresses), len(not_yet_archived))
+
+    not_yet_archived = list(not_yet_archived)
+    result = block_io.archive_addresses(addresses=",".join(not_yet_archived))
+
+    assert result["status"] == "success"
