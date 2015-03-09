@@ -26,7 +26,7 @@ from slugify import slugify
 from block_io import BlockIo as _BlockIo
 
 from . import base
-
+from ..utils import iterutil
 
 logger = logging.getLogger(__name__)
 
@@ -259,6 +259,11 @@ def clean_blockio_test_wallet(backend, balance_threshold=Decimal(1)):
     archived_addresses = [entry["address"] for entry in result["data"]["addresses"]]
 
     for addr in addresses:
+
+        if addr["label"] == "default":
+            # block.io: Exception: Failed: Cannot archive addresses with label=default.
+            continue
+
         # {'available_balance': '0.00000000', 'address': '2MvB2nKMKcWakVJxB3ZhPnG9eqWsEoX4CBD', 'user_id': 1, 'label': 'test-address-1413839537-401918', 'pending_received_balance': '0.00000000'}
         balance = Decimal(addr["available_balance"]) + Decimal(addr["pending_received_balance"])
         if balance == 0:
@@ -285,7 +290,8 @@ def clean_blockio_test_wallet(backend, balance_threshold=Decimal(1)):
 
     logger.info("Archiving %d addresses from total %s, already archived %d, not yet archived %d", len(needs_archive), len(addresses), len(archived_addresses), len(not_yet_archived))
 
-    not_yet_archived = list(not_yet_archived)
-    result = block_io.archive_addresses(addresses=",".join(not_yet_archived))
-
-    assert result["status"] == "success"
+    # block.io seems to have an upper limit how many addresses you can arcihive at once
+    for chunk in iterutil.grouper(256, not_yet_archived):
+        logger.debug("Archiving chunk of %d addresses", len(chunk))
+        result = block_io.archive_addresses(addresses=",".join(chunk))
+        assert result["status"] == "success"
