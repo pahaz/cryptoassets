@@ -18,7 +18,7 @@ This tutorial introduces *cryptoassets.core*: what it does for you and how to se
 Benefits
 ==============
 
-*cryptoassets.core* is built on the top of `Python programming language <http://python.org>`_, community ecosystem and best practices. Python is proven tool for building financial appliactions and is widely used to develop cryptoassets software and Bitcoin exchanges. *cryptoassets.core* is
+*cryptoassets.core* is built on the top of `Python programming language <http://python.org>`_, community ecosystem and best practices. Python is proven tool for building financial applications and is widely used to develop cryptoassets software and Bitcoin exchanges. *cryptoassets.core* is
 
 * `Easy <http://cryptoassetscore.readthedocs.org/en/latest/gettingstarted.html>`_: Documented user-friendly APIs.
 
@@ -110,7 +110,7 @@ Save this as ``example.config.yaml`` file.
 Creating the database structure
 ---------------------------------
 
-The example application uses `SQLite <http://www.sqlite.org/>`_ database. SQLite is a simple SQL database in a self-contained file. SQLite3 database driver is included in the default Python installation.
+The example application uses `SQLite <http://www.sqlite.org/>`_ database as a simple self-contained test database.
 
 Run the command to create the database tables::
 

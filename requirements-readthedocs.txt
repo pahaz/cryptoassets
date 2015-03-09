@@ -1,0 +1,29 @@
+# Modified file to try to get RTD.org API docs build running
+
+# Packages needed on rtd.org
+apscheduler==3.0.1
+SQLAlchemy==0.9.7
+block-io==1.1.2
+blockchain==1.0.1
+colorama==0.3.2
+
+# Python 3 compatibility, not released at the moment of writing
+-e git+https://github.com/miohtama/python-bitcoinrpc.git@e43303bba7a671b383016d29f55fd03aa0df235b#egg=python-bitcoinrpc
+ecdsa==0.11
+logutils==0.3.3
+pusherclient==0.3.0
+
+# xxx: piece of shit
+#pycrypto==2.6.1
+
+PyYAML==3.11
+requests==2.4.3
+six==1.8.0
+websocket-client==0.21.0
+zope.deprecation==4.1.1
+zope.dottedname==4.0.1
+rainbow-logging-handler==2.2.2
+
+python-slugify==0.1.0
+Unidecode==0.04.16
+
