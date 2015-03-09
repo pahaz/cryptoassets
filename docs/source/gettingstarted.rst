@@ -9,7 +9,7 @@ Introduction
 
 This tutorial introduces *cryptoassets.core*: what it does for you and how to set up a trivial Bitcoin wallet command line application on the top of it.
 
-`cryptoassets.core <https://bitbucket.org/miohtama/cryptoassets>`_ is a Python framework providing safe, scalable and future-proof cryptocurrency and cryptoassets accounting for your Python application. You can use it to easily accept cryptocurrency payments, build cryptoasset services and exchanges.
+`cryptoassets.core <https://bitbucket.org/miohtama/cryptoassets>`_ is a Python framework providing safe, scalable and future-proof cryptocurrency and cryptoassets accounting for your Python application. You can use it to accept cryptocurrency payments, build cryptoasset services and exchanges.
 
 * `See PyPi download page <https://pypi.python.org/pypi/cryptoassets.core>`_
 
@@ -17,6 +17,8 @@ This tutorial introduces *cryptoassets.core*: what it does for you and how to se
 
 Benefits
 ==============
+
+*cryptoassets.core* is built on the top of `Python programming language <http://python.org>`_, community ecosystem and best practices. Python is proven tool for building financial appliactions and is widely used to develop cryptoassets software and Bitcoin exchanges. *cryptoassets.core* is
 
 * `Easy <http://cryptoassetscore.readthedocs.org/en/latest/gettingstarted.html>`_: Documented user-friendly APIs.
 
@@ -36,19 +38,23 @@ Basics
 
 * You can use *cryptoassets.core* framework in any Python application, including Django applications. Python 3 is required.
 
-* *cryptoassets.core* supports various cryptocurrencies and cryptoassets and is easy to extend to support further `altcoins <http://coinmarketcap.com/>`_.
+* *cryptoassets.core* is designed to be extendable to support `altcoins and different cryptoassets <http://coinmarketcap.com/>`_.
 
-* *cryptoassets.core* works with cryptocurrency API services (block.io, blockchain.info) and daemons (*bitcoind*, *dogecoind*). The framework uses term *backend* to refer these. You either sign up for an account on any the API services or run the daemon on your own server. Please note that running *bitcoind* requires at least 2 GB of RAM and 20 GB of disk space.
+* *cryptoassets.core* works with API services (block.io, blockchain.info) and daemons (*bitcoind*, *dogecoind*). The framework uses term *backend* to refer these. You either sign up for an account on the API service or run the daemon on your own server (*)
 
-* :doc:`For data integrity reasons <./integrity>`, *cryptoassets.core* uses its own database connection, most likely being different from the default database connection of your application.
+* Basic `SQLAlchemy <http://www.sqlalchemy.org/>`_ knowledge is required for using the models API.
 
-* Some very basic `SQLAlchemy <http://www.sqlalchemy.org/>`_ knowledge is required for using the models API.
+* A separate a :doc:`cryptoassets helper service <./service>` process is responsible for communicating between your application and cryptoasset networks. This process runs on background on your server.
 
-* You need to run a separate a :doc:`cryptoassets helper service <./service>` process being responsible for communicating between your application and cryptoasset networks.
+* *cryptoassets.core* framework is initialized from a :doc:`configuration <./config>`, which can be passed in as a Python dictionary or a YAML configuration file.
 
-* *cryptoassets.core* framework is initialized from its own :doc:`configuration <./config>`, which can be passed in as a Python dictionary or a YAML configuration file.
+* :doc:`For data integrity reasons <./integrity>`, *cryptoassets.core* database connection usually differs from the default application database connection.
 
 * At the moment *cryptoassets.core* is in initial version 0.1 release. Expect the scope of the project to expand to support other cryptoassets (`Counterparty <http://counterparty.io/>`_, `Ethereum <http://ethereum.org/>`_, `BitShares-X <http://wiki.bitshares.org/index.php/Bitshares_X>`_) out of the box.
+
+.. note ::
+
+    Please note that running *bitcoind* on a server requires at least 2 GB of RAM and 25 GB of disk space, so low end box hosting plans are not up for the task.
 
 Interacting with cryptoassets.core
 -----------------------------------
@@ -57,7 +63,7 @@ The basic programming flow with *cryptoassets.core* is
 
 * You set up :py:class:`cryptoassets.core.app.CryptoAssetsApp` instance and configure it inside your Python code.
 
-* You also set up a channel how :doc:`cryptoassets helper service <./service>` process callbacks you app. Usually this happens over :doc:`HTTP web hooks <./config>`.
+* You set up a channel how :doc:`cryptoassets helper service <./service>` process calls backs your application. Usually this happens over :doc:`HTTP web hooks <./config>`.
 
 * You put your cryptoassets database accessing code to a separate function and decorate it with :py:class:`cryptoassets.core.app.CryptoAssetsApp.conflict_resolver` to obtain transaction conflict aware SQLAlchemy session.
 
