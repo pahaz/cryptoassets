@@ -19,6 +19,7 @@ You must use :py:mod:`cryptoassets.core.backend.sochainwalletnotify` as ``wallet
 import logging
 from decimal import Decimal
 import datetime
+import threading
 
 import requests
 from slugify import slugify
