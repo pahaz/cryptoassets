@@ -14,5 +14,5 @@ coins:
             pin: foobar123
             network: dogetest
             walletnotify:
-                class: cryptoassets.core.backend.sochainwalletnotify.SochainWalletNotifyHandler
-                pusher_app_key: e9f5cc20074501ca7395
+                class: cryptoassets.core.backend.blockiowebhook.BlockIoWebhookNotifyHandler
+                url: filled in dynamically

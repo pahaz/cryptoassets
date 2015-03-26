@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from .base import CoinTestCase
 from ..utils import danglingthreads
+from ..utils.tunnel import NgrokTunnel
 
 from ..backend.blockio import clean_blockio_test_wallet
 
@@ -19,12 +20,13 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_receiving(self, wallet):
 
-        # Print out exceptions in Pusher messaging
-        from websocket._core import enableTrace
+        # We need ngrok tunnel for webhook notifications
+        self.ngrok = NgrokTunnel(11211)
 
-        logger = logging.getLogger()
-        if logger.level < logging.WARN:
-            enableTrace(True)
+        # Pass dynamically generated tunnel URL to backend config
+        tunnel_url = self.ngrok.start()
+        self.backend.walletnotify_config["url"] = tunnel_url
+        self.backend.walletnotify_config["port"] = 11211
 
         self.incoming_transactions_runnable = self.backend.setup_incoming_transactions(self.app.conflict_resolver, self.app.event_handler_registry)
 
@@ -37,6 +39,8 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
             incoming_transactions_runnable.stop()
 
         danglingthreads.check_dangling_threads()
+
+        self.ngrok.stop()
 
     def clean_test_wallet(self):
         """Make sure the test wallet does't become unmanageable on block.io backend."""

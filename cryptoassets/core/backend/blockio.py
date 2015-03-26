@@ -144,7 +144,7 @@ class BlockIo(base.CoinBackend):
 
     def get_transaction(self, txid):
         """ """
-        resp = requests.get("https://chain.so//api/v2/get_tx/{}/{}".format(self.network, txid))
+        resp = requests.get("https://chain.so/api/v2/get_tx/{}/{}".format(self.network, txid))
         data = resp.json()
         data = _transform_txdata_to_bitcoind_format(data)
         return data

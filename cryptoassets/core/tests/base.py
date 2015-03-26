@@ -584,7 +584,7 @@ class CoinTestCase:
                     account = address.first().account
                     txs = wallet.get_deposit_transactions()
 
-                    # print(account.balance, len(wallet.transactions), wallet.get_active_external_received_transcations().count())
+                    print(account.name, account.balance, len(wallet.transactions), wallet.get_active_external_received_transcations().count())
 
                     # The transaction is confirmed and the account is credited
                     # and we have no longer pending incoming transaction

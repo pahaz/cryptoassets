@@ -29,17 +29,25 @@ logger = logging.getLogger(__name__)
 
 class NgrokTunnel:
 
-    def __init__(self, port, subdomain_base="zoqfotpik"):
+    def __init__(self, port, subdomain_base="zoq-fot-pik"):
+        """Initalize Ngrok tunnel.
+
+        :param port: int, localhost port forwarded through tunnel
+
+        :parma subdomain_base: Each tunnel gets a new generated subdomain. This is the prefix used in a random string.
+        """
         assert find_executable("ngrok"), "ngrok command must be installed, see https://ngrok.com/"
         self.port = port
-        self.subdomain = subdomain_base + str(uuid.uuid4())
+        self.subdomain = "{}-{}".format(subdomain_base, str(uuid.uuid4()))
 
     def start(self, ngrok_die_check_delay=0.5):
-        """Starts the thread on the background and blocks until we get a tunnel URL."""
+        """Starts the thread on the background and blocks until we get a tunnel URL.
+
+        :return: the tunnel URL which is now publicly open for your localhost port
+        """
 
         logger.debug("Starting ngrok tunnel %s for port %d", self.subdomain, self.port)
 
-        # XXX: Windows, oops
         self.ngrok = subprocess.Popen(["ngrok", "-log=stdout", "-subdomain={}".format(self.subdomain), str(self.port)], stdout=subprocess.DEVNULL)
 
         # See that we don't instantly die
@@ -49,4 +57,8 @@ class NgrokTunnel:
         return url
 
     def stop(self):
+        """Tell ngrok to tear down the tunnel.
+
+        Stop the background tunneling process.
+        """
         self.ngrok.terminate()

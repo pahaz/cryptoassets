@@ -217,7 +217,7 @@ class TransactionUpdater:
             NetworkTransaction = self.coin.coin_description.NetworkTransaction
 
             if transaction_type == "deposit":
-                # In the case of deposit, we may need to create initial ntx entry
+                # In the case of deposit, we may need to create initial ntx event_handler_registry
                 ntx, created = NetworkTransaction.get_or_create_deposit(session, txid)
                 session.flush()
             elif transaction_type == "broadcast":
@@ -262,6 +262,7 @@ class TransactionUpdater:
 
                         # Do not care about the address unless it is our receiving address, otherwise it can be just some third party transfer in a merged transaction
                         if not self._is_known_deposit_address(session, detail["address"]):
+                            logger.debug("Bailing out unknown address %s", detail["address"])
                             continue
 
                         addresses[detail["address"]] += self.backend.to_internal_amount(detail["amount"])
@@ -271,11 +272,11 @@ class TransactionUpdater:
                     # Handle updates to deposits
                     account_id, transaction_id, credited = self._update_address_deposit(ntx, address, amount, confirmations)
 
+                    logger.debug("Received deposit update for account %s, address %s, credited %s, confirmations %d", account_id, address, credited, confirmations)
+
                     if not account_id:
                         # This address was not in our system
                         continue
-
-                    logger.debug("Received deposit update for account %d", account_id)
 
                     self.stats["deposit_updates"] += 1
 
