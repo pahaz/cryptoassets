@@ -12,8 +12,29 @@ The backend configuration takes following parameters.
 
 :param network: one of ``btc``, ``btctest``, ``doge``, ``dogetest``, see `chain.so <https://chain.so>`_ for full list
 
-You must use :py:mod:`cryptoassets.core.backend.sochainwalletnotify` as ``walletnotify`` for incoming transactions for now.
-"""
+:param walletnotify: Configuration of wallet notify service set up for incoming transactions. You must use :py:class:`cryptoassets.core.backend.blockiowebhook.BlockIoWebhookNotifyHandler` or :py:class:`cryptoassets.core.backend.blockiowebocket.BlockIoWebsocketNotifyHandler` as ``walletnotify`` for incoming transactions for now. See below for more details.
+
+Example configuration for block.io backend using websockets.
+
+.. code-block:: yaml
+
+    ---
+    # Cryptoassets.core configuration for running block.io unit tests
+
+    database:
+      url: sqlite:////tmp/cryptoassts-unittest-blockio.sqlite
+
+    coins:
+        doge:
+            backend:
+                class: cryptoassets.core.backend.blockio.BlockIo
+                api_key: yyy
+                pin: xxxx
+                network: dogetest
+                walletnotify:
+                    class: cryptoassets.core.backend.blockiowebsocket.BlockIoWebsocketNotifyHandler
+
+    """
 
 
 import logging

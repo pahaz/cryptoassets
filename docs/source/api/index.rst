@@ -6,7 +6,7 @@
 API documentation
 =============================================
 
-.. warn::
+.. warning::
 
     readthedocs.org has issues building Python API documentation at the moment. This issue is being investigated. Meanwhile you can checkout cryptoassets.core source, install Sphinx package and run "make html" to build docs yourself.
 

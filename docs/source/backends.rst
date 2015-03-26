@@ -58,10 +58,46 @@ bitcoind
 
 .. automodule:: cryptoassets.core.backend.bitcoind
 
+Wallet notifications
++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Wallet notifications (or, short, ``walletnotify``) is the term used by *cryptoasset.core* to describe how backend communicates back to :doc:`cryptoassets helper service <./service>`. It's named after *bitcoind* `walletnotify <https://en.bitcoin.it/wiki/Running_Bitcoin#Bitcoin.conf_Configuration_File>`_ option.
+
+* You can setup different wallet notify method depending if you run daemon application locally, on a remote server or you use some API service
+
+* In theory, you could mix and match backends and wallet notifications methods. But just stick to what is recommended for the backend recommends.
+
+* Each cryptoasset require its own notification channel (named pipe, HTTP server port)
+
+HTTP webhook for bitcoind
++++++++++++++++++++++++++++++++++++++++++++++++++
+
+.. automodule:: cryptoassets.core.backend.httpwalletnotify
+
+Named UNIX pipe for bitcoind
++++++++++++++++++++++++++++++++++++++++++++++++++
+
+.. automodule:: cryptoassets.core.backend.pipewalletnotify
+
+Redis pubsub for bitcoind
++++++++++++++++++++++++++++++++++++++++++++++++++
+
+.. automodule:: cryptoassets.core.backend.rediswalletnotify
+
 block.io
 --------------
 
 .. automodule:: cryptoassets.core.backend.blockio
+
+Wallet notifications over websockets
++++++++++++++++++++++++++++++++++++++++++++++++++
+
+.. automodule:: cryptoassets.core.backend.blockiowebsocket
+
+Wallet notifications over web hooks (HTTP)
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+.. automodule:: cryptoassets.core.backend.blockiowebhook
 
 blockchain.info
 -----------------
@@ -72,30 +108,4 @@ null
 -----------------
 
 .. automodule:: cryptoassets.core.backend.null
-
-Wallet notifications
-==============================
-
-Wallet notifications (or, short, ``walletnotify``) is the term used by *cryptoasset.core* to describe how backend communicates back to :doc:`cryptoassets helper service <./service>`. It's named after *bitcoind* `walletnotify <https://en.bitcoin.it/wiki/Running_Bitcoin#Bitcoin.conf_Configuration_File>`_ option.
-
-* You can setup different wallet notify method depending if you run daemon application locally, on a remote server or you use some API service
-
-* In theory, you could mix and match backends and wallet notifications methods. But just stick to what is recommended for the backend recommends.
-
-* Each cryptoasset require its own notification channel (named pipe, HTTP server port)
-
-HTTP webhook
------------------
-
-.. automodule:: cryptoassets.core.backend.httpwalletnotify
-
-Named UNIX pipe
------------------
-
-.. automodule:: cryptoassets.core.backend.pipewalletnotify
-
-Redis pubsub
------------------
-
-.. automodule:: cryptoassets.core.backend.rediswalletnotify
 

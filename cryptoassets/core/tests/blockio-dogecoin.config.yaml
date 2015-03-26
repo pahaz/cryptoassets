@@ -4,15 +4,12 @@
 database:
   url: sqlite:////tmp/cryptoassts-unittest-blockio.sqlite
 
-# Locally running bitcoind in testnet
 coins:
     doge:
         backend:
             class: cryptoassets.core.backend.blockio.BlockIo
-            # These are TESTNET credentials, nothing to lose here
             api_key: 0266-c2b6-c2c8-ee07
             pin: foobar123
             network: dogetest
             walletnotify:
-                #class: cryptoassets.core.backend.blockiowebhook.BlockIoWebhookNotifyHandler
                 class: cryptoassets.core.backend.blockiowebsocket.BlockIoWebsocketNotifyHandler

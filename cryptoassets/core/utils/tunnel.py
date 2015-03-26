@@ -1,10 +1,10 @@
-"""Expose local HTTP ports to the world using localtunnel utility.
+"""Expose local HTTP ports to the world using ngrok service.
 
-Many API services provide webhooks which call back your service or website over HTTP, as this enables simple integration with websites. However unless you are running in production, you often  find yourself in a situation where it is not possible to get an Internet exposed HTTP endpoint over publicly accessible IP address. These situations include your home desktop, public WI-FI access point and continuous integration services. Thus, developing or testing against webhook APIs become painful for contemporary nomad developers.
+Today many API services provide webhooks calling back your website or system over HTTP. This enables simple third party interprocess communications for websites. However unless you are running in production, you often find yourself in a situation where it is not possible to get an Internet exposed HTTP endpoint over publicly accessible IP address. These situations may include your home desktop, public WI-FI access point or continuous integration services. Thus, developing or testing against webhook APIs become painful for contemporary nomad developers.
 
-`ngrok <https://ngrok.com/>`_ is a free (pay-what-you-want) service to automatically generate HTTP tunnels through the third party relay. What makes ngrok attractice is that the registration is dead simple with your Github credentials and upfront payments are not required.
+`ngrok <https://ngrok.com/>`_ is a free (pay-what-you-want) service to create HTTP tunnels through third party relays. What makes ngrok attractice is that the registration is dead simple with Github credentials and upfront payments are not required. ngrok is also open source, so you can run your own relay for sensitive traffic.
 
-In this blog post, I present a Python solution how to programmatically create ngrok tunnels on-demand. This is especially useful for webhook unit tests, as you can zero configuration tunnels available anywhere where you run your code. ngrok is spawned as a controlled subprocess for a given URL. Then, you can tell your webhook service provider to use this URL to make calls back to your unit tests.
+In this blog post, I present a Python solution how to programmatically create ngrok tunnels on-demand. This is especially useful for webhook unit tests, as you have zero configuration tunnels available anywhere where you run your code. ngrok is spawned as a controlled subprocess for a given URL. Then, you can tell your webhook service provider to use this URL to make calls back to your unit tests.
 
 One could use ngrok completely login free. In this case you lose the ability to name your HTTP endpoints. I have found it practical to have control over your HTTP endpoint URLs, as this makes debugging much more easier.
 
@@ -19,7 +19,7 @@ Installing ngrok on OSX from `Homebrew <http://brew.sh/>`_::
 
 `Deb package for installing ngrok on Ubuntu <http://packages.ubuntu.com/trusty/web/ngrok-client>`_.
 
-`Official ngrok download (self-contained zip) <https://ngrok.com/>`_.
+`Official ngrok download, self-contained zips <https://ngrok.com/>`_.
 
 Sign up for the ngrok service and grab your auth token.
 
@@ -30,17 +30,51 @@ Export auth token as an environment variable in your shell, don't store it in ve
 Ngrok tunnel code
 -------------------
 
-See the full code here.
+Below is Python 3 code for ``NgrokTunnel`` class. See the full code here.
 
-Usage
-------
+Example code
+-------------
 
-Here is a short usage example from cryptoassets.core block.io webhook handler unit tests. See the full code here.
+Here is a short pseudo example from cryptoassets.core block.io webhook handler unit tests. See the full code here::
+
+    class BlockWebhookTestCase(CoinTestRoot, unittest.TestCase):
+
+        def setUp(self):
+
+            self.ngrok = None
+
+            self.backend.walletnotify_config["class"] = "cryptoassets.core.backend.blockiowebhook.BlockIoWebhookNotifyHandler"
+
+            # We need ngrok tunnel for webhook notifications
+            auth_token = os.environ["NGROK_AUTH_TOKEN"]
+            self.ngrok = NgrokTunnel(21211, auth_token)
+
+            # Pass dynamically generated tunnel URL to backend config
+            tunnel_url = self.ngrok.start()
+            self.backend.walletnotify_config["url"] = tunnel_url
+            self.backend.walletnotify_config["port"] = 21211
+
+            # Start the web server
+            self.incoming_transactions_runnable = self.backend.setup_incoming_transactions(self.app.conflict_resolver, self.app.event_handler_registry)
+
+            self.incoming_transactions_runnable.start()
+
+        def teardown(self):
+
+            # Stop webserver
+            incoming_transactions_runnable = getattr(self, "incoming_transactions_runnable", None)
+            if incoming_transactions_runnable:
+                incoming_transactions_runnable.stop()
+
+            # Stop tunnelling
+            if self.ngrok:
+                self.ngrok.stop()
+                self.ngrok = None
 
 Other
 -----
 
-Please see the unit tests for ``NgrokTunnel``class itself.
+Please see the unit tests for ``NgrokTunnel`` class itself.
 
 """
 
@@ -64,7 +98,7 @@ class NgrokTunnel:
 
         :param port: int, localhost port forwarded through tunnel
 
-        :parma subdomain_base: Each tunnel gets a new generated subdomain. This is the prefix used in a random string.
+        :parma subdomain_base: Each new tunnel gets a generated subdomain. This is the prefix used for a random string.
         """
         assert find_executable("ngrok"), "ngrok command must be installed, see https://ngrok.com/"
         self.port = port

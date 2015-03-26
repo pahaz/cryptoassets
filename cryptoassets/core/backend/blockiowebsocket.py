@@ -4,19 +4,12 @@ https://block.io/docs/notifications
 
 This will spin off a thread opening a websocket connection to block.io and listening for incoming events.
 
-This is done using `websocket-client library <https://pypi.python.org/pypi/websocket-client>`_.
+We use `websocket-client library <https://pypi.python.org/pypi/websocket-client>`_ for websockets communications from Python.
 
 Options
 ---------
 
-:param class: Always ``cryptoassets.core.backend.blockiowebhook.BlockIoWebhookNotifyHandler``
-
-:param url: To which public URL your webhook handler is mapped. The URL must not be guessable and must cointain random string, so that malicious actors cannot spoof incoming transaction requests.
-
-:param ip: Bound IP address. Default 127.0.0.1 (localhost).
-
-:parma port: Bound port. Default 11211.
-
+:param class: Always ``cryptoassets.core.backend.blockiowebocket.BlockIoWebsocketNotifyHandler``
 """
 
 import threading

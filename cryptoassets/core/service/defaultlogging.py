@@ -32,9 +32,6 @@ def setup_stdout_logging():
     logger = logging.getLogger("cryptoassets.core.backend.bitcoind")
     logger.setLevel(logging.WARN)
 
-    logger = logging.getLogger("cryptoassets.core.backend.sochainwalletnotify")
-    logger.setLevel(logging.WARN)
-
     logger = logging.getLogger("apscheduler")
     logger.setLevel(logging.WARN)
 
