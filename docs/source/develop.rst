@@ -25,9 +25,9 @@ To run all tests several components must be in-place
 
 * Redis installed, with preferable empty database 0
 
-* `ngrok account <http://ngrok.com>`_ is required for running block.io webhook tests. You need to create ``~/.ngrok`` file with your auth token::
+* `ngrok account <http://ngrok.com>`_ is required for running block.io webhook tests. You need to create export  ``NGROK_AUTH_TOKEN`` environment variable in order run block.io tests::
 
-    ngrok -authtoken xxx 80
+    export NGROK_AUTH_TOKEN=xxx
 
 Examples for running tests
 +++++++++++++++++++++++++++

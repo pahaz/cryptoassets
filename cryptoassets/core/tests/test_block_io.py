@@ -144,7 +144,8 @@ class BlockWebhookTestCase(CoinTestRoot, unittest.TestCase):
         self.backend.walletnotify_config["class"] = "cryptoassets.core.backend.blockiowebhook.BlockIoWebhookNotifyHandler"
 
         # We need ngrok tunnel for webhook notifications
-        self.ngrok = NgrokTunnel(21211)
+        auth_token = os.environ["NGROK_AUTH_TOKEN"]
+        self.ngrok = NgrokTunnel(21211, auth_token)
 
         # Pass dynamically generated tunnel URL to backend config
         tunnel_url = self.ngrok.start()

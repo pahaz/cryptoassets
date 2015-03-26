@@ -286,7 +286,11 @@ class ConflictResolver:
     def transaction(self):
         """Get a transaction contextmanager instance using the conflict resolver session.
 
-        This approach **does not** support conflict resolution, because Python context managers don't support looping. Instead, it will let any exception fall through. ``ConflictResolver.transaction`` is only useful to access the configured SQLAlchemy session in easy manner. This also suits for tests where you know there should be no conflicts in tests, unless explicitly caused.
+        This approach **does not** support conflict resolution, because Python context managers don't support looping. Instead, it will let any exception fall through. ``ConflictResolver.transaction`` is only useful to access the configured SQLAlchemy session in easy manner.
+
+        * Useful for unit testing
+
+        * Useful for shell sessions
 
         Transaction handling
 

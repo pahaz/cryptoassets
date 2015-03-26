@@ -1,8 +1,12 @@
 Changelog
 ----------
 
-0.1.3 (unreleased)
+0.2.0 (unreleased)
 ++++++++++++++++++
+
+- Added HTTP webhook notification support for block.io
+
+- Added websocket notification support for block.io
 
 - Logging system setup and logging level updates for more sane defaults
 

@@ -25,6 +25,16 @@ Do not expose webhook service port directly to the internet. Instead, use your w
 
 Here is an example Nginx web server configuration how decode HTTPS and then forward block.io requets to the upstream server running in the cryptoassets helper service process.
 
+    # Secret block.io webhook endpoint
+    location /blockio-account-nofity/xyz {
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Host $server_name;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_pass http://localhost:33233;
+    }
+
 """
 
 import threading

@@ -103,8 +103,9 @@ class BlockIoWebsocketNotifyHandler(threading.Thread, IncomingTransactionRunnabl
             pass
         elif msg_type == "ping":
             pass
-        else:
-            import ipdb; ipdb.set_trace()
+        elif msg_type == "address":
+            txid = message["data"]["txid"]
+            self.handle_tx_update(txid)
 
     def run(self):
         self.running = True
@@ -132,6 +133,17 @@ class BlockIoWebsocketNotifyHandler(threading.Thread, IncomingTransactionRunnabl
 
         if self.ws:
             self.ws.close()
+
+    def handle_tx_update(self, txid):
+        """Handle each transaction notify as its own db commit."""
+
+        # Each address object is updated in an isolated transaction,
+        # thus we need to pass the db transaction manager to the transaction updater
+        transaction_updater = self.transaction_updater
+        if transaction_updater is not None:
+            transaction_updater.handle_wallet_notify(txid)
+        else:
+            raise RuntimeError("Got txupdate, but no transaction_updater instance available, %s", txid)
 
 
 class AddressMonitor(threading.Thread):

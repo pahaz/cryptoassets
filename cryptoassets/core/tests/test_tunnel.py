@@ -54,7 +54,7 @@ class NgrokTunnelTestCase(unittest.TestCase):
 
         server = TestServer()
         server.start()
-        ngrok = tunnel.NgrokTunnel(10121)
+        ngrok = tunnel.NgrokTunnel(10121, os.environ["NGROK_AUTH_TOKEN"])
         url = ngrok.start()
 
         resp = requests.get(url)
