@@ -14,7 +14,7 @@ Options
 
 :param ip: Bound IP address. Default 127.0.0.1 (localhost).
 
-:parma port: Bound port. Default 11211.
+:parma port: Bound port. Default 33233.
 
 Securing the webhooks
 ----------------------------
@@ -119,7 +119,7 @@ class BlockIoWebhookRequestHandler(BaseHTTPRequestHandler):
 class BlockIoWebhookNotifyHandler(threading.Thread, IncomingTransactionRunnable):
     # Run a webhook endpoint web server in a background thread
 
-    def __init__(self, transaction_updater, url, ip="127.0.0.1", port=11211):
+    def __init__(self, transaction_updater, url, ip="127.0.0.1", port=33233):
 
         assert url, "You must give a URL for block.io webhooks"
 
