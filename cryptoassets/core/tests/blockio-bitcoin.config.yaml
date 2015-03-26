@@ -14,5 +14,4 @@ coins:
             pin: foobar123
             network: btctest
             walletnotify:
-                class: cryptoassets.core.backend.blockiowebhook.BlockIoWebhookNotifyHandler
-                url: filled in dynamically
+                class: cryptoassets.core.backend.blockiowebsocket.BlockIoWebsocketNotifyHandler

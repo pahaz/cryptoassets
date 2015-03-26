@@ -2,13 +2,13 @@
 
 Today many API services provide webhooks calling back your website or system over HTTP. This enables simple third party interprocess communications for websites. However unless you are running in production, you often find yourself in a situation where it is not possible to get an Internet exposed HTTP endpoint over publicly accessible IP address. These situations may include your home desktop, public WI-FI access point or continuous integration services. Thus, developing or testing against webhook APIs become painful for contemporary nomad developers.
 
-`ngrok <https://ngrok.com/>`_ is a free (pay-what-you-want) service to create HTTP tunnels through third party relays. What makes ngrok attractice is that the registration is dead simple with Github credentials and upfront payments are not required. ngrok is also open source, so you can run your own relay for sensitive traffic.
+`ngrok <https://ngrok.com/>`_ (`source <https://github.com/inconshreveable/ngrok>`)_ is a pay-what-you-want service to create HTTP tunnels through third party relays. What makes ngrok attractice is that the registration is dead simple with Github credentials and upfront payments are not required. ngrok is also open source, so you can run your own relay for sensitive traffic.
 
 In this blog post, I present a Python solution how to programmatically create ngrok tunnels on-demand. This is especially useful for webhook unit tests, as you have zero configuration tunnels available anywhere where you run your code. ngrok is spawned as a controlled subprocess for a given URL. Then, you can tell your webhook service provider to use this URL to make calls back to your unit tests.
 
-One could use ngrok completely login free. In this case you lose the ability to name your HTTP endpoints. I have found it practical to have control over your HTTP endpoint URLs, as this makes debugging much more easier.
+One could use ngrok completely login free. In this case you lose the ability to name your HTTP endpoints. I have found it practical to have control over the endpoint URLs, as this makes debugging much more easier.
 
-For real-life usage, you can always check `cryptoassets.core project <https://pypi.python.org/pypi/cryptoassets.core>`_ where I came up with this method. ngrok succesfully tunneled me out from `drone.io CI service <http://drone.io/>`_ and my laptop.
+For real-life usage, you can check `cryptoassets.core project <https://pypi.python.org/pypi/cryptoassets.core>`_ where I came up with ngrok method. ngrok succesfully tunneled me out from `drone.io CI service <http://drone.io/>`_ and my laptop.
 
 Installation
 -------------
