@@ -20,17 +20,23 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
 
     def setup_receiving(self, wallet):
 
-        # We need ngrok tunnel for webhook notifications
-        self.ngrok = NgrokTunnel(11211)
+        self.ngrok = None
 
-        # Pass dynamically generated tunnel URL to backend config
-        tunnel_url = self.ngrok.start()
-        self.backend.walletnotify_config["url"] = tunnel_url
-        self.backend.walletnotify_config["port"] = 11211
+        if self.backend.walletnotify_config["class"] == "cryptoassets.core.backend.blockiowebhook.BlockIoWebhookNotifyHandler":
+
+            # We need ngrok tunnel for webhook notifications
+            self.ngrok = NgrokTunnel(11211)
+
+            # Pass dynamically generated tunnel URL to backend config
+            tunnel_url = self.ngrok.start()
+            self.backend.walletnotify_config["url"] = tunnel_url
+            self.backend.walletnotify_config["port"] = 11211
 
         self.incoming_transactions_runnable = self.backend.setup_incoming_transactions(self.app.conflict_resolver, self.app.event_handler_registry)
 
         self.incoming_transactions_runnable.start()
+
+        self.incoming_transactions_runnable.wait_until_ready()
 
     def teardown_receiving(self):
 
@@ -40,7 +46,9 @@ class BlockIoBTCTestCase(CoinTestCase, unittest.TestCase):
 
         danglingthreads.check_dangling_threads()
 
-        self.ngrok.stop()
+        if self.ngrok:
+            self.ngrok.stop()
+            self.ngrok = None
 
     def clean_test_wallet(self):
         """Make sure the test wallet does't become unmanageable on block.io backend."""
