@@ -15,10 +15,10 @@ CHECKOUT_HOME=`pwd`
 
 # Build SSH tunnelling to the bitcoind server
 # First grab SSH key from drone.io config so it's not visible in build log
-echo $SSH_PRIV_KEY | tr "," "\n" > /tmp/private-key
-chmod o-wrx,g-rwx /tmp/private-key
-ssh -q -N -F $CHECKOUT_HOME/cryptoassets/core/tests/droneio-ssh-config tunnel@$BITCOIND_SERVER &
-SSH_PID=$!
+# echo $SSH_PRIV_KEY | tr "," "\n" > /tmp/private-key
+# chmod o-wrx,g-rwx /tmp/private-key
+# ssh -q -N -F $CHECKOUT_HOME/cryptoassets/core/tests/droneio-ssh-config tunnel@$BITCOIND_SERVER &
+# SSH_PID=$!
 
 # Run tests using py.test test runner
 echo "Running tests"
