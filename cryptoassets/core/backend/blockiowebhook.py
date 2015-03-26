@@ -16,8 +16,12 @@ Options
 
 :parma port: Bound port. Default 11211.
 
-HTTPS support through Nginx
+Securing the webhooks
 ----------------------------
+
+Do not expose webhook service port directly to the internet. Instead, use your web server to create a reverse proxy behind a hidden URL, so you can safely receive notifications from block.io.
+
+**HTTPS support through Nginx**
 
 Here is an example Nginx web server configuration how decode HTTPS and then forward block.io requets to the upstream server running in the cryptoassets helper service process.
 
@@ -115,14 +119,14 @@ class BlockIoWebhookRequestHandler(BaseHTTPRequestHandler):
 class BlockIoWebhookNotifyHandler(threading.Thread, IncomingTransactionRunnable):
     # Run a webhook endpoint web server in a background thread
 
-    def __init__(self, transaction_updater, url, ip="127.0.0.1", port="11211"):
+    def __init__(self, transaction_updater, url, ip="127.0.0.1", port=11211):
 
         assert url, "You must give a URL for block.io webhooks"
 
         self.transaction_updater = transaction_updater
         self.running = True
         self.ip = ip
-        self.port = port
+        self.port = int(port)
         self.ready = False
         self.url = url
         self.block_io_notification_id = None
@@ -131,14 +135,15 @@ class BlockIoWebhookNotifyHandler(threading.Thread, IncomingTransactionRunnable)
         self.block_io = transaction_updater.backend.block_io
 
         server_address = (self.ip, self.port)
+
+        logger.debug("Starting HTTP server listening to block.io webhook notifications at {}:{} for URL {}".format(self.ip, self.port, self.url))
+
         try:
             self.httpd = HTTPServer(server_address, BlockIoWebhookRequestHandler)
             self.httpd.transaction_updater = transaction_updater
             self.httpd.endpoint_url = url
         except OSError as e:
             raise RuntimeError("Could not start block.io notification webhook server at {}:{}".format(self.ip, self.port)) from e
-
-        logger.debug("Starting HTTP server listening to block.io webhook notifications at {}:{} for URL {}".format(self.ip, self.port, self.url))
 
         threading.Thread.__init__(self)
 
