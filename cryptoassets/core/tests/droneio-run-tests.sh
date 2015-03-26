@@ -25,6 +25,14 @@ sudo add-apt-repository ppa:fkrull/deadsnakes > /dev/null 2>&1
 sudo apt-get -qq update > /dev/null 2>&1
 sudo apt-get -qq install python3.4-dev > /dev/null 2>&1
 
+# Make sure we have ngrok
+sudo apt-get install -y unzip
+cd /tmp
+wget -O ngrok.zip "https://api.equinox.io/1/Applications/ap_pJSFC5wQYkAyI0FIVwKYs9h1hW/Updates/Asset/ngrok.zip?os=linux&arch=386&channel=stable"
+unzip ngrok
+sudo mv ngrok /usr/local/bin
+cd $CHECKOUT_HOME
+
 # Creteat test virtualenv
 python3.4 -m venv venv
 . venv/bin/activate
