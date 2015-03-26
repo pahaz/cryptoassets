@@ -10,6 +10,7 @@ Changelog
 
 - Logging system setup and logging level updates for more sane defaults
 
+- Include ngrok tunneling utility
 
 0.1.2 (2015-02-06)
 ++++++++++++++++++++++

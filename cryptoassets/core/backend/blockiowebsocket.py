@@ -9,7 +9,7 @@ We use `websocket-client library <https://pypi.python.org/pypi/websocket-client>
 Options
 ---------
 
-:param class: Always ``cryptoassets.core.backend.blockiowebocket.BlockIoWebsocketNotifyHandler``
+:param class: Always ``cryptoassets.core.backend.blockiowebsocket.BlockIoWebsocketNotifyHandler``
 """
 
 import threading

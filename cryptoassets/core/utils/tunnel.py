@@ -17,7 +17,13 @@ Installing ngrok on OSX from `Homebrew <http://brew.sh/>`_::
 
     brew install ngrok
 
-`Deb package for installing ngrok on Ubuntu <http://packages.ubuntu.com/trusty/web/ngrok-client>`_.
+Installing ngrok for Ubuntu:
+
+    apt-get install -y unzip
+    cd /tmp
+    wget -O ngrok.zip "https://api.equinox.io/1/Applications/ap_pJSFC5wQYkAyI0FIVwKYs9h1hW/Updates/Asset/ngrok.zip?os=linux&arch=386&channel=stable"
+    unzip ngrok
+    mv ngrok /usr/local/bin
 
 `Official ngrok download, self-contained zips <https://ngrok.com/>`_.
 

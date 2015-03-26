@@ -19,8 +19,7 @@ coins:
             # transaction updates from the  the backend
             # (new deposits to the backend wallet)
             walletnotify:
-                class: cryptoassets.core.backend.sochainwalletnotify.SochainWalletNotifyHandler
-                pusher_app_key: e9f5cc20074501ca7395
+                class: cryptoassets.core.backend.blockiowebsocket.BlockIoWebsocketNotifyHandler
 
 # This section tells how cryptoassets helper process will
 # notify your app from events like new incoming transactions

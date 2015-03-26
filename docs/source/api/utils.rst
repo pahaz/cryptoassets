@@ -37,3 +37,8 @@ HTTP event listener decorator
 
 .. automodule:: cryptoassets.core.utils.httpeventlistener
     :members: simple_http_event_listener
+
+Ngrok automatic HTTP endpoint tunneling
+----------------------------------------
+
+.. automodule:: cryptoassets.core.utils.tunnel
