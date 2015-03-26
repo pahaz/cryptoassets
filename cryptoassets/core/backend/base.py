@@ -175,5 +175,12 @@ class IncomingTransactionRunnable(abc.ABC):
     def stop(self):
         pass
 
+    def register_new_addresses(self):
+        """Backend has created new addresses and the incoming transcation monitor must know about them.
+
+        Some monitoring systems need to refresh after new addresses have been added to the pool.
+        """
+
+
 
 

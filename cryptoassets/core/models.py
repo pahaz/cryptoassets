@@ -605,8 +605,9 @@ class GenericWallet(CoinDescriptionModel, CoinBackend):
     def create_receiving_address(self, account, label=None, automatic_label=False):
         """ Creates a new receiving address.
 
-        All incoming transactions on this address
-        are put on the given account.
+        All incoming transactions on this address are put on the given account.
+
+        The notifications for transctions to the address might not be immediately available after the address creation depending on the backend. For example, with block.io you need to wait some seconds before it is safe to send anything to the address if you wish to receive the wallet notification.
 
         :param account: GenericAccount object
 

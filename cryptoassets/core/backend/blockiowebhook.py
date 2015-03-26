@@ -162,11 +162,11 @@ class BlockIoWebhookNotifyHandler(threading.Thread, IncomingTransactionRunnable)
             if notification_data:
                 # Get rid of the existing webhook
                 for notification in notification_data["data"]:
-                    if notification["type"] == "new-transactions":
+                    if notification["type"] == "account":
                         self.block_io.delete_notification(notification_id=notification["notification_id"])
 
             # re(set) the notification handler to point to our webhook
-            notification_data = self.block_io.create_notification(type="new-transactions", url=self.url)
+            notification_data = self.block_io.create_notification(type="account", url=self.url)
             self.block_io_notification_id = notification_data["data"]["notification_id"]
             logger.info("block.io webhook notification id is %s", self.block_io_notification_id)
             logger.info("Notifications are %s", self.block_io.get_notifications())

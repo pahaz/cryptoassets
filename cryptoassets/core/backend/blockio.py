@@ -63,6 +63,8 @@ class BlockIo(base.CoinBackend):
         base.CoinBackend.__init__(self)
 
         self.coin = coin
+        self.api_key = api_key
+        self.pin = pin
         self.block_io = _BlockIo(api_key, pin, 2)
 
         assert network, "Please give argument network as one of chain.so networks: btc, btctest, doge, dogetest"

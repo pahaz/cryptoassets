@@ -57,14 +57,8 @@ def is_slow_test_hostile():
     return "CI" in os.environ or "SKIP_SLOW_TEST" in os.environ
 
 
-class CoinTestCase:
-    """Abstract base class for all cryptocurrency backend tests.
-
-    This verifies that a cryptocurrency backend works against cryptoassets.core models API.
-
-    Inherit from this test case, implement backend abstract methods and run the test case.
-    If all test passes, the backend is compatible with *cryptoassets.core*.
-    """
+class CoinTestRoot:
+    """Have only initialization methods for the tests."""
 
     def setUp(self):
 
@@ -115,6 +109,13 @@ class CoinTestCase:
 
         return engine
 
+    def wait_address(self, address):
+        """block.io needs subscription refresh every time we create a new address.
+
+        Because we do not have IPC mechanism to tell when block.io refresh is ready, we just wait few seconds for now. block.io poller should recheck the database for new addresses every second.
+        """
+        time.sleep(3)
+
     @abc.abstractmethod
     def setup_receiving(self, wallet):
         """Necerssary setup to monitor incoming transactions for the backend."""
@@ -151,6 +152,16 @@ class CoinTestCase:
             account = session.query(self.Account).get(1)
             wallet = session.query(self.Wallet).get(1)
             self.assertGreater(account.balance, 0, "We need have some balance on the unit test wallet to proceed with the send test")
+
+
+class CoinTestCase(CoinTestRoot):
+    """Abstract base class for all cryptocurrency backend tests.
+
+    This verifies that a cryptocurrency backend works against cryptoassets.core models API.
+
+    Inherit from this test case, implement backend abstract methods and run the test case.
+    If all test passes, the backend is compatible with *cryptoassets.core*.
+    """
 
     def test_create_address(self):
         """ Creates a new wallet and fresh bitcoin address there. """
@@ -533,6 +544,9 @@ class CoinTestCase:
                 # See that the created address was properly committed
                 self.assertGreater(wallet.get_receiving_addresses().count(), 0)
                 self.setup_receiving(wallet)
+
+                # Because of block.io needs subscription refresh for new addresses, we sleep here before we can think of sending anything to justly created address
+                self.wait_address(receiving_address)
 
             # Commit new receiveing address to the database
 
