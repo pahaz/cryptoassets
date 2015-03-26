@@ -135,6 +135,8 @@ You should see something like this::
     ...
     [00:23:09] [cryptoassets.core.service.main splash_version] cryptoassets.core version 0.0
 
+You might get some connection refused errors, because the app is not up yet. Please ignore those now.
+
 Now leave *cryptoassets helper service* running and start the example application **in another terminal**::
 
     python example.py

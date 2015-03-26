@@ -54,11 +54,12 @@ class BlockIoWebsocketNotifyHandler(threading.Thread, IncomingTransactionRunnabl
         #: We need a helper thread to notify us when new address becomes available. This is due to an API issue, as block.io needs new websocket message every time you want to subscribe to new addresses
         self.address_monitor = None
 
-        # Fix logging level for websockets
-        from websocket._core import enableTrace
-
-        if logger.level < logging.WARN:
-            enableTrace(True)
+        # websocket module does not define proper loggers so we just disable this for now
+        #
+        # from websocket._core import enableTrace
+        #
+        # if logger.level < logging.WARN:
+        #   enableTrace(True)
 
         self.ws = websocket.WebSocketApp("wss://n.block.io/", on_message=self.on_message)
 

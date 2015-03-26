@@ -8,7 +8,7 @@ In this blog post, I present a Python solution how to programmatically create ng
 
 One could use ngrok completely login free. In this case you lose the ability to name your HTTP endpoints. I have found it practical to have control over your HTTP endpoint URLs, as this makes debugging much more easier.
 
-For real-life usage, you can always check `cryptoassets.core project <https://pypi.python.org/pypi/cryptoassets.core>`_ where I came up with this method.
+For real-life usage, you can always check `cryptoassets.core project <https://pypi.python.org/pypi/cryptoassets.core>`_ where I came up with this method. ngrok succesfully tunneled me out from `drone.io CI service <http://drone.io/>`_ and my laptop.
 
 Installation
 -------------
