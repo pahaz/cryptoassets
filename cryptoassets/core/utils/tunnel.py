@@ -2,7 +2,7 @@
 
 Today many API services provide webhooks calling back your website or system over HTTP. This enables simple third party interprocess communications for websites. However unless you are running in production, you often find yourself in a situation where it is not possible to get an Internet exposed HTTP endpoint over publicly accessible IP address. These situations may include your home desktop, public WI-FI access point or continuous integration services. Thus, developing or testing against webhook APIs become painful for contemporary nomad developers.
 
-`ngrok <https://ngrok.com/>`_ (`source <https://github.com/inconshreveable/ngrok>`)_ is a pay-what-you-want service to create HTTP tunnels through third party relays. What makes ngrok attractice is that the registration is dead simple with Github credentials and upfront payments are not required. ngrok is also open source, so you can run your own relay for sensitive traffic.
+`ngrok <https://ngrok.com/>`_ (`source <https://github.com/inconshreveable/ngrok>_`) is a pay-what-you-want service to create HTTP tunnels through third party relays. What makes ngrok attractice is that the registration is dead simple with Github credentials and upfront payments are not required. ngrok is also open source, so you can run your own relay for sensitive traffic.
 
 In this blog post, I present a Python solution how to programmatically create ngrok tunnels on-demand. This is especially useful for webhook unit tests, as you have zero configuration tunnels available anywhere where you run your code. ngrok is spawned as a controlled subprocess for a given URL. Then, you can tell your webhook service provider to use this URL to make calls back to your unit tests.
 
@@ -17,7 +17,7 @@ Installing ngrok on OSX from `Homebrew <http://brew.sh/>`_::
 
     brew install ngrok
 
-Installing ngrok for Ubuntu:
+Installing ngrok for Ubuntu::
 
     apt-get install -y unzip
     cd /tmp
@@ -36,12 +36,12 @@ Export auth token as an environment variable in your shell, don't store it in ve
 Ngrok tunnel code
 -------------------
 
-Below is Python 3 code for ``NgrokTunnel`` class. See the full code here.
+Below is Python 3 code for ``NgrokTunnel`` class. See `the full source code here <https://bitbucket.org/miohtama/cryptoassets/src/b0758d8cdf74e00d58b513b8e65b05f9f706160f/cryptoassets/core/utils/tunnel.py?at=feat-blockio-webhook>`_.
 
 Example code
 -------------
 
-Here is a short pseudo example from cryptoassets.core block.io webhook handler unit tests. See the full code here::
+Here is a short pseudo example from cryptoassets.core block.io webhook handler unit tests. `See the full unit test code here <https://bitbucket.org/miohtama/cryptoassets/src/b0758d8cdf74e00d58b513b8e65b05f9f706160f/cryptoassets/core/tests/test_block_io.py?at=feat-blockio-webhook#cl-111>`_.::
 
     class BlockWebhookTestCase(CoinTestRoot, unittest.TestCase):
 
@@ -80,7 +80,7 @@ Here is a short pseudo example from cryptoassets.core block.io webhook handler u
 Other
 -----
 
-Please see the unit tests for ``NgrokTunnel`` class itself.
+`Please see the unit tests <https://bitbucket.org/miohtama/cryptoassets/src/b0758d8cdf74e00d58b513b8e65b05f9f706160f/cryptoassets/core/tests/test_tunnel.py?at=feat-blockio-webhook>`_ for ``NgrokTunnel`` class itself.
 
 """
 
