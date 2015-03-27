@@ -20,7 +20,7 @@ requires = [
     ]
 
 setup(name='cryptoassets.core',
-      version='0.1.3.dev0',
+      version='0.2',
       description='A Python framework for building Bitcoin, other cryptocurrency (altcoin) and cryptoassets services',
       long_description=README + '\n\n' + CHANGES,
       # https://packaging.python.org/en/latest/distributing.html#classifiers

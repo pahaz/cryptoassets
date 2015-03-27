@@ -1,7 +1,7 @@
 Changelog
 ----------
 
-0.2.0 (unreleased)
+0.2 (2015-03-26)
 ++++++++++++++++++
 
 - Added HTTP webhook notification support for block.io
