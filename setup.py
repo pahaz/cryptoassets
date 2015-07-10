@@ -16,7 +16,8 @@ requires = [
     'apscheduler',
     'PyYAML',
     'requests',
-    'python-bitcoinrpc'
+    'python-bitcoinrpc',
+    'zope.dottedname'
     ]
 
 setup(name='cryptoassets.core',
