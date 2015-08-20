@@ -58,7 +58,6 @@ from bitcoinrpc.authproxy import JSONRPCException
 
 from . import base
 
-from .pipewalletnotify import PipedWalletNotifyHandler
 from .transactionupdater import TransactionUpdater
 
 from ..coin.registry import Coin
