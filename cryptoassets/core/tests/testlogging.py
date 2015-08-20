@@ -25,9 +25,6 @@ def setup():
     logger = logging.getLogger("requests.packages.urllib3.connectionpool")
     logger.setLevel(logging.ERROR)
 
-    logger = logging.getLogger("cryptoassets.core.backend.blockio")
-    logger.setLevel(logging.DEBUG)
-
     logger = logging.getLogger("cryptoassets.core.backend.bitcoind")
     logger.setLevel(logging.WARN)
 

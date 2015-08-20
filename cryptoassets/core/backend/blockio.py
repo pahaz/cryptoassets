@@ -301,10 +301,10 @@ def clean_blockio_test_wallet(backend, balance_threshold=Decimal(1)):
             else:
 
                 if balance - network_fee < withdrawal_limit:
-                    logger.info("Cannot consolidate %s from %s, too low balance for block.io API call", balance, addr["address"])
+                    logger.debug("Cannot consolidate %s from %s, too low balance for block.io API call", balance, addr["address"])
                 else:
                     # Move everyhing from this address to the consolidation address
-                    logger.info("Consolidating %s from %s to %s", balance, addr["address"], consolidation_address)
+                    logger.debug("Consolidating %s from %s to %s", balance, addr["address"], consolidation_address)
 
                     block_io.withdraw_from_addresses(amounts=str(balance - network_fee), from_addresses=addr["address"], to_addresses=consolidation_address)
 
@@ -312,7 +312,7 @@ def clean_blockio_test_wallet(backend, balance_threshold=Decimal(1)):
 
     not_yet_archived = set(needs_archive) - set(archived_addresses)
 
-    logger.info("Archiving %d addresses from total %s, already archived %d, not yet archived %d", len(needs_archive), len(addresses), len(archived_addresses), len(not_yet_archived))
+    logger.debug("Archiving %d addresses from total %s, already archived %d, not yet archived %d", len(needs_archive), len(addresses), len(archived_addresses), len(not_yet_archived))
 
     # block.io seems to have an upper limit how many addresses you can arcihive at once
     for chunk in iterutil.grouper(256, not_yet_archived):
