@@ -34,7 +34,6 @@ To test that the wallet notifications are coming through
 
 import os
 import logging
-import fcntl
 import time
 import threading
 import datetime
