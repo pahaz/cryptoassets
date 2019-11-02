@@ -11,7 +11,7 @@ ecdsa==0.11
 logutils==0.3.3
 pusherclient==0.3.0
 pycrypto==2.6.1
-PyYAML==3.11
+PyYAML==5.1
 requests==2.4.3
 six==1.8.0
 websocket-client==0.21.0
